@@ -1,0 +1,21 @@
+[project]
+name = "mentionbot"
+version = "0.1.0"
+description = "Trade Kalshi mention markets live from real-time transcription."
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4"]
+ignore = [
+    # Reconnect loops and watchers must never die on an unexpected error;
+    # they log and retry instead.
+    "B904",
+    "E501",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402", "C408"]

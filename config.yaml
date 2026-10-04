@@ -1,0 +1,26 @@
+# Trading thresholds (all prices in integer cents)
+entry_gap: 15                 # min edge (net of fee) in cents to open a position
+exit_gap: 5                   # edge (net of fee) at or below which we close
+jev_interval_s: 5             # seconds between Jev odds refreshes
+transcript_window_s: 120      # seconds of transcript sent to Jev as state
+
+# Sizing / caps
+contracts_per_entry: 1
+max_contracts_per_market: 5
+max_dollars_per_event: 25
+max_loss_per_event: 25
+
+# Matching / safety
+min_word_confidence: 0.85     # ignore STT words below this confidence
+max_price_after_mention: 95   # never pay more than this for Yes post-mention
+order_timeout_s: 10           # cancel unfilled entry orders after this long
+stale_data_s: 10              # block new entries if book/transcript older than this
+
+# Jev model. MUST be a pinned version, not a moving alias such as "jev-latest".
+# `GET https://api.typesafe.ai/v1/models` lists the available pinned names.
+jev_model: "jev-1.13.0"
+jev_timeout_s: 8.0
+
+# AssemblyAI streaming
+speech_model: "universal-streaming-english"
+sample_rate: 16000

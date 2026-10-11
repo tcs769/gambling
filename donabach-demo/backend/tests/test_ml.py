@@ -206,7 +206,7 @@ def test_models_are_reloaded_when_the_file_changes(tmp_path):
     first = load_recommender(tmp_path)
     assert load_recommender(tmp_path) is first  # cached while the file is unchanged
     picks = {"stock_share": "70", "conversion": "fill22_low", "private_credit": "0",
-             "direct_indexing": "off", "goal_bonds": "on", "k401": "pretax"}
+             "direct_indexing": "off", "goal_bonds": "on", "k401": "pretax", "goal_funding": "sell"}
     _drop(tmp_path, "recommender.pkl", stubs.StubRecommender(picks))
     assert load_recommender(tmp_path).recommend(make_demo_household()).option("stock_share") == "70"
     (tmp_path / "recommender.pkl").unlink()

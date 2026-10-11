@@ -25,4 +25,5 @@ futures (seed 2026, the app's defaults) and the winner is scored against the goo
 | A3: private credit sleeve 0/5/10/15% | 42 | 50% stocks, no conversions, 15% private credit, direct indexing | -0.00% | +2.50% | +0.16% / +2.63% | +0.05% / +3.45% |
 | A4: conversion tax from cash, wages and brokerage | 42 | 50% stocks, fill 24% bracket (every year), 15% private credit | +0.27% | +2.54% | +0.30% / +2.73% | +0.34% / +3.61% |
 | A5: Roth vs pre-tax 401(k) | 42 | 50% stocks, fill 24% bracket (every year), 15% private credit | +0.27% | +2.54% | +0.30% / +2.73% | +0.34% / +3.61% |
+| A6: borrow against the portfolio for goals | 42 | 50% stocks, fill 24% bracket (every year), 15% private credit | +0.27% | +2.54% | +0.35% / +2.62% | +0.34% / +3.61% |
 

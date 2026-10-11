@@ -128,6 +128,8 @@ def test_log_constants_match_column_names():
         "aged": sim.L_AGED, "rmd": sim.L_RMD, "private_credit": sim.L_PC,
         "free_cash": sim.L_FREECASH, "conv_cash": sim.L_CONVCASH, "k401_roth": sim.L_K401ROTH,
         "roth_extra_tax": sim.L_ROTHTAX, "brokerage_saving": sim.L_SAVING, "roth_gap": sim.L_ROTHGAP,
+        "loan": sim.L_LOAN, "borrowed": sim.L_BORROWED, "loan_interest": sim.L_LOANINT, "forced_sale": sim.L_FORCED,
+        "loan_repaid_saving": sim.L_REPAID_SAVING, "loan_repaid_gain": sim.L_REPAID_GAIN,
     }
     assert set(expected) == set(sim.LOG_COLUMNS)
     for name, index in expected.items():
@@ -514,6 +516,160 @@ def test_policy_401k_options_map_to_the_policy_column():
     assert menu_policy("90|none|off|off|off|roth").k401 == "roth"
 
 
+# --- Borrowing against the portfolio (spec A6) -----------------------------------------------
+
+
+def borrowing_household(brokerage=2_000_000.0):
+    """The demo household with a taxable account big enough that borrowing limits do not bind."""
+    return make_demo_household(
+        accounts=Accounts(
+            brokerage_value=brokerage, brokerage_basis=brokerage * 0.6, pretax_balance=400_000,
+            roth_balance=30_000, cash=40_000,
+        )
+    )
+
+
+def test_borrowing_assumptions_are_documented_in_params():
+    assert P.BORROWING_LIMIT == 0.30 and P.BORROWING_FORCED_SALE_TRIGGER == 0.40
+    assert P.BOX_SPREAD_PREMIUM == 0.003  # Treasury + 0.3%
+    # real rate = short-term Treasury + 0.3% - inflation
+    assert P.BORROWING_RATE_REAL == pytest.approx(P.SHORT_TERM_TREASURY_NOMINAL + 0.003 - P.ASSUMED_INFLATION)
+    assert 0.0 < P.BORROWING_RATE_REAL < 0.06
+    assert markets.PRIVATE_CREDIT_INCOME_YIELD == pytest.approx(markets.MEANS[markets.PRIVATE_CREDIT] + P.ASSUMED_INFLATION)
+
+
+def test_borrowing_for_a_goal_never_exceeds_30_percent_of_the_taxable_account():
+    rng = np.random.default_rng(7)
+    for _ in range(2_000):
+        st = state(
+            be=float(rng.uniform(0, 1e6)), bb=float(rng.uniform(0, 5e5)), bp=float(rng.uniform(0, 2e5)),
+            loan=float(rng.uniform(0, 4e5)), gb=float(rng.uniform(0, 1e5)),
+        )
+        value = st[sim.S_BE] + st[sim.S_BB] + st[sim.S_BP]
+        before = st[sim.S_LOAN]
+        due = float(rng.uniform(0, 5e5))
+        got = sim._borrow_for_goal(st, due)
+        assert 0.0 <= got <= due + 1e-9
+        assert st[sim.S_LOAN] == pytest.approx(before + got)
+        if before <= 0.30 * value:  # a loan already over the limit simply cannot grow
+            assert st[sim.S_LOAN] <= 0.30 * value + 1e-6
+        else:
+            assert got == 0.0
+
+
+def test_a_loan_above_40_percent_forces_a_sale_back_to_30_percent():
+    st = state(be=100_000, bbasis=60_000, loan=45_000)
+    interest, forced, gain = sim._accrue_and_deleverage(st)
+    loan = 45_000 * (1 + P.BORROWING_RATE_REAL)
+    assert interest == pytest.approx(45_000 * P.BORROWING_RATE_REAL)
+    assert forced == pytest.approx((loan - 0.30 * 100_000) / 0.70)  # sell enough that loan = 30% of what is left
+    assert st[sim.S_LOAN] == pytest.approx(loan - forced)
+    assert st[sim.S_LOAN] == pytest.approx(0.30 * st[sim.S_BE])  # exactly 30% of the account that remains
+    assert gain == pytest.approx(forced * 0.40)  # sold equity carries a 40% embedded gain
+
+
+def test_a_loan_between_30_and_40_percent_is_left_alone():
+    st = state(be=100_000, bbasis=60_000, loan=33_000)
+    _, forced, gain = sim._accrue_and_deleverage(st)
+    assert forced == 0.0 and gain == 0.0 and st[sim.S_BE] == pytest.approx(100_000)
+    assert st[sim.S_LOAN] == pytest.approx(33_000 * (1 + P.BORROWING_RATE_REAL))  # only the interest changed
+
+
+def test_after_the_start_of_year_upkeep_the_loan_is_never_above_40_percent_of_the_account():
+    rng = np.random.default_rng(3)
+    for _ in range(2_000):
+        st = state(
+            be=float(rng.uniform(0, 1e6)), bbasis=float(rng.uniform(0, 1e6)), bb=float(rng.uniform(0, 3e5)),
+            bp=float(rng.uniform(0, 1e5)), loan=float(rng.uniform(0, 8e5)),
+        )
+        sim._accrue_and_deleverage(st)
+        value = st[sim.S_BE] + st[sim.S_BB] + st[sim.S_BP]
+        assert st[sim.S_LOAN] <= 0.40 * value + 1e-6 or value <= 1e-9  # or everything was sold
+
+
+def test_interest_on_the_loan_is_a_capital_loss():
+    st = state(be=500_000, bbasis=500_000, loan=100_000)
+    tv = np.zeros((1, sim.NTV))
+    tv[0, sim.TV_AGE] = 45.0
+    ys = np.zeros(sim.NY)
+    sim._year_begin(st, ys, tv, 0, np.zeros(sim.NACT), 0.0, 0.0, 0.0)
+    interest = 100_000 * P.BORROWING_RATE_REAL
+    assert ys[sim.Y_LOANINT] == pytest.approx(interest)
+    assert ys[sim.Y_REALIZED] == pytest.approx(-interest)  # a loss that offsets gains and carries forward
+    assert st[sim.S_LOAN] == pytest.approx(100_000 + interest)  # interest accrues to the loan
+
+
+def test_borrowing_pays_a_goal_without_selling_and_the_loan_is_repaid_from_savings_first():
+    household = borrowing_household()
+    sell = detail(Policy(goal_funding="sell"), household).log
+    borrow = detail(Policy(goal_funding="borrow"), household).log
+    assert borrow["borrowed"][3] == pytest.approx(120_000)  # the down payment, in full
+    assert sell["borrowed"][3] == 0.0
+    # the same year's savings already start repaying it
+    saving = sim.BROKERAGE_SAVINGS_SHARE * borrow["wages"][3]
+    assert borrow["loan_repaid_saving"][3] == pytest.approx(saving) and borrow["loan"][3] == pytest.approx(120_000 - saving)
+    assert borrow["net_gain"][3] < sell["net_gain"][3]  # no sale, so no gain realized for the goal
+    # from then on this year's saving repays the loan before anything is invested
+    owed = borrow["loan"][3]
+    for t in range(4, 9):
+        assert borrow["loan_interest"][t] == pytest.approx(owed * P.BORROWING_RATE_REAL)
+        owed *= 1 + P.BORROWING_RATE_REAL
+        saving_available = sim.BROKERAGE_SAVINGS_SHARE * borrow["wages"][t]
+        assert borrow["loan_repaid_saving"][t] == pytest.approx(min(saving_available, owed), abs=1e-6)
+        owed -= borrow["loan_repaid_saving"][t] + borrow["loan_repaid_gain"][t]
+        assert borrow["loan"][t] == pytest.approx(owed, abs=1e-6)
+    assert borrow["loan"][8] == pytest.approx(0.0, abs=1e-6)  # about 25,000 a year clears 120,000 in five
+
+
+def test_a_loan_is_repaid_by_realizing_gains_in_a_low_tax_year():
+    inp = deterministic(no_wage_household(300_000.0, 500_000.0, age=60, retirement_age=61))
+    inp.init[sim.S_LOAN] = 50_000.0
+    inp.init[sim.S_BBASIS] = 150_000.0  # half of the account is gain
+    log = run_detail(inp, Policy(flat_fee=0.0, goal_funding="borrow", bracket_withdrawals=False)).log
+    assert log["loan_repaid_gain"][0] > 0 and log["loan"][0] < 50_000
+    # nothing is owed on the gain it realized: it fits inside the 0% bracket
+    assert log["fed_tax"][0] == pytest.approx(0.0, abs=1.0)
+    assert log["loan_repaid_saving"][0] == 0.0  # no wages, so no savings to repay from
+
+
+def test_no_repayment_by_sale_in_a_high_tax_year_or_the_year_of_borrowing():
+    household = borrowing_household()
+    log = detail(Policy(goal_funding="borrow"), household).log
+    assert log["loan_repaid_gain"][3] == 0.0  # the year it was borrowed
+    # with $250,000 of wages there is no 0% bracket left to realize gains in
+    assert np.all(log["loan_repaid_gain"][:24] == 0.0)
+
+
+def test_the_loan_is_subtracted_from_after_tax_wealth():
+    household = borrowing_household()
+    sell = detail(Policy(goal_funding="sell"), household).log
+    borrow = detail(Policy(goal_funding="borrow"), household).log
+    # Borrowing does not create wealth: at most the tax on the gain that was not realized separates them.
+    assert abs(borrow["wealth"][3] - sell["wealth"][3]) < 0.15 * 120_000
+
+
+def test_the_borrow_gate_turns_borrowing_back_into_a_sale_for_that_year():
+    inp = deterministic(borrowing_household())
+    gates = np.ones((1, inp.n_years, sim.NGATE))
+    gates[0, 3, sim.G_BORROW] = 0.0
+    log = run_detail(inp, Policy(goal_funding="borrow"), gates[0]).log
+    assert log["borrowed"][3] == 0.0 and log["loan"][3] == 0.0
+    free = run_detail(inp, Policy(goal_funding="borrow")).log
+    assert free["borrowed"][3] > 0
+
+
+def test_a_market_crash_after_borrowing_forces_a_sale():
+    household = make_demo_household(
+        accounts=Accounts(brokerage_value=400_000, brokerage_basis=300_000, pretax_balance=400_000, roth_balance=30_000, cash=0)
+    )
+    rets = np.zeros((1, household.horizon_years, 3))
+    rets[0, 4, markets.EQUITY] = -0.60  # the year after the purchase
+    log = run_detail(deterministic(household, rets=rets), Policy(goal_funding="borrow", stock_share=1.0, glide_drop=0.0)).log
+    assert log["borrowed"][3] > 0
+    assert log["forced_sale"][4] > 0  # loan > 40% of the shrunken account
+    assert log["loan"][4] <= 0.40 * log["brokerage"][4] + 1.0
+
+
 def test_roth_conversion_tax_is_paid_from_the_taxable_account():
     log = detail(menu_policy("90|fill22_low|off|off|off")).log
     t = 24
@@ -876,7 +1032,8 @@ def menu_policy(key: str) -> Policy:
     pc = {"on": "10", "off": "0"}.get(pc, pc)  # keys may say on/off for the 10% sleeve
     return Strategy.from_choices({
         "stock_share": stock, "conversion": conversion, "private_credit": pc,
-        "direct_indexing": di, "goal_bonds": gb, "k401": rest[0] if rest else "pretax",
+        "direct_indexing": di, "goal_bonds": gb,
+        "k401": rest[0] if rest else "pretax", "goal_funding": rest[1] if len(rest) > 1 else "sell",
     }).policy()
 
 

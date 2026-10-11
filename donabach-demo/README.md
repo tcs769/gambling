@@ -76,7 +76,7 @@ All dollars are **real 2026 dollars**; tax brackets are held constant in 2026 do
 | Documents | `backend/app/docs/`, `fixtures/` | `fixtures/demo_household.json` is the single source of truth for three generated PDFs (a 2026 1040 projection, a brokerage statement, a 401(k) statement). A pdfplumber parser reads them back with value, page, bounding box and rule-based confidence, plus cross-checks. |
 | Markets and income | `backend/app/sim/markets.py`, `income.py` | Correlated normal real returns (equity 5.5%/16%, bonds 1.5%/5%, private credit 3.5%/8%) from a fixed seed, shared by every strategy. Income is a **placeholder** life-cycle process until the ML forecaster plugs in. |
 | Simulator | `backend/app/sim/simulate.py` | The 11-step yearly household loop (returns, harvesting, goals, spending, conversion, goal bucket, location and rebalancing, tax, fees, contributions) as one numba kernel run over every (strategy, future). |
-| Planner | `backend/app/planner/` | Searches all **2,016** strategies (stock share x Roth conversions x private credit sleeve x direct indexing x goal bonds x 401(k) type) on the same 400 futures, scoring each by certainty-equivalent after-tax wealth at 80 (CRRA, risk aversion 3, $50,000 floor). The search is staged: every strategy is scored on 100 of the futures and the best 150 go on to all 400 (about 1 s; `exhaustive=True` scores everything on everything, and a test checks both pick the same winner). |
+| Planner | `backend/app/planner/` | Searches all **4,032** strategies (stock share x Roth conversions x private credit sleeve x direct indexing x goal bonds x 401(k) type x goal funding) on the same 400 futures, scoring each by certainty-equivalent after-tax wealth at 80 (CRRA, risk aversion 3, $50,000 floor). The search is staged: every strategy is scored on 100 of the futures and the best 150 go on to all 400 (about 1 s; `exhaustive=True` scores everything on everything, and a test checks both pick the same winner). |
 | Baseline | `planner/baseline.py` | A "good RIA": age-based 80% to 50% glide path, same mix in every account, breakpoint fees, fund-level harvesting, goals from brokerage, no conversions, pro rata withdrawals. |
 | Explanations | `planner/explain.py` | The five-step "where the advantage comes from" (switch decisions on one at a time from the baseline, same futures) and, per year, the value of each decision found by re-running the plan with only that decision removed for that year. |
 
@@ -178,6 +178,13 @@ credits. Beyond that, choices made where the spec was silent, so they are not a 
 * **Cash and goals.** Cash joins brokerage bonds. The goal bucket holds the next four years of goals, funded and
   released each year; without it goals are paid from brokerage pro rata.
 * **Fees** are taken pro rata from every account; gains realized to pay tax or fees are reported the next year.
+* **Borrowing for goals** (a box-spread loan against the taxable account). Real rate 2.82%: the 1-year Treasury
+  yield (4.52%, FRED week ending 2026-10-02) plus 0.30%, less the 2% of inflation the market assumptions imply
+  (`tax/params_2026.py`). Interest accrues to the loan and is booked as a capital loss each year (real box spreads
+  fall under IRC section 1256, 60% long-term and 40% short-term; treating it all as long-term is a simplification).
+  The loan never exceeds 30% of the taxable account (stocks, bonds, private credit; the goal-bond bucket is not
+  counted); if a market drop takes it above 40%, assets are sold to bring it back to 30%. It is repaid from the
+  year's savings first, and in later low-tax years by selling holdings up to the top of the 0% gain bracket.
 * **Conversions** can be paid for from the taxable account (cash included) and from that year's spare wages:
   wages after the tax on them, 401(k) saving, the 10% brokerage saving and normal spending. The documents do not say
   what the household spends today, so normal spending before retirement is taken to be its planned retirement

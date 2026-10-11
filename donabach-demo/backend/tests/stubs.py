@@ -24,6 +24,7 @@ class StubRecommender:
             "direct_indexing": "on",
             "goal_bonds": "off",
             "k401": "pretax",
+            "goal_funding": "sell",
         }
         self.with_distribution = with_distribution
 

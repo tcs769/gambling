@@ -75,16 +75,17 @@ NTV = 12
     SP_FEE_BREAKPOINTS,
     SP_FEE_FLAT,
     SP_K401,
-) = range(14)
-NSP = 14
+    SP_BORROW,
+) = range(15)
+NSP = 15
 
 # 401(k) contribution type (SP_K401).
 K401_PRETAX, K401_ROTH, K401_ROTH_LOW = 0.0, 1.0, 2.0
 
 # Per-(policy, year) switches. 1.0 = the decision is taken, 0.0 = removed for that year.
-G_CONV, G_HARVEST, G_BUCKET, G_LOCATION, G_WITHDRAW, G_K401 = range(6)
-NGATE = 6
-GATE_NAMES = ("conversion", "harvest", "bucket", "location", "withdraw", "k401")
+G_CONV, G_HARVEST, G_BUCKET, G_LOCATION, G_WITHDRAW, G_K401, G_BORROW = range(7)
+NGATE = 7
+GATE_NAMES = ("conversion", "harvest", "bucket", "location", "withdraw", "k401", "borrow")
 
 # One year's action. The first six are the decisions the adaptive planner chooses among each year
 # (spec B3); the last four come from the fixed policy the planner continues with (and its gates).
@@ -103,8 +104,8 @@ GATE_NAMES = ("conversion", "harvest", "bucket", "location", "withdraw", "k401")
 NACT = 10
 
 # Scratch carried from the start of a year to its end (what the household saw, then did).
-(Y_REALIZED, Y_RETDIST, Y_EARLYBASE, Y_CFIN, Y_DIVIDENDS, Y_INTEREST, Y_HARVEST, Y_PRETAX_OPEN) = range(8)
-NY = 8
+(Y_REALIZED, Y_RETDIST, Y_EARLYBASE, Y_CFIN, Y_DIVIDENDS, Y_INTEREST, Y_HARVEST, Y_PRETAX_OPEN, Y_LOANINT, Y_FORCED) = range(10)
+NY = 10
 
 # Household constants.
 HC_SS = 0
@@ -162,6 +163,12 @@ LOG_COLUMNS = (
     "roth_extra_tax",
     "brokerage_saving",
     "roth_gap",
+    "loan",
+    "borrowed",
+    "loan_interest",
+    "forced_sale",
+    "loan_repaid_saving",
+    "loan_repaid_gain",
 )
 NLOG = len(LOG_COLUMNS)
 (
@@ -210,6 +217,12 @@ NLOG = len(LOG_COLUMNS)
     L_ROTHTAX,
     L_SAVING,
     L_ROTHGAP,
+    L_LOAN,
+    L_BORROWED,
+    L_LOANINT,
+    L_FORCED,
+    L_REPAID_SAVING,
+    L_REPAID_GAIN,
 ) = range(NLOG)
 
 # --------------------------------------------------------------------------------------------
@@ -295,6 +308,47 @@ def _convert_to_roth(st, fraction):
     st[S_PE] *= 1.0 - fraction
     st[S_PB] *= 1.0 - fraction
     st[S_PP] *= 1.0 - fraction
+
+
+@jit
+def _accrue_and_deleverage(st):
+    """Start-of-year loan upkeep. Returns (interest accrued, assets sold in a forced sale, gain realized by it).
+
+    Interest accrues on the loan (it is booked as a capital loss by the caller). If the loan then exceeds
+    40% of the taxable account (stocks, bonds and private credit), assets are sold to bring it back to 30%.
+    """
+    loan = st[S_LOAN]
+    if loan <= 0.0:
+        return 0.0, 0.0, 0.0
+    interest = loan * P.BORROWING_RATE_REAL
+    loan += interest
+    forced = 0.0
+    gain = 0.0
+    value = st[S_BE] + st[S_BB] + st[S_BP]
+    if loan > P.BORROWING_FORCED_SALE_TRIGGER * value:
+        wanted = (loan - P.BORROWING_LIMIT * value) / (1.0 - P.BORROWING_LIMIT)
+        forced, gain = _sell_brokerage(st, min(wanted, value))
+        loan = max(0.0, loan - forced)
+    st[S_LOAN] = loan
+    return interest, forced, gain
+
+
+@jit
+def _borrow_for_goal(st, due):
+    """Borrow up to `due` against the taxable account without the loan passing 30% of its value."""
+    value = st[S_BE] + st[S_BB] + st[S_BP]
+    borrowed = min(due, max(0.0, P.BORROWING_LIMIT * value - st[S_LOAN]))
+    st[S_LOAN] += borrowed
+    return borrowed
+
+
+@jit
+def _zero_gain_room(wages_taxable, interest, dividends, taxable_ss, ret_dist, conv, realized, cf, std):
+    """Dollars of further long-term gain that would still be taxed at 0% this year (income so far
+    stacked under them: ordinary income, qualified dividends, gains already realized)."""
+    ordinary = _ordinary_income(wages_taxable, interest, taxable_ss, ret_dist, conv, realized, cf)
+    taxable = max(0.0, ordinary + max(0.0, realized - cf) + dividends - std)
+    return max(0.0, P.CG_ZERO_TOP - taxable)
 
 
 @jit
@@ -443,7 +497,7 @@ def _policy_action(row, gates_row, tv, t, w, act):
         elif row[SP_K401] == K401_ROTH_LOW and w < LOW_INCOME_SHARE * tv[t, TV_EXPWAGE]:
             roth = 1.0
     act[A_K401_ROTH] = roth
-    act[A_BORROW] = 0.0
+    act[A_BORROW] = 1.0 if (row[SP_BORROW] > 0.5 and gates_row[G_BORROW] > 0.5) else 0.0
     act[A_REALIZE] = 0.0
     harvest = 0.0
     if gates_row[G_HARVEST] > 0.5:
@@ -502,6 +556,13 @@ def _year_begin(st, ys, tv, t, act, r_e, r_b, r_c):
         realized -= harvest
         st[S_BBASIS] = basis - harvest
 
+    # 2b. The box-spread loan: interest accrues (and is booked as a capital loss), and if a market
+    # drop pushes the loan above 40% of the taxable account, assets are sold to bring it back to 30%.
+    loan_interest, forced, forced_gain = _accrue_and_deleverage(st)
+    realized += forced_gain - loan_interest
+
+    ys[Y_LOANINT] = loan_interest
+    ys[Y_FORCED] = forced
     ys[Y_REALIZED] = realized
     ys[Y_RETDIST] = ret_dist
     ys[Y_DIVIDENDS] = dividends
@@ -556,6 +617,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
 
     # 3b. Pay goals that are due: RMD cash, bucket, then brokerage pro rata, then Roth, then pre-tax.
     goal = tv[t, TV_GOAL]
+    borrowed = 0.0
     if goal > 0.0:
         due = goal
         from_rmd = min(rmd_cash, due)
@@ -564,6 +626,10 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         from_bucket = min(st[S_GB], due)
         st[S_GB] -= from_bucket
         due -= from_bucket
+        if due > 0.0 and act[A_BORROW] > 0.5:
+            # Borrow against the taxable account instead of selling, up to 30% of its value.
+            borrowed = _borrow_for_goal(st, due)
+            due -= borrowed
         if due > 0.0:
             sold, gain = _sell_brokerage(st, due)
             realized += gain
@@ -664,6 +730,19 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
             st[S_BB] += held - target
             bucket_flow = target - held
 
+    # 6b. Repay the loan in a low-tax year by selling appreciated holdings: realize gains only up to
+    # the top of the 0% capital-gain bracket (nothing to realize means the sale is tax-free anyway).
+    repaid_gain = 0.0
+    if st[S_LOAN] > 0.0 and borrowed <= 0.0:  # not in the year it was borrowed
+        room = _zero_gain_room(wages_taxable, interest, dividends, taxable_ss, ret_dist, conv, realized, cf_in, std)
+        if room > 0.0:
+            value = st[S_BE] + st[S_BB] + st[S_BP]
+            embedded = (st[S_BE] - st[S_BBASIS]) / value if value > 0.0 else 0.0
+            amount = st[S_LOAN] if embedded <= 0.0 else min(st[S_LOAN], room / embedded)
+            repaid_gain, gain = _sell_brokerage(st, amount)
+            realized += gain
+            st[S_LOAN] -= repaid_gain
+
     # 7. Rebalance to the target allocation and asset location.
     share = act[A_STOCK]
     pc_share = act[A_PC]
@@ -723,6 +802,9 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
                 st[S_PP] += k * st[S_PP] / pre
             else:
                 st[S_PE] += k
+    repaid_saving = min(saved_net, st[S_LOAN])  # the loan is repaid from this year's savings first
+    st[S_LOAN] -= repaid_saving
+    saved_net -= repaid_saving
     if saved_net > 0.0:
         brk = st[S_BE] + st[S_BB] + st[S_BP]
         to_equity = min(saved_net, saved_net * st[S_BE] / brk) if brk > 0.0 else saved_net
@@ -751,6 +833,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
             + st[S_RB]
             + st[S_RP]
             + pretax
+            - st[S_LOAN]
             - owed
             + _LTCG_RATE * st[S_CF]
             - _LTCG_RATE * max(0.0, st[S_DGAIN])
@@ -805,6 +888,12 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         log[t, L_ROTHTAX] = extra_tax
         log[t, L_SAVING] = saved_net
         log[t, L_ROTHGAP] = roth_gap
+        log[t, L_LOAN] = st[S_LOAN]
+        log[t, L_BORROWED] = borrowed
+        log[t, L_LOANINT] = ys[Y_LOANINT]
+        log[t, L_FORCED] = ys[Y_FORCED]
+        log[t, L_REPAID_SAVING] = repaid_saving
+        log[t, L_REPAID_GAIN] = repaid_gain
     return wealth, total_tax
 
 
@@ -890,6 +979,7 @@ class Policy:
     breakpoint_fees: bool = False  # RIA breakpoint schedule instead of the flat fee
     flat_fee: float = DONABACH_FLAT_FEE
     k401: str = "pretax"  # 401(k) contributions: "pretax", "roth", or "roth_low" (Roth in low-income years only)
+    goal_funding: str = "sell"  # "sell" assets for a goal, or "borrow" against the taxable account (box spread)
 
     def row(self, current_age: float) -> np.ndarray:
         r = np.zeros(NSP)
@@ -907,6 +997,7 @@ class Policy:
         r[SP_FEE_BREAKPOINTS] = float(self.breakpoint_fees)
         r[SP_FEE_FLAT] = self.flat_fee
         r[SP_K401] = {"pretax": K401_PRETAX, "roth": K401_ROTH, "roth_low": K401_ROTH_LOW}[self.k401]
+        r[SP_BORROW] = {"sell": 0.0, "borrow": 1.0}[self.goal_funding]
         return r
 
     def replace(self, **changes) -> Policy:

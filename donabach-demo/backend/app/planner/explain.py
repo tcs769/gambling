@@ -62,6 +62,7 @@ def advantage_policies(strategy: Strategy) -> list[tuple[str, Policy]]:
         bracket_withdrawals=chosen.bracket_withdrawals,
         withdrawal_top=chosen.withdrawal_top,
         k401=chosen.k401,
+        goal_funding=chosen.goal_funding,
     )
     assert p5 == chosen, "the last step must land exactly on the chosen strategy"
     return [
@@ -105,6 +106,7 @@ DECISION_GATES = {
     "location": sim.G_LOCATION,
     "withdraw": sim.G_WITHDRAW,
     "k401": sim.G_K401,
+    "borrow": sim.G_BORROW,
 }
 
 
@@ -187,6 +189,17 @@ def _active_decisions(strategy: Strategy, policy: Policy, log: dict[str, np.ndar
                 amount=flow,
             )
         )
+    if log["borrowed"][t] > 0:
+        found.append(
+            Decision(
+                key="borrow",
+                label="Borrow for the goal",
+                description=f"Borrowed {_money(log['borrowed'][t])} against the taxable account at "
+                f"{P.BORROWING_RATE_REAL * 100:.1f}% (real) instead of selling assets; the loan stands at "
+                f"{_money(log['loan'][t])} and is repaid from savings or by realizing gains in low-tax years.",
+                amount=float(log["borrowed"][t]),
+            )
+        )
     if log["k401_roth"][t] > 0:
         found.append(
             Decision(
@@ -242,6 +255,17 @@ def year_detail(inputs_det: SimInputs, strategy: Strategy, year_index: int) -> Y
         for decision, wealth_without in zip(decisions, without, strict=True):
             decision.value = float(full.wealth[0, 0] - wealth_without)
 
+    if log["forced_sale"][t] > 0:
+        decisions.append(
+            Decision(
+                key="forced_sale",
+                label="Forced sale",
+                description=f"The market fell far enough to push the loan above 40% of the taxable account, so "
+                f"{_money(log['forced_sale'][t])} was sold to bring it back to 30%.",
+                amount=float(log["forced_sale"][t]),
+                valued=False,
+            )
+        )
     share = float(log["stock_target"][t])
     decisions.append(
         Decision(

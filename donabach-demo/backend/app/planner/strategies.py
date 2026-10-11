@@ -7,6 +7,7 @@
 * Direct indexing: off (fund-level harvesting) or on (harvest by stock)
 * Goal-matched bonds: off, or fund each goal fully four years ahead in bonds
 * 401(k) contributions: pre-tax, Roth, or Roth in low-income years only
+* Goal funding: sell assets, or borrow against the taxable account (box spread, up to 30% of it)
 
 Every strategy also uses Donabach asset location (private credit, then bonds, in pre-tax first;
 Roth holds stocks), withdraws pre-tax up to the bracket target then brokerage then Roth, and
@@ -27,6 +28,7 @@ GLIDE_START_AGE = 58.0
 GLIDE_DROP = 0.25
 PRIVATE_CREDIT_SHARES = (0.0, 0.05, 0.10, 0.15)
 K401_OPTIONS = ("pretax", "roth", "roth_low")
+GOAL_FUNDING_OPTIONS = ("sell", "borrow")
 
 # option name -> (bracket label, bracket top, every year?)
 CONVERSION_OPTIONS: dict[str, tuple[int | None, float, bool]] = {
@@ -40,7 +42,7 @@ CONVERSION_OPTIONS: dict[str, tuple[int | None, float, bool]] = {
 }
 
 # The five choices, in the order the recommender reports them.
-CHOICES = ("stock_share", "conversion", "private_credit", "direct_indexing", "goal_bonds", "k401")
+CHOICES = ("stock_share", "conversion", "private_credit", "direct_indexing", "goal_bonds", "k401", "goal_funding")
 CHOICE_OPTIONS: dict[str, tuple[str, ...]] = {
     "stock_share": tuple(f"{round(s * 100)}" for s in STOCK_SHARES),
     "conversion": tuple(CONVERSION_OPTIONS),
@@ -48,6 +50,7 @@ CHOICE_OPTIONS: dict[str, tuple[str, ...]] = {
     "direct_indexing": ("off", "on"),
     "goal_bonds": ("off", "on"),
     "k401": K401_OPTIONS,
+    "goal_funding": GOAL_FUNDING_OPTIONS,
 }
 
 
@@ -59,12 +62,15 @@ class Strategy:
     direct_indexing: bool
     goal_bonds: bool
     k401: str = "pretax"  # 401(k) contribution type: one of K401_OPTIONS
+    goal_funding: str = "sell"  # how goals are paid when they come due: one of GOAL_FUNDING_OPTIONS
 
     def __post_init__(self) -> None:
         if self.conversion not in CONVERSION_OPTIONS:
             raise ValueError(f"unknown conversion option {self.conversion!r}")
         if self.k401 not in K401_OPTIONS:
             raise ValueError(f"unknown 401(k) option {self.k401!r}; expected one of {K401_OPTIONS}")
+        if self.goal_funding not in GOAL_FUNDING_OPTIONS:
+            raise ValueError(f"unknown goal funding option {self.goal_funding!r}; expected one of {GOAL_FUNDING_OPTIONS}")
         if not any(abs(self.private_credit - share) < 1e-9 for share in PRIVATE_CREDIT_SHARES):
             raise ValueError(f"private credit share {self.private_credit!r} is not one of {PRIVATE_CREDIT_SHARES}")
 
@@ -81,6 +87,7 @@ class Strategy:
             "direct_indexing": "on" if self.direct_indexing else "off",
             "goal_bonds": "on" if self.goal_bonds else "off",
             "k401": self.k401,
+            "goal_funding": self.goal_funding,
         }
 
     @classmethod
@@ -92,6 +99,7 @@ class Strategy:
             direct_indexing=choices["direct_indexing"] == "on",
             goal_bonds=choices["goal_bonds"] == "on",
             k401=choices["k401"],
+            goal_funding=choices["goal_funding"],
         )
 
     @property
@@ -119,6 +127,7 @@ class Strategy:
             breakpoint_fees=False,
             flat_fee=DONABACH_FLAT_FEE,
             k401=self.k401,
+            goal_funding=self.goal_funding,
         )
 
     def short_label(self) -> str:
@@ -139,6 +148,8 @@ class Strategy:
             parts.append("Roth 401(k)")
         elif self.k401 == "roth_low":
             parts.append("Roth 401(k) in low-income years")
+        if self.goal_funding == "borrow":
+            parts.append("borrow for goals")
         return ", ".join(parts)
 
     def describe(self) -> str:
@@ -167,6 +178,11 @@ class Strategy:
             parts.append("make 401(k) contributions to the Roth side")
         elif self.k401 == "roth_low":
             parts.append("make 401(k) contributions to the Roth side only in low-income years, pre-tax otherwise")
+        if self.goal_funding == "borrow":
+            parts.append(
+                "pay for goals by borrowing against the taxable account with a box-spread loan (up to 30% of it), "
+                "repaid from savings or by realizing gains in low-tax years"
+            )
         return "; ".join(parts) + "."
 
 
@@ -174,10 +190,16 @@ def menu(
     stock_shares: tuple[float, ...] = STOCK_SHARES,
     private_credit_shares: tuple[float, ...] = PRIVATE_CREDIT_SHARES,
 ) -> list[Strategy]:
-    """Every strategy, in a fixed order (2,016 with the full menus)."""
+    """Every strategy, in a fixed order (4,032 with the full menus)."""
     return [
-        Strategy(s, conv, pc, di, gb, k401)
-        for s, conv, pc, di, gb, k401 in product(
-            stock_shares, CONVERSION_OPTIONS, private_credit_shares, (False, True), (False, True), K401_OPTIONS
+        Strategy(s, conv, pc, di, gb, k401, funding)
+        for s, conv, pc, di, gb, k401, funding in product(
+            stock_shares,
+            CONVERSION_OPTIONS,
+            private_credit_shares,
+            (False, True),
+            (False, True),
+            K401_OPTIONS,
+            GOAL_FUNDING_OPTIONS,
         )
     ]

@@ -29,8 +29,8 @@ from app.tax import params_2026 as P
 
 def test_menu_has_every_combination_exactly_once():
     strategies = menu()
-    assert len(strategies) == 6 * 7 * 4 * 2 * 2 * 3 == 2016
-    assert len({s.key for s in strategies}) == 2016
+    assert len(strategies) == 6 * 7 * 4 * 2 * 2 * 3 * 2 == 4032
+    assert len({s.key for s in strategies}) == 4032
     assert len(CONVERSION_OPTIONS) == 7
     assert {s.stock_share for s in strategies} == {0.50, 0.60, 0.70, 0.80, 0.90, 1.00}
 
@@ -95,6 +95,18 @@ def test_the_401k_choice_is_part_of_the_strategy():
         Strategy(0.8, "none", 0.0, False, False, "after-tax")
 
 
+def test_goal_funding_is_part_of_the_strategy():
+    assert CHOICE_OPTIONS["goal_funding"] == ("sell", "borrow") and "goal_funding" in CHOICES
+    assert {s.goal_funding for s in menu()} == {"sell", "borrow"}
+    assert Strategy(0.8, "none", 0.0, False, False).goal_funding == "sell"  # the default is the old behaviour
+    borrow = Strategy(0.8, "none", 0.0, False, False, "pretax", "borrow")
+    assert Strategy.from_choices(borrow.choices()) == borrow and borrow.policy().goal_funding == "borrow"
+    assert "box-spread loan" in borrow.describe() and "borrow for goals" in borrow.short_label()
+    assert "box-spread" not in Strategy(0.8, "none", 0.0, False, False).describe()
+    with pytest.raises(ValueError):
+        Strategy(0.8, "none", 0.0, False, False, "pretax", "margin")
+
+
 def test_unknown_conversion_option_is_rejected():
     with pytest.raises(ValueError):
         Strategy(0.9, "fill99", 0.0, False, False)
@@ -157,17 +169,17 @@ def exhaustive(futures):
 
 def test_search_ranks_every_strategy_by_score(exhaustive):
     ranked = exhaustive.ranked
-    assert len(ranked) == 2016 and exhaustive.n_considered == 2016
+    assert len(ranked) == 4032 and exhaustive.n_considered == 4032
     scores = [r.outcome.score for r in ranked]
     assert scores == sorted(scores, reverse=True)
-    assert [r.rank for r in ranked] == list(range(1, 2017))
+    assert [r.rank for r in ranked] == list(range(1, 4033))
     assert exhaustive.best is ranked[0]
     for r in ranked[:5]:
         assert r.outcome.p10 < r.outcome.median < r.outcome.p90
 
 
 def test_the_staged_search_scores_the_survivors_on_every_future(result):
-    assert result.n_considered == 2016 and len(result.ranked) == SCREEN_KEEP
+    assert result.n_considered == 4032 and len(result.ranked) == SCREEN_KEEP
     scores = [r.outcome.score for r in result.ranked]
     assert scores == sorted(scores, reverse=True)
     assert [r.rank for r in result.ranked] == list(range(1, SCREEN_KEEP + 1))
@@ -229,7 +241,7 @@ def test_full_search_is_fast(futures):
     start = time.perf_counter()
     res = search(futures)
     assert time.perf_counter() - start < 2.0
-    assert res.elapsed_seconds < 2.0 and res.n_considered == 2016
+    assert res.elapsed_seconds < 2.0 and res.n_considered == 4032
 
 
 def test_a_strategy_subset_can_be_searched(futures):
@@ -248,12 +260,21 @@ def test_best_strategy_beats_the_ria_baseline_for_the_demo_household(futures, re
 
 
 @pytest.mark.parametrize(
-    "key", ["90|fill22_low|10|on|on|pretax", "70|none|0|off|off|pretax", "100|fill12_every|15|off|on|roth", "60|none|5|on|off|roth_low"]
+    "key",
+    [
+        "90|fill22_low|10|on|on|pretax|sell",
+        "70|none|0|off|off|pretax|sell",
+        "100|fill12_every|15|off|on|roth|borrow",
+        "60|none|5|on|off|roth_low|borrow",
+    ],
 )
 def test_attribution_steps_sum_to_the_total_advantage(futures, key):
-    stock, conv, pc, di, gb, k401 = key.split("|")
+    stock, conv, pc, di, gb, k401, funding = key.split("|")
     strategy = Strategy.from_choices(
-        dict(stock_share=stock, conversion=conv, private_credit=pc, direct_indexing=di, goal_bonds=gb, k401=k401)
+        dict(
+            stock_share=stock, conversion=conv, private_credit=pc, direct_indexing=di, goal_bonds=gb,
+            k401=k401, goal_funding=funding,
+        )
     )
     steps = explain.advantage_steps(futures, strategy)
     assert [s.label for s in steps] == [

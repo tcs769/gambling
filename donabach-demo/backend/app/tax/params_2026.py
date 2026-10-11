@@ -141,6 +141,29 @@ ULT_PERIODS = np.array(
 )
 ULT_LAST_AGE = ULT_FIRST_AGE + len(ULT_PERIODS) - 1  # 120, which stands for "120 and over"
 
+# --- Portfolio borrowing (box-spread loans) -----------------------------------------------
+# A box spread is four index options that together make a zero-coupon loan against a taxable
+# portfolio. Its rate tracks Treasury yields plus a small premium: measured box-over-Treasury
+# spreads run about 10 to 50 basis points (New York Fed and Cboe studies; Cboe's SPX box data
+# averaged about 26 bp over 3-month Treasuries in 2025), so the project uses the 30 bp the spec asks for.
+#
+# The simulator works in real dollars, so the borrowing cost is a REAL rate:
+#   real rate = short-term Treasury yield + 0.30% - inflation
+SHORT_TERM_TREASURY_NOMINAL = 0.0452  # 1-year constant-maturity yield, week ending 2026-10-02 (FRED/ALFRED WGS1YR)
+BOX_SPREAD_PREMIUM = 0.0030
+# The inflation the model's market assumptions imply: bonds pay 3.5% taxable interest and earn 1.5%
+# real, so 2.0% of the interest is inflation. Private credit's taxable yield uses the same figure.
+ASSUMED_INFLATION = 0.02
+BORROWING_RATE_REAL = SHORT_TERM_TREASURY_NOMINAL + BOX_SPREAD_PREMIUM - ASSUMED_INFLATION  # 2.82%
+# Interest is treated as a capital loss each year. Real box spreads fall under IRC section 1256 (60%
+# long-term, 40% short-term, marked to market); treating all of it as a long-term loss is a simplification.
+#
+# Guardrails (spec A6): borrowing never exceeds 30% of the taxable account's value (stocks, bonds and
+# private credit; the goal-bond bucket is earmarked and not counted). If a market drop pushes the loan
+# above 40% of it, assets are sold to bring it back to 30%.
+BORROWING_LIMIT = 0.30
+BORROWING_FORCED_SALE_TRIGGER = 0.40
+
 # --- Retirement-balance valuation ---------------------------------------------------------
 # After-tax wealth values a pre-tax balance as if it were withdrawn evenly over this many
 # years alongside Social Security. Project convention (see the simulator spec).

@@ -148,7 +148,7 @@ Typed with Pydantic (`backend/app/api_models.py`); try it at http://localhost:80
 ## Tests
 
 ```bash
-make test                                   # backend, about 6 minutes on 4 cores (`pytest -q -x` stops at the first failure)
+make test                                   # backend, about 8 minutes on 4 cores (`pytest -q -x` stops at the first failure)
 cd frontend && npx tsc --noEmit && npx eslint src
 make e2e                                    # the whole demo in a real browser (needs both servers running)
 ```

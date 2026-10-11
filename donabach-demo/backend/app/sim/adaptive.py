@@ -85,6 +85,7 @@ from app.sim.simulate import (
     S_UNFUNDED,
     SP_GLIDE_DROP,
     SP_GLIDE_START,
+    SP_RESERVE,
     TV_AGE,
     TV_AGED,
     TV_DEPS,
@@ -340,6 +341,8 @@ def _dim_values(dim, st, tv, t, k_t, row, vals):
             vals[i] = PC_GRID[i]
         return PC_GRID.shape[0]
     if dim == A_STOCK:
+        if row[SP_RESERVE] > 0.5:  # with a spending reserve the stock share is whatever the reserve leaves: nothing to choose
+            return 0
         for i in range(STOCK_GRID.shape[0]):
             vals[i] = _stock_share(tv[t, TV_AGE], STOCK_GRID[i], row[SP_GLIDE_START], row[SP_GLIDE_DROP])
         return STOCK_GRID.shape[0]

@@ -44,7 +44,7 @@ def precompute_demo() -> None:
 
     documents = [store.parsed(doc.id) for doc in store.add_samples()]
     household = builder.build_household(documents, {}, Answers())
-    response = plan.build_plan(household, 400, True, None, None, 200, 3.0)
+    response = plan.build_plan(household, 400, True, None, None, 200, 3.0, plan.DEFAULT_STYLE)
     adaptive_service.request_plan(
         household, Strategy.from_choices(response.strategy.choices), response.settings.seed, 200, None, 3.0, 32
     )

@@ -66,6 +66,7 @@ export const CHOICE_LABELS: Record<string, string> = {
   goal_bonds: "Goal-matched bonds",
   k401: "401(k) contributions",
   goal_funding: "Paying for goals",
+  reserve: "Spending reserve",
 };
 
 /**
@@ -96,11 +97,21 @@ export const OPTION_LABELS: Record<string, Record<string, string>> = {
   goal_bonds: { on: "On", off: "Off" },
   k401: { pretax: "Pre-tax", roth: "Roth", roth_low: "Roth in low-income years only" },
   goal_funding: { sell: "Sell assets", borrow: "Borrow against the taxable account" },
+  reserve: { off: "Off", "2": "2 years", "4": "4 years", "6": "6 years" },
 };
 
 /** A choice's value in words, falling back to the raw value. */
 export function optionLabel(choice: string, option: string): string {
   return OPTION_LABELS[choice]?.[option] ?? option;
+}
+
+/**
+ * The value shown on a strategy's chip. With a spending reserve the stock share is not a choice: everything outside the
+ * reserve is in stocks (the API sends "100"), so the chip says that instead of "100% stocks".
+ */
+export function chipValue(choices: Record<string, string>, choice: string): string {
+  if (choice === "stock_share" && choices.reserve !== undefined && choices.reserve !== "off") return "Everything outside the reserve";
+  return optionLabel(choice, choices[choice]);
 }
 
 /** True for values that mean the lever is not used ("off", no conversions, a 0% sleeve). */

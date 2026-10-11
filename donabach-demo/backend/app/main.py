@@ -169,7 +169,7 @@ def _with_adaptive(
 def make_plan(request: PlanRequest) -> PlanResponse:
     response = plan.build_plan(
         request.household, request.n_paths, request.demo_mode, request.seed, request.shock,
-        request.n_eval_paths, request.risk_aversion,
+        request.n_eval_paths, request.risk_aversion, request.planning_style,
     )
     return _with_adaptive(
         response, request.household, request.adaptive, request.adaptive_rollouts, request.n_eval_paths,
@@ -213,7 +213,8 @@ def plan_whatif(request: WhatIfRequest) -> WhatIfResponse:
     except whatif.WhatIfError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     result = plan.build_plan(
-        household, request.n_paths, request.demo_mode, request.seed, shock, request.n_eval_paths, request.risk_aversion
+        household, request.n_paths, request.demo_mode, request.seed, shock, request.n_eval_paths, request.risk_aversion,
+        request.planning_style,
     )
     result = _with_adaptive(
         result, household, request.adaptive, request.adaptive_rollouts, request.n_eval_paths, request.risk_aversion, shock

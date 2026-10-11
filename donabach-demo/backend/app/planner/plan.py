@@ -32,7 +32,7 @@ from app.ml.adapters import ModelContractError, NotConnected
 from app.planner import explain, guided
 from app.planner.baseline import BASELINES, GOOD_RIA, GOOD_RIA_SENTENCE
 from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, Outcome, RankedStrategy, SearchResult, search
-from app.planner.strategies import Strategy
+from app.planner.strategies import Strategy, menu
 from app.schemas import HORIZON_AGE, Household, MarketShock
 from app.sim import markets
 from app.sim.simulate import SimInputs, build_inputs, initial_after_tax_wealth, run_batch, run_detail
@@ -41,6 +41,7 @@ from app.study import metrics
 DEMO_SEED = markets.DEFAULT_SEED
 EVAL_SEED_OFFSET = 1_000_003  # the evaluation futures use the search seed plus this
 SEARCH_LABEL = "Search planner (model not connected)"
+DEFAULT_STYLE = "equity_first"  # what the app plans with unless asked for "balanced" (see `app.planner.strategies.menu`)
 GUIDED_LABEL = "Model-guided planner (model recommended, engine verified)"
 RIA_SENTENCE = GOOD_RIA_SENTENCE
 
@@ -190,6 +191,7 @@ def build_plan(
     shock: MarketShock | None = None,
     n_eval_paths: int = 200,
     risk_aversion: float = RISK_AVERSION,
+    style: str = DEFAULT_STYLE,
 ) -> PlanResponse:
     started = time.perf_counter()
     seed = resolve_seed(demo_mode, seed)
@@ -202,7 +204,7 @@ def build_plan(
     if guided_result is not None:
         result, label = guided_result, GUIDED_LABEL
     else:
-        result, label = search(futures, risk_aversion=risk_aversion), SEARCH_LABEL
+        result, label = search(futures, strategies=menu(style=style), risk_aversion=risk_aversion), SEARCH_LABEL
     chosen = result.best.strategy
 
     # The chosen strategy and both advisors on futures the search never saw, with the full wealth
@@ -283,5 +285,6 @@ def build_plan(
             risk_aversion=risk_aversion,
             wealth_floor=WEALTH_FLOOR,
             market_shock=shock,
+            planning_style=style,
         ),
     )

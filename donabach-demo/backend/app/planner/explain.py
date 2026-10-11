@@ -19,7 +19,6 @@ from app.planner.baseline import RIA_BASELINE
 from app.planner.search import SearchResult
 from app.planner.strategies import (
     DONABACH_FLAT_FEE,
-    GLIDE_DROP,
     GLIDE_START_AGE,
     Strategy,
 )
@@ -53,8 +52,10 @@ def advantage_policies(strategy: Strategy) -> list[tuple[str, Policy]]:
         goal_bonds=chosen.goal_bonds,
         stock_share=chosen.stock_share,
         glide_start_age=GLIDE_START_AGE,
-        glide_drop=GLIDE_DROP,
+        glide_drop=chosen.glide_drop,
         private_credit=chosen.private_credit,
+        reserve_years=chosen.reserve_years,
+        reserve_refill_after_gains=chosen.reserve_refill_after_gains,
     )
     p5 = p4.replace(
         conversion_top=chosen.conversion_top,

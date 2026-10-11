@@ -19,7 +19,7 @@ def strategy_from_recommendation(rec: Recommendation) -> Strategy:
 
 
 def distance(a: Strategy, b: Strategy) -> int:
-    """Sum over the seven choices of how many options apart the two strategies are."""
+    """Sum over the eight choices of how many options apart the two strategies are."""
     ca, cb = a.choices(), b.choices()
     return sum(
         abs(CHOICE_OPTIONS[c].index(ca[c]) - CHOICE_OPTIONS[c].index(cb[c])) for c in CHOICES

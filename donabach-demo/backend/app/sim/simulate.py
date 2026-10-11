@@ -78,8 +78,10 @@ NTV = 12
     SP_K401,
     SP_BORROW,
     SP_TLH,
-) = range(16)
-NSP = 16
+    SP_RESERVE,
+    SP_REFILL,
+) = range(18)
+NSP = 18
 
 # 401(k) contribution type (SP_K401).
 K401_PRETAX, K401_ROTH, K401_ROTH_LOW = 0.0, 1.0, 2.0
@@ -102,12 +104,14 @@ GATE_NAMES = ("conversion", "harvest", "bucket", "location", "withdraw", "k401",
     A_BUCKET,  # 1.0 = maintain the goal bond bucket
     A_LOCATION,  # 1.0 = Donabach asset location (else the same mix in every account)
     A_WDBRACKET,  # 1.0 = withdraw pre-tax up to the bracket target first
-) = range(10)
-NACT = 10
+    A_RESERVE,  # spending reserve: years of expenses held in bonds and private credit, the rest in stocks (0 = none)
+    A_REFILL,  # 1.0 = do not sell stocks to refill the reserve in a year stocks fell
+) = range(12)
+NACT = 12
 
 # Scratch carried from the start of a year to its end (what the household saw, then did).
-(Y_REALIZED, Y_RETDIST, Y_EARLYBASE, Y_CFIN, Y_DIVIDENDS, Y_INTEREST, Y_HARVEST, Y_PRETAX_OPEN, Y_LOANINT, Y_FORCED) = range(10)
-NY = 10
+(Y_REALIZED, Y_RETDIST, Y_EARLYBASE, Y_CFIN, Y_DIVIDENDS, Y_INTEREST, Y_HARVEST, Y_PRETAX_OPEN, Y_LOANINT, Y_FORCED, Y_EQRET) = range(11)
+NY = 11
 
 # Household constants.
 HC_SS = 0
@@ -266,12 +270,28 @@ def _shortfall(amount):
 
 
 @jit
-def _sell_brokerage(st, amount):
-    """Sell `amount` pro rata across brokerage equity, bonds and private credit. Returns (sold, realized gain)."""
+def _sell_brokerage(st, amount, ne=0.0):
+    """Sell `amount` across brokerage equity, bonds and private credit: pro rata, or (`ne` > 0.5, the spending reserve)
+    bonds and private credit first and equity only for what they cannot cover. Returns (sold, realized gain)."""
     be = st[S_BE]
     total = be + st[S_BB] + st[S_BP]
     if amount <= 0.0 or total <= 0.0:
         return 0.0, 0.0
+    if ne > 0.5:
+        safe = st[S_BB] + st[S_BP]
+        from_safe = min(amount, safe)
+        if safe > 0.0:
+            g = from_safe / safe
+            st[S_BB] *= 1.0 - g
+            st[S_BP] *= 1.0 - g
+        rest = min(amount - from_safe, be)
+        gain = 0.0
+        if rest > 0.0:
+            h = rest / be
+            gain = h * (be - st[S_BBASIS])
+            st[S_BBASIS] *= 1.0 - h
+            st[S_BE] = be * (1.0 - h)
+        return from_safe + rest, gain
     f = min(1.0, amount / total)
     gain = f * (be - st[S_BBASIS])
     st[S_BBASIS] *= 1.0 - f
@@ -282,10 +302,20 @@ def _sell_brokerage(st, amount):
 
 
 @jit
-def _sell_roth(st, amount):
+def _sell_roth(st, amount, ne=0.0):
     total = st[S_RE] + st[S_RB] + st[S_RP]
     if amount <= 0.0 or total <= 0.0:
         return 0.0
+    if ne > 0.5:
+        safe = st[S_RB] + st[S_RP]
+        from_safe = min(amount, safe)
+        if safe > 0.0:
+            g = from_safe / safe
+            st[S_RB] *= 1.0 - g
+            st[S_RP] *= 1.0 - g
+        rest = min(amount - from_safe, st[S_RE])
+        st[S_RE] -= rest
+        return from_safe + rest
     f = min(1.0, amount / total)
     st[S_RE] *= 1.0 - f
     st[S_RB] *= 1.0 - f
@@ -294,10 +324,20 @@ def _sell_roth(st, amount):
 
 
 @jit
-def _sell_pretax(st, amount):
+def _sell_pretax(st, amount, ne=0.0):
     total = st[S_PE] + st[S_PB] + st[S_PP]
     if amount <= 0.0 or total <= 0.0:
         return 0.0
+    if ne > 0.5:
+        safe = st[S_PB] + st[S_PP]
+        from_safe = min(amount, safe)
+        if safe > 0.0:
+            g = from_safe / safe
+            st[S_PB] *= 1.0 - g
+            st[S_PP] *= 1.0 - g
+        rest = min(amount - from_safe, st[S_PE])
+        st[S_PE] -= rest
+        return from_safe + rest
     f = min(1.0, amount / total)
     st[S_PE] *= 1.0 - f
     st[S_PB] *= 1.0 - f
@@ -333,7 +373,7 @@ def _accrue_and_deleverage(st):
     value = st[S_BE] + st[S_BB] + st[S_BP]
     if loan > P.BORROWING_FORCED_SALE_TRIGGER * value:
         wanted = (loan - P.BORROWING_LIMIT * value) / (1.0 - P.BORROWING_LIMIT)
-        forced, gain = _sell_brokerage(st, min(wanted, value))
+        forced, gain = _sell_brokerage(st, min(wanted, value), 0.0)
         loan = max(0.0, loan - forced)
     st[S_LOAN] = loan
     return interest, forced, gain
@@ -358,21 +398,22 @@ def _zero_gain_room(wages_taxable, interest, dividends, taxable_ss, ret_dist, co
 
 
 @jit
-def _pay_tax(st, due, protected_roth):
-    """Pay `due` of income tax from the portfolio: brokerage, then Roth, then pre-tax.
+def _pay_tax(st, due, protected_roth, ne=0.0):
+    """Pay `due` of income tax from the portfolio: brokerage, then Roth, then pre-tax (each bonds and private credit
+    first when `ne` > 0.5, the spending reserve).
 
     Roth dollars converted this year (`protected_roth`) are never used: conversion tax is not paid
     out of the converted amount. Gains realized by selling to pay it are taxed next year; so are
     pre-tax withdrawals. Whatever no account can fund is recorded as unfunded.
     """
-    sold, gain = _sell_brokerage(st, due)
+    sold, gain = _sell_brokerage(st, due, ne)
     st[S_DGAIN] += gain
     due -= sold
     if due > 0.0:
         roth = st[S_RE] + st[S_RB] + st[S_RP]
-        due -= _sell_roth(st, min(due, max(0.0, roth - protected_roth)))
+        due -= _sell_roth(st, min(due, max(0.0, roth - protected_roth)), ne)
     if due > 0.0:
-        taken = _sell_pretax(st, due)
+        taken = _sell_pretax(st, due, ne)
         st[S_DDIST] += taken
         due -= taken
     st[S_UNFUNDED] += _shortfall(due)
@@ -509,9 +550,11 @@ def _policy_action(row, gates_row, tv, t, w, act):
     if gates_row[G_HARVEST] > 0.5 and row[SP_TLH] > 0.5:
         harvest = 2.0 if row[SP_DI] > 0.5 else 1.0
     act[A_HARVEST] = harvest
-    act[A_BUCKET] = 1.0 if (row[SP_BUCKET] > 0.5 and gates_row[G_BUCKET] > 0.5) else 0.0
+    act[A_BUCKET] = 1.0 if ((row[SP_BUCKET] > 0.5 or row[SP_RESERVE] > 0.5) and gates_row[G_BUCKET] > 0.5) else 0.0
     act[A_LOCATION] = 1.0 if (row[SP_LOCATION] < 0.5 and gates_row[G_LOCATION] > 0.5) else 0.0
     act[A_WDBRACKET] = 1.0 if (row[SP_WD_BRACKET] > 0.5 and gates_row[G_WITHDRAW] > 0.5) else 0.0
+    act[A_RESERVE] = row[SP_RESERVE]
+    act[A_REFILL] = row[SP_REFILL]
 
 
 @jit(inline="always")
@@ -577,6 +620,7 @@ def _year_begin(st, ys, tv, t, hhc, act, r_e, r_b, r_c):
     loan_interest, forced, forced_gain = _accrue_and_deleverage(st)
     realized += forced_gain - loan_interest
 
+    ys[Y_EQRET] = r_e
     ys[Y_LOANINT] = loan_interest
     ys[Y_FORCED] = forced
     ys[Y_REALIZED] = realized
@@ -592,6 +636,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     age = tv[t, TV_AGE]
     ss = tv[t, TV_SS]
     taxable_ss = P.SS_TAXABLE_SHARE * ss
+    ne = 1.0 if act[A_RESERVE] > 0.5 else 0.0  # spending reserve: expenses come from bonds and private credit first
     kids = tv[t, TV_KIDS]
     deps = tv[t, TV_DEPS]
     # A Roth 401(k) contribution is made from after-tax pay: taxable wages are not reduced by it, and
@@ -627,7 +672,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     # and spending; whatever is not needed goes to the brokerage account.
     rmd = 0.0
     if age >= hhc[HC_RMD_START]:
-        rmd = _sell_pretax(st, ys[Y_PRETAX_OPEN] / _ult_period(age))
+        rmd = _sell_pretax(st, ys[Y_PRETAX_OPEN] / _ult_period(age), ne)
         ret_dist += rmd
     rmd_cash = rmd
 
@@ -647,13 +692,13 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
             borrowed = _borrow_for_goal(st, due)
             due -= borrowed
         if due > 0.0:
-            sold, gain = _sell_brokerage(st, due)
+            sold, gain = _sell_brokerage(st, due, ne)
             realized += gain
             due -= sold
         if due > 0.0:
-            due -= _sell_roth(st, due)
+            due -= _sell_roth(st, due, ne)
         if due > 0.0:
-            taken = _sell_pretax(st, due)
+            taken = _sell_pretax(st, due, ne)
             ret_dist += taken
             if early:
                 early_base += taken
@@ -670,13 +715,13 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
             pass
         elif early:
             # Before 59 1/2: taxable account, then Roth, then pre-tax with the 10% penalty.
-            sold, gain = _sell_brokerage(st, remaining)
+            sold, gain = _sell_brokerage(st, remaining, ne)
             realized += gain
             remaining -= sold
             if remaining > 0.0:
-                remaining -= _sell_roth(st, remaining)
+                remaining -= _sell_roth(st, remaining, ne)
             if remaining > 0.0:
-                taken = _sell_pretax(st, remaining)
+                taken = _sell_pretax(st, remaining, ne)
                 ret_dist += taken
                 early_base += taken
                 remaining -= taken
@@ -684,17 +729,17 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
             # Pre-tax up to the bracket target, then brokerage, then Roth.
             ordinary = _ordinary_income(wages_taxable, interest, taxable_ss, ret_dist, 0.0, realized, cf_in)
             room = max(0.0, wd_top + std - ordinary)
-            taken = _sell_pretax(st, min(remaining, room))
+            taken = _sell_pretax(st, min(remaining, room), ne)
             ret_dist += taken
             remaining -= taken
             if remaining > 0.0:
-                sold, gain = _sell_brokerage(st, remaining)
+                sold, gain = _sell_brokerage(st, remaining, ne)
                 realized += gain
                 remaining -= sold
             if remaining > 0.0:
-                remaining -= _sell_roth(st, remaining)
+                remaining -= _sell_roth(st, remaining, ne)
             if remaining > 0.0:
-                taken = _sell_pretax(st, remaining)
+                taken = _sell_pretax(st, remaining, ne)
                 ret_dist += taken
                 remaining -= taken
         else:
@@ -705,11 +750,11 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
             total = pre + brk + ros
             if total > 0.0:
                 f = min(1.0, remaining / total)
-                taken = _sell_pretax(st, f * pre)
+                taken = _sell_pretax(st, f * pre, ne)
                 ret_dist += taken
-                sold, gain = _sell_brokerage(st, f * brk)
+                sold, gain = _sell_brokerage(st, f * brk, ne)
                 realized += gain
-                got = _sell_roth(st, f * ros)
+                got = _sell_roth(st, f * ros, ne)
                 remaining -= taken + sold + got
         st[S_UNFUNDED] += _shortfall(remaining)
     if rmd_cash > 0.0:
@@ -742,16 +787,26 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
             realized += gain_harvest
             st[S_BBASIS] += gain_harvest
 
-    # 6. Fund or release the goal bucket (bonds held in the taxable account).
+    # 6. Fund or release the goal bucket (bonds held in the taxable account). With a spending reserve it covers the goals of
+    # the next `A_RESERVE` years (the retirement spending part of the reserve is held in step 7) and, like the rest of the
+    # reserve, is not built by selling stocks in a year stocks fell.
     bucket_flow = 0.0
     if act[A_BUCKET] > 0.5:
         target = tv[t, TV_BUCKET]
+        build = True
+        if act[A_RESERVE] > 0.5:
+            target = 0.0
+            for j in range(1, int(act[A_RESERVE] + 0.5) + 1):
+                if t + j < tv.shape[0]:
+                    target += tv[t + j, TV_GOAL]
+            build = not (act[A_REFILL] > 0.5 and ys[Y_EQRET] < 0.0)
         held = st[S_GB]
         if held < target:
-            sold, gain = _sell_brokerage(st, target - held)
-            realized += gain
-            st[S_GB] += sold
-            bucket_flow = sold
+            if build:
+                sold, gain = _sell_brokerage(st, target - held, 0.0)
+                realized += gain
+                st[S_GB] += sold
+                bucket_flow = sold
         elif held > target:
             st[S_GB] = target
             st[S_BB] += held - target
@@ -766,14 +821,36 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
             value = st[S_BE] + st[S_BB] + st[S_BP]
             embedded = (st[S_BE] - st[S_BBASIS]) / value if value > 0.0 else 0.0
             amount = st[S_LOAN] if embedded <= 0.0 else min(st[S_LOAN], room / embedded)
-            repaid_gain, gain = _sell_brokerage(st, amount)
+            repaid_gain, gain = _sell_brokerage(st, amount, 0.0)
             realized += gain
             st[S_LOAN] -= repaid_gain
 
     # 7. Rebalance to the target allocation and asset location.
     share = act[A_STOCK]
     pc_share = act[A_PC]
-    if act[A_LOCATION] > 0.5:
+    stock_logged = share
+    if act[A_RESERVE] > 0.5:
+        # Spending reserve: bonds and private credit hold the next `A_RESERVE` years of retirement spending net of Social
+        # Security (the goals of those years are in the goal bucket, step 6) and everything else is stocks. The private credit
+        # sleeve counts toward the reserve. After a year stocks fell the reserve is not refilled by selling them (what is
+        # above target still goes into stocks).
+        total = st[S_PE] + st[S_PB] + st[S_PP] + st[S_RE] + st[S_RB] + st[S_RP] + st[S_BE] + st[S_BB] + st[S_BP]
+        needed = 0.0
+        for j in range(1, int(act[A_RESERVE] + 0.5) + 1):
+            if t + j < tv.shape[0]:
+                needed += tv[t + j, TV_NEED]
+        safe_share = 0.0
+        if total > 0.0:
+            safe_share = min(1.0, max(needed / total, pc_share))
+            if act[A_REFILL] > 0.5 and ys[Y_EQRET] < 0.0:
+                safe_now = (st[S_PB] + st[S_PP] + st[S_RB] + st[S_RP] + st[S_BB] + st[S_BP]) / total
+                safe_share = min(safe_share, safe_now)
+        stock_logged = 1.0 - safe_share
+        if act[A_LOCATION] > 0.5:
+            realized += _rebalance(st, 1.0 - safe_share, min(pc_share, safe_share), False)
+        else:
+            realized += _rebalance(st, 1.0 - safe_share, 0.0, True)
+    elif act[A_LOCATION] > 0.5:
         realized += _rebalance(st, share * (1.0 - pc_share), pc_share, False)
     else:
         realized += _rebalance(st, share, 0.0, True)
@@ -794,7 +871,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         conv_cash = min(max(0.0, total_tax - no_conversion.total_tax), free_cash, due)
         due -= conv_cash
     if due > 0.0:
-        _pay_tax(st, due, conv)
+        _pay_tax(st, due, conv, ne)
     elif due < 0.0:
         st[S_BB] -= due
 
@@ -843,7 +920,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         st[S_BP] += to_pc
         st[S_BB] += saved_net - to_equity - to_pc
     if roth_gap > 0.0:
-        _pay_tax(st, roth_gap, 0.0)
+        _pay_tax(st, roth_gap, 0.0, ne)
 
     # After-tax wealth at the end of the year.
     wealth = 0.0
@@ -885,7 +962,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         log[t, L_CONV] = conv
         log[t, L_BUCKETFLOW] = bucket_flow
         log[t, L_BUCKET] = st[S_GB]
-        log[t, L_STOCKTARGET] = share
+        log[t, L_STOCKTARGET] = stock_logged
         log[t, L_EQSHARE] = equity_total / long_term if long_term > 0.0 else 0.0
         log[t, L_NETGAIN] = realized
         log[t, L_EARLYBASE] = early_base
@@ -1094,6 +1171,8 @@ class Policy:
     k401: str = "pretax"  # 401(k) contributions: "pretax", "roth", or "roth_low" (Roth in low-income years only)
     goal_funding: str = "sell"  # "sell" assets for a goal, or "borrow" against the taxable account (box spread)
     tax_loss_harvesting: bool = True  # False: never harvest losses (the typical advisor)
+    reserve_years: int = 0  # spending reserve: years of expenses held in bonds and private credit, the rest in stocks (0 = none)
+    reserve_refill_after_gains: bool = True  # with a reserve: do not sell stocks to refill it in a year stocks fell
 
     def row(self, current_age: float) -> np.ndarray:
         r = np.zeros(NSP)
@@ -1113,6 +1192,8 @@ class Policy:
         r[SP_K401] = {"pretax": K401_PRETAX, "roth": K401_ROTH, "roth_low": K401_ROTH_LOW}[self.k401]
         r[SP_BORROW] = {"sell": 0.0, "borrow": 1.0}[self.goal_funding]
         r[SP_TLH] = float(self.tax_loss_harvesting)
+        r[SP_RESERVE] = float(self.reserve_years)
+        r[SP_REFILL] = float(self.reserve_refill_after_gains)
         return r
 
     def replace(self, **changes) -> Policy:

@@ -146,6 +146,10 @@ class PlanRequest(BaseModel):
     seed: int | None = None
     shock: MarketShock | None = None
     risk_aversion: float = Field(3.0, ge=0.5, le=10.0, description="CRRA coefficient behind the score")
+    planning_style: Literal["balanced", "equity_first"] = Field(
+        "equity_first",
+        description="equity_first: a spending reserve of bonds and private credit, everything else in stocks; balanced: a stock share with a glide path",
+    )
     adaptive: bool = Field(True, description="Also compute the year-by-year adaptive plan (in the background)")
     adaptive_rollouts: int = Field(32, ge=4, le=128, description="Rollouts (fresh futures) scored per candidate action")
 
@@ -278,6 +282,7 @@ class PlanSettings(BaseModel):
     risk_aversion: float  # CRRA coefficient behind the score
     wealth_floor: float  # wealth below this counts as this much when scoring
     market_shock: MarketShock | None = None
+    planning_style: Literal["balanced", "equity_first"] = "equity_first"  # which family of strategies was searched
 
 
 # --- The adaptive planner (spec part B) ---------------------------------------------------------
@@ -434,6 +439,7 @@ class WhatIfRequest(BaseModel):
     demo_mode: bool = True
     seed: int | None = None
     risk_aversion: float = Field(3.0, ge=0.5, le=10.0)
+    planning_style: Literal["balanced", "equity_first"] = "equity_first"
     adaptive: bool = True
     adaptive_rollouts: int = Field(32, ge=4, le=128)
     shock: MarketShock | None = None  # an existing shock to keep (from a previous what-if)

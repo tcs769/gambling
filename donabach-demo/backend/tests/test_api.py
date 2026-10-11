@@ -251,15 +251,39 @@ def test_plan_without_a_recommender_is_the_labelled_search_planner(plan):
     assert plan["planner_label"] == "Search planner (model not connected)"
     assert plan["recommender"]["status"]["connected"] is False
     assert plan["recommender"]["recommendation"] is None and plan["recommender"]["candidates"] == []
-    assert plan["settings"]["strategies_searched"] == 4032 and len(plan["searched"]) == SCREEN_KEEP
+    assert plan["settings"]["strategies_searched"] == 1008 and len(plan["searched"]) == SCREEN_KEEP  # the equity-first family
+    assert plan["settings"]["planning_style"] == "equity_first"
     assert plan["settings"]["risk_aversion"] == 3.0 and plan["settings"]["wealth_floor"] == 50_000
     assert plan["searched"][0]["is_chosen"] and plan["searched"][0]["rank"] == 1
+
+
+def test_the_default_plan_is_equity_first_and_the_balanced_style_is_the_original_search(plan, household_json):
+    choices = plan["strategy"]["choices"]
+    assert choices["reserve"] in ("2", "4", "6") and choices["stock_share"] == "100" and choices["goal_bonds"] == "off"
+    assert "everything else in stocks" in plan["strategy"]["sentence"] and "next" in plan["strategy"]["sentence"]
+    assert all(r["choices"]["reserve"] != "off" for r in plan["searched"])
+    balanced = client.post("/plan", json={"household": household_json, "planning_style": "balanced", "adaptive": False}).json()
+    assert balanced["settings"]["planning_style"] == "balanced" and balanced["settings"]["strategies_searched"] == 4032
+    assert balanced["strategy"]["choices"]["reserve"] == "off" and "Hold" in balanced["strategy"]["sentence"]
+    assert client.post("/plan", json={"household": household_json, "planning_style": "aggressive"}).status_code == 422
+    # the what-if endpoint takes the same setting
+    whatif = client.post("/plan/whatif", json={"household": household_json, "planning_style": "balanced", "adaptive": False, **SMALL})
+    assert whatif.status_code == 200 and whatif.json()["plan"]["settings"]["planning_style"] == "balanced"
+    default_whatif = client.post("/plan/whatif", json={"household": household_json, "adaptive": False, **SMALL})
+    assert default_whatif.json()["plan"]["settings"]["planning_style"] == "equity_first"
+
+
+def test_the_equity_first_plan_holds_stocks_outside_a_reserve_in_every_year_of_its_table(plan):
+    rows = plan["rows"]
+    assert len(rows) == HORIZON_AGE - 38 and all(0.75 <= r["stock_share"] <= 1.0 for r in rows)  # the share the reserve and the sleeve leave
+    assert plan["stats"]["shortfall_chance"] < 0.05 and plan["strategy"]["outcome"]["median"] > plan["ria"]["outcome"]["median"]
+    assert plan["advantage"][-1]["cumulative_median"] > 0  # the attribution steps end on the strategy itself
 
 
 def test_plan_contents_are_consistent(plan):
     s, st = plan["strategy"], plan["stats"]
     assert set(s["choices"]) == {
-        "stock_share", "conversion", "private_credit", "direct_indexing", "goal_bonds", "k401", "goal_funding"
+        "stock_share", "conversion", "private_credit", "direct_indexing", "goal_bonds", "k401", "goal_funding", "reserve"
     }
     assert s["sentence"].endswith(".") and "Hold" in s["sentence"] and plan["reason"]
     assert st["typical_outcome"] == s["outcome"] and st["years"] == HORIZON_AGE - 38
@@ -329,7 +353,7 @@ def test_a_recommender_that_fails_is_reported_and_the_full_search_runs(household
     assert plan["planner_label"] == "Search planner (model not connected)"
     assert plan["recommender"]["status"]["connected"] is False
     assert "invalid Recommendation" in plan["recommender"]["status"]["reason"]
-    assert plan["settings"]["strategies_searched"] == 4032
+    assert plan["settings"]["strategies_searched"] == 1008
     (models_dir / "recommender.pkl").write_bytes(pickle.dumps(stubs.RaisingRecommender()))
     again = client.post("/plan", json={"household": household_json}).json()
     assert "model blew up" in again["recommender"]["status"]["reason"]
@@ -626,13 +650,14 @@ def test_the_adaptive_plan_table_marks_the_years_it_departs_from_the_fixed_strat
 
 
 def test_the_market_drop_preset_visibly_changes_the_plan_and_the_decisions_after_it(household_json):
-    """A 30% fall next year changes the recommended plan and the year-by-year plan; the planner sees the fall in its year."""
+    """A 30% fall next year changes the recommended plan and the year-by-year plan; the planner sees the fall in its year.
+    (The balanced style: its search answers a fall by holding the home purchase's money in goal bonds.)"""
     from app.planner import adaptive_service
 
     adaptive_service.service.clear()
-    calm_body = client.post("/plan", json={"household": household_json}).json()
+    calm_body = client.post("/plan", json={"household": household_json, "planning_style": "balanced"}).json()
     calm = calm_body["adaptive"] or adaptive_service.service.wait(calm_body["adaptive_job"], timeout=600).result.model_dump()
-    r = client.post("/plan/whatif", json={"household": household_json, "presets": ["market_drop_30"]})
+    r = client.post("/plan/whatif", json={"household": household_json, "presets": ["market_drop_30"], "planning_style": "balanced"})
     assert r.status_code == 200, r.text
     whatif = r.json()
     body = whatif["plan"]

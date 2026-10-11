@@ -29,6 +29,7 @@ class StubRecommender:
             "goal_bonds": "off",
             "k401": "pretax",
             "goal_funding": "sell",
+            "reserve": "off",
         }
         self.with_distribution = with_distribution
 

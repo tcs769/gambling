@@ -1,5 +1,5 @@
 import { Icon, Panel, Pill } from "@/components/ui";
-import { CHOICE_LABELS, optionIsOff, optionLabel, type PlanResponse } from "@/lib/types";
+import { CHOICE_LABELS, chipValue, optionIsOff, optionLabel, type PlanResponse } from "@/lib/types";
 import styles from "./Plan.module.css";
 
 /**
@@ -30,7 +30,7 @@ export function ChoiceChips({
             <span className={styles.choiceLabel}>{CHOICE_LABELS[choice] ?? choice}</span>
             <span className={styles.choiceValue}>
               {option === "on" && <Icon name="check" size={15} strokeWidth={2.8} />}
-              {optionLabel(choice, option)}
+              {chipValue(choices, choice)}
             </span>
             {isChanged && (
               <span className={styles.choiceWas}>{was === undefined ? "Changed" : `Changed, was ${optionLabel(choice, was)}`}</span>

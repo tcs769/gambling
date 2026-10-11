@@ -130,6 +130,7 @@ def test_log_constants_match_column_names():
         "roth_extra_tax": sim.L_ROTHTAX, "brokerage_saving": sim.L_SAVING, "roth_gap": sim.L_ROTHGAP,
         "loan": sim.L_LOAN, "borrowed": sim.L_BORROWED, "loan_interest": sim.L_LOANINT, "forced_sale": sim.L_FORCED,
         "loan_repaid_saving": sim.L_REPAID_SAVING, "loan_repaid_gain": sim.L_REPAID_GAIN, "gain_harvest": sim.L_GAINHARVEST,
+        "short_term_gain": sim.L_STGAIN,
     }
     assert set(expected) == set(sim.LOG_COLUMNS)
     for name, index in expected.items():
@@ -1114,6 +1115,7 @@ def year_return(log, t):
         qualified_dividends=log["dividends"][t],
         ordinary_dividends=log["dividends"][t],
         net_capital_gain=log["net_gain"][t],
+        short_term_gain=log["short_term_gain"][t],
         retirement_distributions=log["ret_dist"][t],
         roth_conversions=log["conv"][t],
         social_security=log["ss"][t],

@@ -15,7 +15,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from app import builder, forecast, warmup, whatif
+from app import builder, forecast, showcase, warmup, whatif
 from app.api_models import (
     AdaptiveJob,
     DocumentList,
@@ -28,6 +28,9 @@ from app.api_models import (
     ParseResponse,
     PlanRequest,
     PlanResponse,
+    ShowcaseAnalysis,
+    ShowcaseRequest,
+    ShowcaseResponse,
     WhatIfRequest,
     WhatIfResponse,
     YearDetailRequest,
@@ -46,6 +49,7 @@ async def lifespan(_: FastAPI):
     # computing the demo household's adaptive plan in the background so the Plan screen can show it at once.
     warmup.warm()
     warmup.precompute_demo()
+    warmup.precompute_showcase()
     yield
 
 
@@ -220,3 +224,21 @@ def plan_whatif(request: WhatIfRequest) -> WhatIfResponse:
         result, household, request.adaptive, request.adaptive_rollouts, request.n_eval_paths, request.risk_aversion, shock
     )
     return WhatIfResponse(changes=changes, household=household, shock=shock, plan=result)
+
+
+@app.get("/showcase", response_model=ShowcaseResponse)
+def get_showcase() -> ShowcaseResponse:
+    """The showcase household: its summary card, and its plan measured against the advisor with every strategy on."""
+    return showcase.showcase()
+
+
+@app.post("/showcase/analysis", response_model=ShowcaseAnalysis)
+def showcase_analysis(request: ShowcaseRequest) -> ShowcaseAnalysis:
+    """The strategy waterfall, headline and wealth lines with only the strategies in `enabled` switched on."""
+    prepared = showcase.prepare()
+    if request.enabled is not None:
+        known = {step.key for step in showcase.waterfall_strategies(prepared.strategy)}
+        unknown = sorted(set(request.enabled) - known)
+        if unknown:
+            raise HTTPException(status_code=422, detail=f"unknown strategies {unknown}; expected some of {sorted(known)}")
+    return showcase.analyze(prepared, request.enabled)

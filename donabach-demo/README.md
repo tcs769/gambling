@@ -82,7 +82,7 @@ All dollars are **real 2026 dollars**; tax brackets are held constant in 2026 do
 | Markets and income | `backend/app/sim/markets.py`, `income.py` | Correlated normal real returns (equity 5.5%/16%, bonds 1.5%/5%, private credit 3.5%/8%) from a fixed seed, shared by every strategy. Income is a **placeholder** life-cycle process until the ML forecaster plugs in. |
 | Simulator | `backend/app/sim/simulate.py` | The 11-step yearly household loop (returns, harvesting, goals, spending, conversion, goal bucket, location and rebalancing, tax, fees, contributions) as one numba kernel run over every (strategy, future). |
 | Planner | `backend/app/planner/` | Searches the strategies of a planning style on the same 400 futures, scoring each by certainty-equivalent after-tax wealth at 80 (CRRA, risk aversion 3, $50,000 floor). **Equity first** (the default): a spending reserve of 2, 4 or 6 years of expenses in bonds and private credit with everything else in stocks, crossed with Roth conversions x private credit sleeve x direct indexing x 401(k) type x goal funding (**1,008** strategies). **Balanced** (`planning_style: "balanced"`, the earlier default): a stock share with a glide path x the same choices x goal bonds (**4,032**). The search is staged: every strategy is scored on 100 of the futures and the best 150 go on to all 400 (about 1 s; `exhaustive=True` scores everything on everything, and a test checks both pick the same winner). |
-| Baselines | `planner/baseline.py` | A **good RIA** (age-based 80% to 50% glide path, same mix in every account, breakpoint fees falling from 1.0% to 0.5%, fund-level harvesting, goals from brokerage, no conversions, pro rata withdrawals) and a **typical advisor** (flat 1.0% fee, no harvesting, accounts managed separately, 80% to 50% glide, no conversions, proportional withdrawals). Each is shown with its definition. |
+| Baselines | `planner/baseline.py` | A **good RIA** (age-based 80% to 50% glide path, same mix in every account, breakpoint fees falling from 1.0% to 0.5%, fund-level harvesting, goals from brokerage, no conversions, pro rata withdrawals, oldest tax lots sold first) and a **typical advisor** (flat 1.0% fee, no harvesting, accounts managed separately, 80% to 50% glide, no conversions, proportional withdrawals, oldest tax lots sold first). Each is shown with its definition. |
 | Year-by-year planner | `backend/app/sim/adaptive.py`, `planner/adaptive_plan.py`, `adaptive_service.py` | Each year, after that year's returns, scores candidate actions by rollouts and takes the best (below). |
 | Explanations | `planner/explain.py` | The five-step "where the advantage comes from" (switch decisions on one at a time from the baseline, same futures) and, per year, the value of each decision found by re-running the plan with only that decision removed for that year. |
 
@@ -114,6 +114,7 @@ The measurements behind the numbers are scripts, not hand-typed tables (run from
 | Stock-share menu before and after (`stock_share_wins.md`) | `python -m app.study.winners --k 100 --paths 150 --out ../reports/stock_share_wins.md` |
 | Risk aversion 2, 3, 5 (`risk_aversion.md`) | `python -m app.study.risk_aversion --out ../reports/risk_aversion.md` |
 | Two assumptions against the research (`assumption_review.md`, `sensitivity.md`) | `python -m app.study.sensitivity --out ../reports/sensitivity.md` |
+| What tax lots change: the sample household after each lot rule (`tax_lots.md`) | `python -m app.study.tax_lots --out ../reports/tax_lots.md` |
 | 300 households of six types (`household_study.csv`, `.md`) | `python -m app.study.household_study --per-type 50 --adaptive-paths 200 --checkpoint /tmp/study.csv --out-dir ../reports` |
 | Four-way evaluation and the value of judgment over time (`adaptive_evaluation.md`) | `python -m app.study.adaptive_evaluation --paths 2000 --out ../reports/adaptive_evaluation.md` |
 | Decision quality of the year-by-year search (`adaptive_decision_quality.md`) | `python -m app.study.decision_quality --paths 80 --out ../reports/adaptive_decision_quality.md` |
@@ -223,6 +224,18 @@ credits. Beyond that, choices made where the spec was silent, so they are not a 
   assumptions imply). The bond / private-credit correlation (0.1) is assumed; the spec gives only the equity pairs.
 * **Asset location.** Private credit, then bonds, fill the pre-tax account first; the Roth holds stocks (after
   any private credit); the brokerage account takes the remainder (including overflow bonds).
+* **Tax lots.** The taxable account's stock is the opening position (long-term, at the account's basis) plus one lot per
+  simulated year, which takes that year's reinvested dividends, rebalancing purchases and savings at cost. Donabach's
+  strategies sell the lot bought at the highest price first (the least gain per dollar sold: "highest cost first"); the
+  good RIA and the typical advisor sell the oldest lot first (first in, first out). A gain on a lot sold in the year it
+  was bought is short-term, on one sold the next year half short-term (purchases and sales are spread through a year, so
+  it has been held more than a year half the time), on an older lot or the opening position long-term; the short-term
+  part is ordinary income, netted against short-term and long-term losses before anything is taxed (the tax engine's
+  `short_term_gain`). Loss harvesting stays the aggregate rule (it lowers every lot's basis in proportion), and
+  valuation at the horizon still taxes all unrealized gain at 15%. `Policy.lot_method` is `"average"` (no lots: every
+  sale at the account's average basis and every gain long-term, which is how every result before this step was
+  computed, kept so those results regenerate), `"fifo"` or `"hifo"`; `reports/tax_lots.md` shows the sample household
+  after each of the three changes. A lot-tracking kernel costs about a fifth more simulation time.
 * **Cash and goals.** Cash joins brokerage bonds. The goal bucket holds the next four years of goals, funded and
   released each year; without it goals are paid from brokerage pro rata.
 * **Spending reserve** (the equity-first planning style, the default). Bonds and private credit hold the next 2, 4 or 6

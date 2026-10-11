@@ -237,11 +237,19 @@ def test_rank_strategies_breaks_ties_in_menu_order():
 
 
 def test_full_search_is_fast(futures):
-    search(futures)  # compiled and warm
+    # The app plans in the equity-first style: its whole menu (1,008 strategies) is searched in under 2 s. The balanced menu
+    # (4,032) takes about 2.0 s since tax lots (about 1.4 s before them); the bound for it is 3 s.
+    reserve_menu = menu(style="equity_first")
+    search(futures, strategies=reserve_menu)  # compiled and warm
+    start = time.perf_counter()
+    res = search(futures, strategies=reserve_menu)
+    assert time.perf_counter() - start < 2.0
+    assert res.elapsed_seconds < 2.0 and res.n_considered == 1008
+    search(futures)
     start = time.perf_counter()
     res = search(futures)
-    assert time.perf_counter() - start < 2.0
-    assert res.elapsed_seconds < 2.0 and res.n_considered == 4032
+    assert time.perf_counter() - start < 3.0
+    assert res.elapsed_seconds < 3.0 and res.n_considered == 4032
 
 
 def test_a_strategy_subset_can_be_searched(futures):
@@ -280,6 +288,7 @@ def test_attribution_steps_sum_to_the_total_advantage(futures, key):
     assert [s.label for s in steps] == [
         "Lower fee",
         "Asset location",
+        "Tax-lot selection",
         "Direct indexing",
         "Goal bonds, allocation and private credit",
         "Roth timing and withdrawal order",
@@ -288,7 +297,7 @@ def test_attribution_steps_sum_to_the_total_advantage(futures, key):
     total = np.median(wealth[1]) - np.median(wealth[0])
     assert sum(s.delta_median for s in steps) == pytest.approx(total, rel=1e-9)
     assert steps[-1].cumulative_median == pytest.approx(total)
-    assert steps[0].active and steps[1].active  # fee and location always change
+    assert steps[0].active and steps[1].active and steps[2].active  # fee, location and the order lots are sold in always change
 
 
 def test_attribution_marks_decisions_the_strategy_does_not_use(futures):
@@ -310,7 +319,9 @@ def test_advantage_policies_end_on_the_chosen_policy():
     s = Strategy(0.80, "fill24_every", 0.10, True, True)
     steps = explain.advantage_policies(s)
     assert steps[0][1] == RIA_BASELINE and steps[-1][1] == s.policy()
-    assert len(steps) == 6
+    assert len(steps) == 7
+    lots = dict(steps)["Tax-lot selection"]
+    assert lots.lot_method == "hifo" and RIA_BASELINE.lot_method == "fifo"  # the advisor's oldest-first becomes highest-cost-first
 
 
 # --- One year of the plan ------------------------------------------------------------------

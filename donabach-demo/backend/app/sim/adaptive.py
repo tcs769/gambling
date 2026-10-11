@@ -94,6 +94,7 @@ from app.sim.simulate import (
     TV_NEARN,
     Policy,
     SimInputs,
+    _lots_start,
     _run_years,
     _stock_share,
 )
@@ -114,6 +115,7 @@ STOCK_GRID = np.array([0.50, 0.60, 0.70, 0.80, 0.90, 1.00])
 CONV_GRID = np.array([0.0, P.TOP_OF_12, P.TOP_OF_22, P.TOP_OF_24])  # none, fill the 12%, 22%, 24% bracket
 PC_GRID = np.array([0.0, 0.05, 0.10, 0.15])
 MAX_CANDIDATES = 48
+NOISE = 1e-9  # a change must beat the incumbent by more than this share of its utility: two actions that differ only in the last digits of the arithmetic are the same action
 
 # Settings vector.
 CFG_K, CFG_ZMIN, CFG_GAMMA, CFG_FLOOR, CFG_PASSES, CFG_DIMS, CFG_CONFIRM_K, CFG_CONFIRM_Z, CFG_APPLY, CFG_TILT = range(10)
@@ -431,7 +433,7 @@ def _coordinate_search(
                     n += 1
                 if best_here < 0 or cand_u[idx] > cand_u[best_here]:
                     best_here = idx
-            if best_here >= 0 and cand_u[best_here] > cand_u[best] and _significant(cand_k, best_here, best, fut_w, k_roll, z_min):
+            if best_here >= 0 and cand_u[best_here] > cand_u[best] + NOISE * abs(cand_u[best]) and _significant(cand_k, best_here, best, fut_w, k_roll, z_min):
                 if n_moves < MAX_MOVES:
                     mv_dim[n_moves] = di
                     mv_val[n_moves] = cand_act[best_here, dim]
@@ -472,7 +474,7 @@ def _confirm_moves(
             st, ys, trial, t, k2, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt, fut_w, st_r, ys_r, act_r,
             scratch_pw, scratch_log, gamma, floor, u_try,
         )
-        if mean_try > mean_inc and _significant_vec(u_try, u_inc, fut_w, k2, z_c):
+        if mean_try > mean_inc + NOISE * abs(mean_inc) and _significant_vec(u_try, u_inc, fut_w, k2, z_c):
             picked[:] = trial
             u_inc[:k2] = u_try[:k2]
             mean_inc = mean_try
@@ -505,6 +507,7 @@ def _adaptive_path(
     apply = cfg[CFG_APPLY] > 0.5
     cap2 = max(k2, 2)
     st = init.copy()
+    _lots_start(st, row)
     ys = np.zeros(NY)
     act0 = np.zeros(NACT)
     act = np.zeros(NACT)
@@ -654,6 +657,7 @@ def _probe_path(
     a stream the planner never used. The result is an independent estimate of what each candidate was worth."""
     n_years = tv.shape[0]
     st = init.copy()
+    _lots_start(st, row)
     ys = np.zeros(NY)
     act0 = np.zeros(NACT)
     act = np.zeros(NACT)

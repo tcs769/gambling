@@ -8,7 +8,9 @@ Conventions
 -----------
 * `wages` are W-2 box 1 wages, i.e. after pre-tax 401(k) deferrals.
 * `ordinary_dividends` is the 1040 line 3b total and *includes* the qualified dividends (3a).
-* Capital gains are treated as long-term. `net_capital_gain` may be negative.
+* Capital gains are long-term unless `short_term_gain` says part of `net_capital_gain` is short-term (held a year or
+  less): that part is ordinary income. `net_capital_gain` is the net of both and may be negative; short-term and
+  long-term losses offset each other before anything is taxed (IRC section 1222).
 * `capital_loss_carryforward` is a positive number of dollars of loss brought in.
 * `aged_spouses` is how many of the two spouses are 65 or older (0, 1 or 2); each adds the
   additional standard deduction of $1,650 (IRS Rev. Proc. 2025-32).
@@ -54,6 +56,7 @@ CoreReturn = namedtuple(
         "illinois_tax",
         "total_tax",
         "marginal_federal_rate",
+        "short_term_ordinary",
     ],
 )
 
@@ -119,6 +122,7 @@ def tax_core(
     dependents: float,
     capital_loss_carryforward: float,
     aged_spouses: float = 0.0,
+    short_term_gain: float = 0.0,
 ):
     qualified = min(qualified_dividends, ordinary_dividends)
     taxable_ss = P.SS_TAXABLE_SHARE * social_security
@@ -146,9 +150,16 @@ def tax_core(
     agi = total_income  # no above-the-line adjustments are modelled
     taxable_income = max(0.0, agi - standard_deduction(aged_spouses))
 
+    # The short-term part of a net gain is ordinary income. A net short-term loss and a long-term loss absorb
+    # each other first, so what stays short-term is at most the net gain (`short_term_gain` is a part of
+    # `net_capital_gain`, negative for a net short-term loss).
+    short_term_ordinary = 0.0
+    if net > 0.0 and short_term_gain > 0.0:
+        short_term_ordinary = min(short_term_gain, net)
+
     # Qualified dividends and long-term gains are taxed at preferential rates and stack on top
     # of ordinary taxable income.
-    preferential = min(taxable_income, qualified + max(0.0, cap_gain_line))
+    preferential = min(taxable_income, qualified + max(0.0, cap_gain_line) - short_term_ordinary)
     ordinary_taxable = taxable_income - preferential
     ord_tax = ordinary_tax(ordinary_taxable)
 
@@ -204,6 +215,7 @@ def tax_core(
         il_tax,
         federal_total + il_tax,
         marginal_rate(ordinary_taxable),
+        short_term_ordinary,
     )
 
 
@@ -219,7 +231,10 @@ class TaxInputs(BaseModel):
     ordinary_dividends: float = Field(
         0.0, ge=0, description="Ordinary dividends (line 3b), including the qualified portion"
     )
-    net_capital_gain: float = Field(0.0, description="Net long-term capital gain; may be negative")
+    net_capital_gain: float = Field(0.0, description="Net capital gain, short-term and long-term together; may be negative")
+    short_term_gain: float = Field(
+        0.0, description="The short-term part of net_capital_gain (taxed as ordinary income); negative for a net short-term loss"
+    )
     retirement_distributions: float = Field(0.0, ge=0, description="Pre-tax IRA/401(k) withdrawals")
     roth_conversions: float = Field(0.0, ge=0, description="Pre-tax dollars converted to Roth")
     social_security: float = Field(0.0, ge=0, description="Gross Social Security benefits")
@@ -239,7 +254,7 @@ class TaxInputs(BaseModel):
 class TaxLine(BaseModel):
     label: str
     amount: float
-    kind: str = "amount"  # "amount" | "rate" | "subtotal" | "total"
+    kind: str = "amount"  # "amount" | "rate" | "subtotal" | "total" | "note" (already counted in the line above)
     note: str | None = None
 
 
@@ -253,6 +268,7 @@ class TaxReturn(BaseModel):
     ordinary_dividends: float
     capital_gain_input: float
     capital_gain_line: float
+    short_term_gain_ordinary: float  # the part of the capital gain line taxed as ordinary income (short-term)
     retirement_distributions: float
     roth_conversions: float
     social_security: float
@@ -293,6 +309,11 @@ class TaxReturn(BaseModel):
             TaxLine(label="Taxable interest", amount=self.interest),
             TaxLine(label="Ordinary dividends", amount=self.ordinary_dividends),
             TaxLine(label="Capital gain (loss), after $3,000 limit", amount=self.capital_gain_line),
+            *(
+                [TaxLine(label="of which short-term, taxed as ordinary income", amount=self.short_term_gain_ordinary, kind="note")]
+                if self.short_term_gain_ordinary > 0
+                else []
+            ),
             TaxLine(label="Retirement account withdrawals", amount=self.retirement_distributions),
             TaxLine(label="Roth conversions", amount=self.roth_conversions),
             TaxLine(label="Taxable Social Security (85%)", amount=self.taxable_social_security),
@@ -334,6 +355,7 @@ def compute_return(inputs: TaxInputs) -> TaxReturn:
         float(dependents),
         float(inputs.capital_loss_carryforward),
         float(inputs.aged_spouses),
+        float(inputs.short_term_gain),
     )
     agi = r.agi
     return TaxReturn(
@@ -343,6 +365,7 @@ def compute_return(inputs: TaxInputs) -> TaxReturn:
         ordinary_dividends=inputs.ordinary_dividends,
         capital_gain_input=inputs.net_capital_gain,
         capital_gain_line=r.cap_gain_line,
+        short_term_gain_ordinary=r.short_term_ordinary,
         retirement_distributions=inputs.retirement_distributions,
         roth_conversions=inputs.roth_conversions,
         social_security=inputs.social_security,

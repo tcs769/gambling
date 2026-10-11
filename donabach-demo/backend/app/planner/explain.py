@@ -47,7 +47,8 @@ def advantage_policies(strategy: Strategy) -> list[tuple[str, Policy]]:
     p0 = RIA_BASELINE
     p1 = p0.replace(breakpoint_fees=False, flat_fee=DONABACH_FLAT_FEE)
     p2 = p1.replace(donabach_location=True)
-    p3 = p2.replace(direct_indexing=chosen.direct_indexing)
+    p2b = p2.replace(lot_method=chosen.lot_method, short_term_ordinary=chosen.short_term_ordinary)
+    p3 = p2b.replace(direct_indexing=chosen.direct_indexing)
     p4 = p3.replace(
         goal_bonds=chosen.goal_bonds,
         stock_share=chosen.stock_share,
@@ -70,6 +71,7 @@ def advantage_policies(strategy: Strategy) -> list[tuple[str, Policy]]:
         ("RIA baseline", p0),
         ("Lower fee", p1),
         ("Asset location", p2),
+        ("Tax-lot selection", p2b),
         ("Direct indexing", p3),
         ("Goal bonds, allocation and private credit", p4),
         ("Roth timing and withdrawal order", p5),
@@ -138,6 +140,7 @@ def tax_return_for_year(log: dict[str, np.ndarray], t: int) -> TaxReturn:
             qualified_dividends=max(0.0, float(log["dividends"][t])),
             ordinary_dividends=max(0.0, float(log["dividends"][t])),
             net_capital_gain=float(log["net_gain"][t]),
+            short_term_gain=float(log["short_term_gain"][t]),
             retirement_distributions=max(0.0, float(log["ret_dist"][t])),
             roth_conversions=max(0.0, float(log["conv"][t])),
             social_security=float(log["ss"][t]),

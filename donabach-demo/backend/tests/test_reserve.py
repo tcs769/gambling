@@ -32,7 +32,9 @@ def test_strategies_without_a_reserve_give_exactly_the_results_they_gave_before_
     from app.planner.baseline import RIA_BASELINE, TYPICAL_ADVISOR
 
     inputs = build_inputs(make_demo_household(), n_paths=150, seed=77)
+    # Pinned to the average-cost lot method, which is what every result was computed with before tax lots existed.
     policies = [RIA_BASELINE, TYPICAL_ADVISOR] + [s.policy() for s in menu()[::250][:6]]
+    policies = [p.replace(lot_method="average", short_term_ordinary=False) for p in policies]
     batch = run_batch(inputs, policies)
     assert [round(float(np.median(w))) for w in batch.wealth] == [2836952, 2667300, 2799253, 2824798, 2442731, 3307733, 3100390, 2957486]
     assert [round(float(np.median(t))) for t in batch.taxes_paid] == [1504864, 1497800, 1629627, 1648298, 1673934, 1616932, 1843802, 1663421]
@@ -216,7 +218,7 @@ def test_the_advantage_steps_end_exactly_on_a_strategy_with_a_reserve():
     st = Strategy(1.0, "fill24_every", 0.10, False, False, reserve_years=4)
     steps = explain.advantage_policies(st)
     assert steps[-1][1] == st.policy() and steps[0][0] == "RIA baseline"
-    assert steps[4][1].reserve_years == 4 and steps[3][1].reserve_years == 0  # the allocation step switches it on
+    assert steps[5][1].reserve_years == 4 and steps[4][1].reserve_years == 0  # the allocation step switches it on
     explain.advantage_steps(inputs, st)
 
 

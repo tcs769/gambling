@@ -16,8 +16,9 @@
   The stock share is then 100% of what is outside the reserve.
 
 Every strategy also uses Donabach asset location (private credit, then bonds, in pre-tax first;
-Roth holds stocks), withdraws pre-tax up to the bracket target then brokerage then Roth, and
-pays a flat 0.35% fee.
+Roth holds stocks), withdraws pre-tax up to the bracket target then brokerage then Roth, sells the
+highest-cost tax lots first when it sells stock in the taxable account (the advisors sell the oldest first),
+and pays a flat 0.35% fee.
 """
 
 from __future__ import annotations
@@ -37,6 +38,7 @@ K401_OPTIONS = ("pretax", "roth", "roth_low")
 GOAL_FUNDING_OPTIONS = ("sell", "borrow")
 RESERVE_YEARS = (0, 2, 4, 6)  # 0: no reserve (the stock share and glide above); else years of expenses held in bonds and private credit
 STYLES = ("balanced", "equity_first")
+DONABACH_LOT_METHOD = "hifo"  # sales of brokerage stock take the lot with the highest cost per dollar first
 
 # option name -> (bracket label, bracket top, every year?)
 CONVERSION_OPTIONS: dict[str, tuple[int | None, float, bool]] = {
@@ -145,6 +147,8 @@ class Strategy:
             k401=self.k401,
             goal_funding=self.goal_funding,
             reserve_years=self.reserve_years,
+            lot_method=DONABACH_LOT_METHOD,
+            short_term_ordinary=True,
         )
 
     def short_label(self) -> str:
@@ -204,6 +208,7 @@ class Strategy:
             parts.append("harvest losses stock by stock with direct indexing")
         else:
             parts.append("harvest losses at fund level")
+        parts.append("when stocks are sold in the taxable account, sell the shares that cost the most first")
         if self.goal_bonds:
             parts.append("fund each goal in bonds four years ahead")
         if self.k401 == "roth":

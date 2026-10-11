@@ -16,7 +16,7 @@ from app.ml.interfaces import FEATURE_NAMES, STATE_FEATURE_NAMES, CONVERSION_BRA
 from app.planner import decision_data as dd
 from app.planner.strategies import PRIVATE_CREDIT_SHARES, STOCK_SHARES
 from app.sim import adaptive as ad
-from app.sim.simulate import TV_GOAL, build_inputs, run_batch
+from app.sim.simulate import NSTATE, TV_GOAL, build_inputs, run_batch
 
 FAST = ad.AdaptiveSettings(k=8)
 
@@ -89,7 +89,7 @@ def test_recording_states_does_not_change_the_run():
     plain = ad.run_adaptive(inputs, policy, FAST)
     recorded = ad.run_adaptive(inputs, policy, FAST, record_candidates=True, record_states=True)
     assert np.array_equal(plain.wealth, recorded.wealth) and np.array_equal(plain.chosen, recorded.chosen)
-    assert plain.states is None and recorded.states.shape == (3, inputs.n_years, 16)
+    assert plain.states is None and recorded.states.shape == (3, inputs.n_years, NSTATE)
 
 
 # --- The tables -------------------------------------------------------------------------------------

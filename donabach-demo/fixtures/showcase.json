@@ -1,0 +1,55 @@
+{
+  "id": "sample",
+  "name": "The sample household",
+  "type_label": "Diversified, modest unrealized gains",
+  "tagline": "Two earners in their late thirties with a home purchase, college and retirement ahead.",
+  "household": {
+    "people": [
+      {
+        "name": "Alex Sample",
+        "age": 38,
+        "wages": 140000.0,
+        "pretax_401k": 24500.0
+      },
+      {
+        "name": "Jordan Sample",
+        "age": 37,
+        "wages": 110000.0,
+        "pretax_401k": 24500.0
+      }
+    ],
+    "children_ages": [
+      8
+    ],
+    "accounts": {
+      "brokerage_value": 150000.0,
+      "brokerage_basis": 110000.0,
+      "pretax_balance": 400000.0,
+      "pretax_equity_share": 0.75,
+      "roth_balance": 30000.0,
+      "roth_equity_share": 1.0,
+      "cash": 40000.0
+    },
+    "goals": {
+      "home_purchase_in_years": 3,
+      "home_down_payment": 120000.0,
+      "college_starts_in_years": 10,
+      "college_annual_cost": 35000.0,
+      "college_years": 4,
+      "retirement_age": 62,
+      "retirement_spending": 110000.0
+    },
+    "social_security": {
+      "annual_benefit": 50000.0,
+      "start_age": 67
+    },
+    "snapshot": {
+      "wages_after_401k": 201000.0,
+      "interest": 800.0,
+      "qualified_dividends": 2700.0,
+      "ordinary_dividends": 3000.0,
+      "net_capital_gain": 1500.0
+    },
+    "estimated": []
+  }
+}

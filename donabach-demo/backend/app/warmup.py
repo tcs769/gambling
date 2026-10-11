@@ -48,3 +48,15 @@ def precompute_demo() -> None:
     adaptive_service.request_plan(
         household, Strategy.from_choices(response.strategy.choices), response.settings.seed, 200, None, 3.0, 32
     )
+
+
+def precompute_showcase() -> None:
+    """Search the showcase household's plan and measure it with every strategy on, so the first request for it is instant."""
+    import os
+
+    if os.environ.get("DONABACH_NO_PRECOMPUTE"):
+        return
+    from app import showcase
+
+    prepared = showcase.prepare()
+    showcase.analyze(prepared)

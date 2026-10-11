@@ -157,7 +157,7 @@ def test_the_single_household_evaluation_is_consistent_and_writes_a_report():
     assert fw.advantage("best_fixed", "typical_advisor").median > fw.advantage("good_ria", "typical_advisor").median - 0.05  # sanity: ordering is plausible
     assert set(result.decomposition) == {"tax timing only", "allocation only", "all six decisions"}
     labels = [row[0] for row in result.steps]
-    assert labels[0] == "RIA baseline" and len(labels) == 6 and result.steps[0][3] == 0.0 and result.steps[0][4] == 0.0
+    assert labels[0] == "RIA baseline" and len(labels) == 7 and result.steps[0][3] == 0.0 and result.steps[0][4] == 0.0
     assert result.steps[-1][1] == pytest.approx(np.median(fw.wealth["best_fixed"]))  # the last step is the best fixed strategy itself
     assert len(result.by_futures) == 2 and result.by_futures[0][1] == fw.judgment
     text = ev.report(result)

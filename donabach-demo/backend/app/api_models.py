@@ -458,3 +458,109 @@ class WhatIfResponse(BaseModel):
     shock: MarketShock | None
     plan: PlanResponse
 
+
+
+# --------------------------------------------------------------------------------------------
+# The showcase household: summary card, strategy waterfall, wealth over time
+# --------------------------------------------------------------------------------------------
+
+
+class CardPerson(BaseModel):
+    label: str
+    age: int
+    wages: float
+
+
+class CardAccount(BaseModel):
+    key: Literal["taxable", "pretax", "roth", "cash"]
+    label: str
+    value: float
+    share: float  # of everything the household has saved
+    basis: float | None = None  # the taxable account only
+    unrealized_gain: float | None = None
+
+
+class CardGoal(BaseModel):
+    key: Literal["home", "college", "retirement", "social_security"]
+    label: str
+    detail: str
+    years_from_now: int | None = None
+    amount: float | None = None
+
+
+class HouseholdCard(BaseModel):
+    """Everything the summary card shows, computed from the household."""
+
+    people: list[CardPerson]
+    children_ages: list[int]
+    annual_income: float
+    total_savings: float
+    accounts: list[CardAccount]
+    goals: list[CardGoal]
+    notes: list[str]  # what stands out about this household, each computed from its numbers
+
+
+class ShowcaseBar(BaseModel):
+    """One strategy of the waterfall."""
+
+    key: str
+    label: str
+    detail: str
+    enabled: bool
+    delta_rate: float  # change in the annual advantage over the advisor (a fraction: 0.004 is 0.4% a year)
+    delta_dollars: float  # change in median after-tax wealth at the horizon
+    cumulative_rate: float
+    cumulative_dollars: float
+
+
+class WealthLines(BaseModel):
+    ages: list[int]  # today's age first
+    plan_median: list[float]
+    plan_p10: list[float]
+    advisor_median: list[float]
+    advisor_p10: list[float]
+
+
+class ShowcaseAdvantage(BaseModel):
+    median_rate: float  # annual growth-rate advantage of median after-tax wealth at the horizon (a fraction)
+    median_dollars: float
+    median_low: float  # the 5th to 95th percentile over resamples of the futures
+    median_high: float
+    risk_adjusted_rate: float
+    risk_adjusted_dollars: float
+    plan_median_at_horizon: float
+    advisor_median_at_horizon: float
+    plan_p10_at_horizon: float
+    advisor_p10_at_horizon: float
+    plan_shortfall: float  # share of futures in which the plan runs out of money
+    advisor_shortfall: float
+
+
+class ShowcaseAnalysis(BaseModel):
+    enabled: list[str]
+    bars: list[ShowcaseBar]
+    advantage: ShowcaseAdvantage
+    wealth: WealthLines
+    risk_adjusted_label: str
+    risk_adjusted_explanation: str  # one line
+    n_paths: int
+    years: int
+    horizon_age: int
+    risk_aversion: float
+    advisor_label: str
+    plan_label: str  # the recommendation in one line
+    plan_sentence: str  # the recommendation in plain language
+
+
+class ShowcaseRequest(BaseModel):
+    enabled: list[str] | None = None  # strategy keys left on, None for all of them
+
+
+class ShowcaseResponse(BaseModel):
+    id: str
+    name: str
+    type_label: str
+    tagline: str
+    household: Household
+    card: HouseholdCard
+    analysis: ShowcaseAnalysis

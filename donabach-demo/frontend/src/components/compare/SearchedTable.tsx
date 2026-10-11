@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { RankedStrategyCell } from "@/components/plan/RankedStrategy";
 import { Button, DataTable, Icon, Panel, PanelTitle, Pill, type DataColumn } from "@/components/ui";
-import { money } from "@/lib/format";
+import { dollars, money } from "@/lib/format";
 import type { PlanResponse, RankedRow } from "@/lib/types";
 import styles from "./Compare.module.css";
 
@@ -33,7 +33,8 @@ export function SearchedTable({ plan }: { plan: PlanResponse }) {
       </PanelTitle>
       <p className={styles.sectionNote}>
         {all.length} strategies, all run on the same simulated futures and ranked by score: certainty-equivalent wealth at 70
-        (the guaranteed amount that would feel as good as the uncertain outcome; risk aversion 3, with a $50,000 floor).
+        (the guaranteed amount that would feel as good as the uncertain outcome; risk aversion {plan.settings.risk_aversion}, with a{" "}
+        {dollars(plan.settings.wealth_floor)} floor).
         Typical outcome is the median future and bad case is the 10th percentile.
       </p>
       <DataTable

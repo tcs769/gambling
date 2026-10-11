@@ -122,7 +122,15 @@ Typed with Pydantic (`backend/app/api_models.py`); try it at http://localhost:80
 ```bash
 make test                                   # backend, about 12 s
 cd frontend && npx tsc --noEmit && npx eslint src
+make e2e                                    # the whole demo in a real browser (needs both servers running)
 ```
+
+`make e2e` drives the seven screens, the what-if flow and the unhappy paths (no tax form uploaded, a PDF the demo
+does not read, demo mode off) in Chromium, and enforces the requirements that cut across screens on every one: no
+console errors, no visible text under 14px, no horizontal overflow at 1440 wide, charts at least 300px tall, the
+disclaimer footer on results screens, the "Model not connected" states, and identical numbers across fresh
+sessions in demo mode. It writes screenshots to `.screenshots/`. Install a browser once with
+`cd frontend && npx playwright-core install chromium`, or point `CHROMIUM_PATH` at one you already have.
 
 * Tax engine: bracket math, Illinois, Roth conversions, capital-gain stacking, NIIT, child-credit phase-out and
   capital-loss carryforward, in both compiled and plain-Python modes.

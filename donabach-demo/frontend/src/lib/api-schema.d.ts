@@ -893,6 +893,10 @@ export interface components {
             horizon_age: number;
             /** Strategies Searched */
             strategies_searched: number;
+            /** Risk Aversion */
+            risk_aversion: number;
+            /** Wealth Floor */
+            wealth_floor: number;
             market_shock?: components["schemas"]["MarketShock"] | null;
         };
         /** RankedRow */

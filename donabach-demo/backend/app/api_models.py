@@ -225,6 +225,8 @@ class PlanSettings(BaseModel):
     current_age: int
     horizon_age: int
     strategies_searched: int
+    risk_aversion: float  # CRRA coefficient behind the score
+    wealth_floor: float  # wealth below this counts as this much when scoring
     market_shock: MarketShock | None = None
 
 

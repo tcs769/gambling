@@ -9,7 +9,8 @@
     "lint": "eslint",
     "gen:api": "openapi-typescript http://localhost:8000/openapi.json -o src/lib/api-schema.d.ts",
     "typecheck": "tsc --noEmit",
-    "postinstall": "node scripts/copy-pdf-worker.mjs"
+    "postinstall": "node scripts/copy-pdf-worker.mjs",
+    "e2e": "node e2e/walkthrough.mjs"
   },
   "dependencies": {
     "next": "16.4.0",
@@ -25,6 +26,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "openapi-typescript": "^7.13.0",
+    "playwright-core": "^1.64.0",
     "typescript": "^5"
   }
 }

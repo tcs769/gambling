@@ -29,7 +29,7 @@ from app.ml import adapters
 from app.ml.adapters import ModelContractError, NotConnected
 from app.planner import explain, guided
 from app.planner.baseline import RIA_BASELINE
-from app.planner.search import Outcome, RankedStrategy, SearchResult, search
+from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, Outcome, RankedStrategy, SearchResult, search
 from app.planner.strategies import Strategy
 from app.schemas import HORIZON_AGE, Household, MarketShock
 from app.sim import markets
@@ -228,6 +228,8 @@ def build_plan(
             current_age=household.primary_age,
             horizon_age=HORIZON_AGE,
             strategies_searched=len(result.ranked),
+            risk_aversion=RISK_AVERSION,
+            wealth_floor=WEALTH_FLOOR,
             market_shock=shock,
         ),
     )

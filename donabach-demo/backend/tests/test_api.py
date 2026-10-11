@@ -249,6 +249,7 @@ def test_plan_without_a_recommender_is_the_labelled_search_planner(plan):
     assert plan["recommender"]["status"]["connected"] is False
     assert plan["recommender"]["recommendation"] is None and plan["recommender"]["candidates"] == []
     assert plan["settings"]["strategies_searched"] == 224 and len(plan["searched"]) == 224
+    assert plan["settings"]["risk_aversion"] == 3.0 and plan["settings"]["wealth_floor"] == 50_000
     assert plan["searched"][0]["is_chosen"] and plan["searched"][0]["rank"] == 1
 
 

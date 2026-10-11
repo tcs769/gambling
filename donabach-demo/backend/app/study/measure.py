@@ -27,6 +27,7 @@ import numpy as np
 
 from app.planner.baseline import RIA_BASELINE
 from app.planner.search import RISK_AVERSION, search
+from app.planner.strategies import menu
 from app.schemas import Household
 from app.sim.simulate import ModelOptions, build_inputs, run_batch
 from app.study.metrics import Advantage, compare
@@ -142,9 +143,10 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--seeds", type=int, default=len(DEFAULT_SEEDS))
     parser.add_argument("--n-eval", type=int, default=2000)
+    parser.add_argument("--style", choices=("balanced", "equity_first"), default="balanced", help="the planning style whose strategy menu is searched")
     args = parser.parse_args(argv)
     household = sample_household()
-    result = measure_seeds(household, seeds=DEFAULT_SEEDS[: args.seeds], n_eval=args.n_eval)
+    result = measure_seeds(household, seeds=DEFAULT_SEEDS[: args.seeds], n_eval=args.n_eval, strategies=menu(style=args.style))
     result["label"] = args.label
     result["git"] = git_revision()
     args.out.parent.mkdir(parents=True, exist_ok=True)

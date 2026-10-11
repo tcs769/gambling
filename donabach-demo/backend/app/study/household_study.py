@@ -24,8 +24,9 @@ import pandas as pd
 
 from app.planner.baseline import BASELINES
 from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, search
+from app.planner.strategies import menu
 from app.sim import adaptive as ad
-from app.sim.simulate import HC_SS, TV_AGED, build_inputs, run_batch
+from app.sim.simulate import HC_SS, TV_AGED, build_inputs, run_batch, run_detail
 from app.study import households as hh
 from app.study.adaptive_evaluation import LABELS, four_way
 from app.study.metrics import annualized, compare
@@ -60,6 +61,21 @@ def adaptive_columns(item: hh.StudyHousehold, chosen, position: int, adaptive_pa
     return out
 
 
+def plan_exposure(household, chosen) -> dict:
+    """Stocks as a share of the portfolio today and from age 70. A fixed share and glide have a formula; with a spending
+    reserve the share moves with the household's expenses, so it is read off the plan's own year log."""
+    age = household.primary_age
+    if not chosen.reserve_years:
+        policy = chosen.policy()
+        return {"plan_equity_today": equity_exposure(policy, age, age), "plan_equity_from_70": equity_exposure(policy, 70.0, age)}
+    log = run_detail(build_inputs(household, deterministic=True), chosen.policy()).log
+    last = len(log["equity_share"]) - 1
+    return {
+        "plan_equity_today": float(log["equity_share"][0]),
+        "plan_equity_from_70": float(np.median(log["equity_share"][min(max(0, 70 - age), last):])),
+    }
+
+
 def household_row(
     item: hh.StudyHousehold,
     position: int,
@@ -70,8 +86,10 @@ def household_row(
     measure_risk_aversion: float | None = None,
     heirs_rates: tuple[float, ...] = (),
     skill: bool = False,
+    style: str = "balanced",
 ) -> dict:
-    """`risk_aversion` is what the planner searches at; `measure_risk_aversion` (default the same) is the risk aversion
+    """`style` is the planning style whose menu the planner searches ("balanced" is the original menu, "equity_first" the
+    spending-reserve family). `risk_aversion` is what the planner searches at; `measure_risk_aversion` (default the same) is the risk aversion
     behind the reported risk-adjusted advantage, so plans chosen at different settings can be read on one yardstick.
     `heirs_rates` add the raw advantage with the pre-tax balance at the horizon taxed at those flat rates.
     `skill` adds the plan's tools run at the advisor's own allocation: the part of the advantage that is not extra equity."""
@@ -80,7 +98,7 @@ def household_row(
     seed = 5_000 + position
     years = household.horizon_years
     futures = build_inputs(household, n_paths=n_search, seed=seed)
-    chosen = search(futures, risk_aversion=risk_aversion).best.strategy
+    chosen = search(futures, strategies=menu(style=style), risk_aversion=risk_aversion).best.strategy
     held = build_inputs(household, n_paths=n_eval, seed=seed + EVAL_SEED_OFFSET)
     policies = [chosen.policy(), *(b.policy for b in BASELINES)]
     if skill:
@@ -108,8 +126,7 @@ def household_row(
         "plan_p10": float(np.percentile(batch.wealth[0], 10)),
         "plan_taxes": float(np.median(batch.taxes_paid[0] + batch.pretax_owed[0])),
         "plan_shortfall": float(np.mean(batch.unfunded[0] > 0)),
-        "plan_equity_today": equity_exposure(policies[0], household.primary_age, household.primary_age),
-        "plan_equity_from_70": equity_exposure(policies[0], 70.0, household.primary_age),
+        **plan_exposure(household, chosen),
     }
     for i, baseline in enumerate(BASELINES, start=1):
         adv = compare(batch.wealth[0], batch.wealth[i], years, measure_risk_aversion)
@@ -154,6 +171,7 @@ def run(
     measure_risk_aversion: float | None = None,
     heirs_rates: tuple[float, ...] = (),
     skill: bool = False,
+    style: str = "balanced",
 ) -> pd.DataFrame:
     """The study. With a `checkpoint` path the rows so far are saved every 25 households and a rerun resumes from them."""
     items = hh.generate(seed=seed, per_type=per_type)
@@ -170,7 +188,7 @@ def run(
     for position in range(first, len(items)):
         rows.append(
             household_row(
-                items[position], position, n_search, n_eval, risk_aversion, adaptive_paths, measure_risk_aversion, heirs_rates, skill
+                items[position], position, n_search, n_eval, risk_aversion, adaptive_paths, measure_risk_aversion, heirs_rates, skill, style
             )
         )
         if progress and (position + 1) % 25 == 0:
@@ -303,7 +321,9 @@ def skill_sections(frame: pd.DataFrame) -> list[str]:
     return lines
 
 
-def summarize(frame: pd.DataFrame, n_eval: int, risk_aversion: float, measure_risk_aversion: float | None = None) -> str:
+def summarize(
+    frame: pd.DataFrame, n_eval: int, risk_aversion: float, measure_risk_aversion: float | None = None, style: str = "balanced"
+) -> str:
     measure = risk_aversion if measure_risk_aversion is None else measure_risk_aversion
     setting = (
         f"risk aversion {risk_aversion:g}"
@@ -315,7 +335,7 @@ def summarize(frame: pd.DataFrame, n_eval: int, risk_aversion: float, measure_ri
         "",
         f"{len(frame)} synthetic households ({frame.groupby('type').size().iloc[0]} of each of six types), all fictional. For each, the planner searched",
         f"its strategy menu on 400 simulated futures and the winner was scored against both advisors on {n_eval:,} fresh",
-        f"futures it never saw ({setting}). Nothing was tuned; the households were drawn from fixed ranges",
+        f"futures it never saw ({setting}{'; planning style: equity first, a spending reserve with everything else in stocks' if style == 'equity_first' else ''}). Nothing was tuned; the households were drawn from fixed ranges",
         "that make each a clear example of its type (see `backend/app/study/households.py`).",
         "",
         "* **Median advantage**: difference in median after-tax wealth at the horizon, annualized as a growth-rate difference.",
@@ -370,6 +390,18 @@ def summarize(frame: pd.DataFrame, n_eval: int, risk_aversion: float, measure_ri
             f"{_share(sub, 'choice_k401', lambda v: v != 'pretax') * 100:.0f}% | "
             f"{_share(sub, 'choice_goal_funding', lambda v: v == 'borrow') * 100:.0f}% |"
         )
+    if "choice_reserve" in frame.columns and (frame["choice_reserve"].astype(str) != "off").any():
+        lines += [
+            "",
+            "Spending reserve chosen, by type (years of expenses held in bonds and private credit, everything else in stocks):",
+            "",
+            "| Type | 2 years | 4 years | 6 years |",
+            "|---|---|---|---|",
+        ]
+        for t, title in hh.TYPES.items():
+            sub = frame[frame["type"] == t]
+            cells = " | ".join(f"{_share(sub, 'choice_reserve', lambda v, y=years: str(v) == y) * 100:.0f}%" for years in ("2", "4", "6"))
+            lines.append(f"| {title} | {cells} |")
     if "judgment_median" in frame.columns:
         lines += [""] + adaptive_sections(frame)
     if "skill_median_vs_good_ria" in frame.columns:
@@ -412,16 +444,18 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--heirs-rates", type=float, nargs="*", default=[], help="flat tax rates on pre-tax money at the horizon to report as a sensitivity, e.g. 0.24 0.32"
     )
+    parser.add_argument("--style", choices=("balanced", "equity_first"), default="balanced", help="the planning style whose strategy menu the planner searches")
     parser.add_argument("--skill", action="store_true", help="also run each plan's tools at the good RIA's allocation (the part of the advantage that is not extra equity)")
     args = parser.parse_args(argv)
     frame = run(
         per_type=args.per_type, n_eval=args.n_eval, seed=args.seed, progress=True,
         adaptive_paths=args.adaptive_paths, checkpoint=args.checkpoint, risk_aversion=args.risk_aversion,
         measure_risk_aversion=args.measure_risk_aversion, heirs_rates=tuple(args.heirs_rates), skill=args.skill,
+        style=args.style,
     )
     args.out_dir.mkdir(parents=True, exist_ok=True)
     frame.to_csv(args.out_dir / "household_study.csv", index=False)
-    text = summarize(frame, args.n_eval, args.risk_aversion, args.measure_risk_aversion)
+    text = summarize(frame, args.n_eval, args.risk_aversion, args.measure_risk_aversion, args.style)
     (args.out_dir / "household_study.md").write_text(text)
     print(text)
 

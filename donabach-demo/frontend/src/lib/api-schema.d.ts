@@ -1077,6 +1077,13 @@ export interface components {
              */
             risk_aversion: number;
             /**
+             * Planning Style
+             * @description equity_first: a spending reserve of bonds and private credit, everything else in stocks; balanced: a stock share with a glide path
+             * @default equity_first
+             * @enum {string}
+             */
+            planning_style: "balanced" | "equity_first";
+            /**
              * Adaptive
              * @description Also compute the year-by-year adaptive plan (in the background)
              * @default true
@@ -1205,6 +1212,12 @@ export interface components {
             /** Wealth Floor */
             wealth_floor: number;
             market_shock?: components["schemas"]["MarketShock"] | null;
+            /**
+             * Planning Style
+             * @default equity_first
+             * @enum {string}
+             */
+            planning_style: "balanced" | "equity_first";
         };
         /** RankedRow */
         RankedRow: {
@@ -1451,6 +1464,12 @@ export interface components {
              * @default 3
              */
             risk_aversion: number;
+            /**
+             * Planning Style
+             * @default equity_first
+             * @enum {string}
+             */
+            planning_style: "balanced" | "equity_first";
             /**
              * Adaptive
              * @default true

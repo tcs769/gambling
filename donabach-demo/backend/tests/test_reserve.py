@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from tests.conftest import make_demo_household
-from tests.test_sim import detail, state
-
 from app.planner.strategies import CHOICE_OPTIONS, CHOICES, RESERVE_YEARS, STYLES, Strategy, menu
 from app.schemas import Accounts, Goals, MarketShock, Person, SocialSecurity
 from app.sim import simulate as sim
 from app.sim.simulate import Policy, build_inputs, run_batch, run_detail
+
+from tests.conftest import make_demo_household
+from tests.test_sim import detail, state
 
 
 def reserve_policy(years=4, pc=0.0, refill=True, **kw) -> Policy:
@@ -197,9 +197,9 @@ def test_the_two_planning_styles_have_their_own_menus():
 
 
 def test_the_adaptive_planner_does_not_offer_stock_shares_when_the_reserve_decides_them():
-    from tests.test_adaptive import inputs_for, short_household
-
     from app.sim import adaptive as ad
+
+    from tests.test_adaptive import inputs_for, short_household
 
     inputs = inputs_for(short_household(), paths=4)
     policy = reserve_policy(2, pc=0.10, conversion="fill24_every")
@@ -229,3 +229,34 @@ def test_the_detailed_log_of_a_reserve_strategy_runs_through_the_year_explanatio
         detail_ = explain.year_detail(inputs, st, year)
         assert detail_.decisions  # the year's decisions are listed and valued without error
     assert detail(st.policy()).log["wealth"][-1] > 0
+
+
+# --- The studies take a planning style -----------------------------------------------------------------
+
+
+def test_the_household_study_can_plan_in_the_equity_first_style():
+    import pandas as pd
+    from app.study.household_study import household_row, summarize
+    from app.study.households import generate
+
+    items = generate(seed=10, per_type=1)
+    plain = household_row(items[0], 0, 60, 60, 3.0)
+    assert plain["choice_reserve"] == "off"  # the original menu is still the default
+    rows = [household_row(item, i, 60, 60, 3.0, skill=True, style="equity_first") for i, item in enumerate(items)]
+    frame = pd.DataFrame(rows)
+    assert set(frame["choice_reserve"]) <= {"2", "4", "6"} and (frame["choice_stock_share"] == "100").all()
+    assert ((frame["plan_equity_today"] > 0.5) & (frame["plan_equity_today"] <= 1.0)).all()
+    assert np.isfinite(frame["skill_median_vs_good_ria"]).all() and (frame["adv_median_vs_good_ria"] > frame["skill_median_vs_good_ria"] - 0.01).any()
+    text = summarize(frame, 60, 3.0, style="equity_first")
+    assert "planning style: equity first" in text and "Spending reserve chosen, by type" in text
+    assert "planning style" not in summarize(pd.DataFrame([household_row(item, i, 60, 60, 3.0) for i, item in enumerate(items)]), 60, 3.0)
+
+
+def test_the_best_fixed_strategy_of_a_study_follows_the_planning_style():
+    from app.study.adaptive_evaluation import best_fixed_strategy
+    from app.study.measure import sample_household
+
+    household = sample_household()
+    assert best_fixed_strategy(household, 2026, style="balanced").reserve_years == 0
+    chosen = best_fixed_strategy(household, 2026, style="equity_first")
+    assert chosen.reserve_years in (2, 4, 6) and chosen.stock_share == 1.0

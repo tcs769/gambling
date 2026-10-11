@@ -495,7 +495,7 @@ await page.getByRole("link", { name: /recommended plan/i }).or(page.getByRole("b
 
 // --- 6. Plan -----------------------------------------------------------------------------------
 await page.waitForURL("**/plan");
-await page.getByText(/Hold \d+% of long-term money/).first().waitFor({ timeout: 20000 });
+await page.getByText(/Hold (the next \d+ years of what you will need|\d+% of)/).first().waitFor({ timeout: 20000 });
 text = await bodyText();
 check(/Search planner \(model not connected\)/.test(text), "plan: labelled 'Search planner (model not connected)'");
 check(/Model not connected/.test(text), "plan: the recommender panel shows 'Model not connected'");
@@ -970,7 +970,7 @@ check(fresh[0] === fresh[1], `demo mode: two fresh sessions show identical numbe
   const planResponse = p.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === "/api/plan");
   await p.goto(BASE + "/plan", { waitUntil: "networkidle" });
   const demoSent = await (await planResponse).json();
-  await p.getByText(/Hold \d+% of long-term money/).first().waitFor({ timeout: 30000 });
+  await p.getByText(/Hold (the next \d+ years of what you will need|\d+% of)/).first().waitFor({ timeout: 30000 });
   await p.waitForTimeout(1000);
   check(
     !!demoSent.adaptive && demoSent.adaptive.from_cache === true && !demoSent.adaptive_job,
@@ -1012,7 +1012,7 @@ check(fresh[0] === fresh[1], `demo mode: two fresh sessions show identical numbe
     await route.fulfill({ json: { id: "e2e-broken-job", result: null, ...job } });
   });
   await p.goto(BASE + "/plan", { waitUntil: "networkidle" });
-  await p.getByText(/Hold \d+% of long-term money/).first().waitFor({ timeout: 30000 });
+  await p.getByText(/Hold (the next \d+ years of what you will need|\d+% of)/).first().waitFor({ timeout: 30000 });
   await p.waitForFunction(() => /Refining plan…\s*40%/.test(document.body.innerText), null, { timeout: 10000 }).catch(() => {});
   check(/Refining plan….*40%/.test(squash(await refiningStatus(p).first().innerText().catch(() => ""))), "failed job: while the job runs the header shows its progress ('Refining plan… 40%')");
   const alert = p.getByRole("alert").filter({ hasText: "The year-by-year plan could not be completed" });
@@ -1090,7 +1090,7 @@ check(fresh[0] === fresh[1], `demo mode: two fresh sessions show identical numbe
     await route.fulfill({ json: { id: "e2e-job-b", status: done ? "done" : "running", progress: done ? 1 : 0.5, error: null, result: done ? demoSection : null } });
   });
   await p.goto(BASE + "/plan", { waitUntil: "networkidle" });
-  await p.getByText(/Hold \d+% of long-term money/).first().waitFor({ timeout: 30000 });
+  await p.getByText(/Hold (the next \d+ years of what you will need|\d+% of)/).first().waitFor({ timeout: 30000 });
   await p.getByRole("button", { name: /What if/i }).first().click();
   await p.getByRole("button", { name: /Spouse B changes jobs/ }).first().click();
   await p.getByText(/What-if applied/).first().waitFor({ timeout: 30000 });

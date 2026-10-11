@@ -27,10 +27,12 @@ futures (seed 2026, the app's defaults) and the winner is scored against the goo
 | A5: Roth vs pre-tax 401(k) | 42 | 50% stocks, fill 24% bracket (every year), 15% private credit | +0.27% | +2.54% | +0.30% / +2.73% | +0.34% / +3.61% | not recorded |
 | A6: borrow against the portfolio for goals | 42 | 50% stocks, fill 24% bracket (every year), 15% private credit | +0.27% | +2.54% | +0.35% / +2.62% | +0.34% / +3.61% | not recorded |
 | A7+A9: two measures, typical-advisor baseline, held-out evaluation | 42 | 50% stocks, fill 24% bracket (every year), 15% private credit | +0.27% | +2.54% | +0.35% / +2.62% | +0.34% / +3.61% | 0.1% / 0.6% |
+| A11: spending reserve, equity-first planning style (the default) | 42 | 6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit | +1.61% | +0.14% | +1.66% / +0.04% | +1.67% / +0.10% | 0.8% / 0.6% |
 
 ## Against the typical advisor
 
 | Step | Years | Recommendation (seed 2026) | Median adv. | Risk-adj. adv. | Mean of 5 seeds (median / risk-adj.) | In-sample (median / risk-adj.) | Chance of a shortfall: plan / baseline |
 |---|---|---|---|---|---|---|---|
 | A7+A9: two measures, typical-advisor baseline, held-out evaluation | 42 | 50% stocks, fill 24% bracket (every year), 15% private credit | +0.40% | +2.60% | +0.48% / +2.71% | +0.47% / +3.74% | 0.1% / 0.7% |
+| A11: spending reserve, equity-first planning style (the default) | 42 | 6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit | +1.74% | +0.20% | +1.80% / +0.12% | +1.80% / +0.22% | 0.8% / 0.7% |
 

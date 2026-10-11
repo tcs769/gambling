@@ -1,0 +1,712 @@
+{
+  "app_seed_run": {
+    "seed": 2026,
+    "years": 42,
+    "strategy": {
+      "stock_share": "100",
+      "conversion": "fill24_every",
+      "private_credit": "15",
+      "direct_indexing": "off",
+      "goal_bonds": "off",
+      "k401": "pretax",
+      "goal_funding": "sell",
+      "reserve": "6"
+    },
+    "strategy_label": "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit",
+    "risk_aversion": 3.0,
+    "n_search": 400,
+    "n_eval": 2000,
+    "elapsed_seconds": 0.9144704849995833,
+    "baselines": {
+      "good_ria": {
+        "in_sample": {
+          "median": 0.01666851463912611,
+          "risk_adjusted": 0.000968570798827173,
+          "median_dollars": 2936498.513331388,
+          "risk_adjusted_dollars": 20197.10376543313,
+          "plan_median": 5866197.098574606,
+          "baseline_median": 2929698.5852432176,
+          "plan_ce": 506895.0205874384,
+          "baseline_ce": 486697.9168220053,
+          "years": 42.0,
+          "median_range": [
+            0.0,
+            0.0
+          ],
+          "risk_adjusted_range": [
+            0.0,
+            0.0
+          ]
+        },
+        "held_out": {
+          "median": 0.01610172093314466,
+          "risk_adjusted": 0.0013882648923559948,
+          "median_dollars": 2780932.650709242,
+          "risk_adjusted_dollars": 29986.873665512423,
+          "plan_median": 5689953.951967371,
+          "baseline_median": 2909021.3012581286,
+          "plan_ce": 529787.6867568902,
+          "baseline_ce": 499800.8130913777,
+          "years": 42.0,
+          "median_range": [
+            0.015778467006789264,
+            0.016865926320377766
+          ],
+          "risk_adjusted_range": [
+            -0.0008117099316118648,
+            0.003885858273158261
+          ]
+        },
+        "shortfall": {
+          "plan": 0.0075,
+          "baseline": 0.006
+        }
+      },
+      "typical_advisor": {
+        "in_sample": {
+          "median": 0.017978722687609805,
+          "risk_adjusted": 0.002156936343603588,
+          "median_dollars": 3090761.065653758,
+          "risk_adjusted_dollars": 43856.543110314116,
+          "plan_median": 5866197.098574606,
+          "baseline_median": 2775436.0329208476,
+          "plan_ce": 506895.0205874384,
+          "baseline_ce": 463038.4774771243,
+          "years": 42.0,
+          "median_range": [
+            0.0,
+            0.0
+          ],
+          "risk_adjusted_range": [
+            0.0,
+            0.0
+          ]
+        },
+        "held_out": {
+          "median": 0.017441350904691344,
+          "risk_adjusted": 0.0019530943302930037,
+          "median_dollars": 2937534.5392320636,
+          "risk_adjusted_dollars": 41684.722773300775,
+          "plan_median": 5689953.951967371,
+          "baseline_median": 2752419.412735307,
+          "plan_ce": 529787.6867568902,
+          "baseline_ce": 488102.9639835894,
+          "years": 42.0,
+          "median_range": [
+            0.01709995756243533,
+            0.018189965921119454
+          ],
+          "risk_adjusted_range": [
+            -0.0002001504131063314,
+            0.004538714150216006
+          ]
+        },
+        "shortfall": {
+          "plan": 0.0075,
+          "baseline": 0.0065
+        }
+      }
+    }
+  },
+  "runs": [
+    {
+      "seed": 2026,
+      "years": 42,
+      "strategy": {
+        "stock_share": "100",
+        "conversion": "fill24_every",
+        "private_credit": "15",
+        "direct_indexing": "off",
+        "goal_bonds": "off",
+        "k401": "pretax",
+        "goal_funding": "sell",
+        "reserve": "6"
+      },
+      "strategy_label": "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit",
+      "risk_aversion": 3.0,
+      "n_search": 400,
+      "n_eval": 2000,
+      "elapsed_seconds": 0.9144704849995833,
+      "baselines": {
+        "good_ria": {
+          "in_sample": {
+            "median": 0.01666851463912611,
+            "risk_adjusted": 0.000968570798827173,
+            "median_dollars": 2936498.513331388,
+            "risk_adjusted_dollars": 20197.10376543313,
+            "plan_median": 5866197.098574606,
+            "baseline_median": 2929698.5852432176,
+            "plan_ce": 506895.0205874384,
+            "baseline_ce": 486697.9168220053,
+            "years": 42.0,
+            "median_range": [
+              0.0,
+              0.0
+            ],
+            "risk_adjusted_range": [
+              0.0,
+              0.0
+            ]
+          },
+          "held_out": {
+            "median": 0.01610172093314466,
+            "risk_adjusted": 0.0013882648923559948,
+            "median_dollars": 2780932.650709242,
+            "risk_adjusted_dollars": 29986.873665512423,
+            "plan_median": 5689953.951967371,
+            "baseline_median": 2909021.3012581286,
+            "plan_ce": 529787.6867568902,
+            "baseline_ce": 499800.8130913777,
+            "years": 42.0,
+            "median_range": [
+              0.015778467006789264,
+              0.016865926320377766
+            ],
+            "risk_adjusted_range": [
+              -0.0008117099316118648,
+              0.003885858273158261
+            ]
+          },
+          "shortfall": {
+            "plan": 0.0075,
+            "baseline": 0.006
+          }
+        },
+        "typical_advisor": {
+          "in_sample": {
+            "median": 0.017978722687609805,
+            "risk_adjusted": 0.002156936343603588,
+            "median_dollars": 3090761.065653758,
+            "risk_adjusted_dollars": 43856.543110314116,
+            "plan_median": 5866197.098574606,
+            "baseline_median": 2775436.0329208476,
+            "plan_ce": 506895.0205874384,
+            "baseline_ce": 463038.4774771243,
+            "years": 42.0,
+            "median_range": [
+              0.0,
+              0.0
+            ],
+            "risk_adjusted_range": [
+              0.0,
+              0.0
+            ]
+          },
+          "held_out": {
+            "median": 0.017441350904691344,
+            "risk_adjusted": 0.0019530943302930037,
+            "median_dollars": 2937534.5392320636,
+            "risk_adjusted_dollars": 41684.722773300775,
+            "plan_median": 5689953.951967371,
+            "baseline_median": 2752419.412735307,
+            "plan_ce": 529787.6867568902,
+            "baseline_ce": 488102.9639835894,
+            "years": 42.0,
+            "median_range": [
+              0.01709995756243533,
+              0.018189965921119454
+            ],
+            "risk_adjusted_range": [
+              -0.0002001504131063314,
+              0.004538714150216006
+            ]
+          },
+          "shortfall": {
+            "plan": 0.0075,
+            "baseline": 0.0065
+          }
+        }
+      }
+    },
+    {
+      "seed": 2027,
+      "years": 42,
+      "strategy": {
+        "stock_share": "100",
+        "conversion": "fill24_every",
+        "private_credit": "15",
+        "direct_indexing": "on",
+        "goal_bonds": "off",
+        "k401": "pretax",
+        "goal_funding": "sell",
+        "reserve": "2"
+      },
+      "strategy_label": "2-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, direct indexing",
+      "risk_aversion": 3.0,
+      "n_search": 400,
+      "n_eval": 2000,
+      "elapsed_seconds": 0.7027886300002137,
+      "baselines": {
+        "good_ria": {
+          "in_sample": {
+            "median": 0.01852530608140368,
+            "risk_adjusted": 0.008840314433570917,
+            "median_dollars": 3426007.77903263,
+            "risk_adjusted_dollars": 264591.39018844115,
+            "plan_median": 6374873.144013197,
+            "baseline_median": 2948865.3649805672,
+            "plan_ce": 856194.3889774974,
+            "baseline_ce": 591602.9987890562,
+            "years": 42.0,
+            "median_range": [
+              0.0,
+              0.0
+            ],
+            "risk_adjusted_range": [
+              0.0,
+              0.0
+            ]
+          },
+          "held_out": {
+            "median": 0.017155080727978333,
+            "risk_adjusted": -0.004595282147082602,
+            "median_dollars": 2902325.9592091218,
+            "risk_adjusted_dollars": -93896.80686692591,
+            "plan_median": 5685086.308704518,
+            "baseline_median": 2782760.349495396,
+            "plan_ce": 439952.9336008441,
+            "baseline_ce": 533849.74046777,
+            "years": 42.0,
+            "median_range": [
+              0.016305953813253317,
+              0.01769991431740784
+            ],
+            "risk_adjusted_range": [
+              -0.006996656501806553,
+              -0.0024905368423949357
+            ]
+          },
+          "shortfall": {
+            "plan": 0.0105,
+            "baseline": 0.0055
+          }
+        },
+        "typical_advisor": {
+          "in_sample": {
+            "median": 0.019908671047916826,
+            "risk_adjusted": 0.009277219812403148,
+            "median_dollars": 3589408.7223421424,
+            "risk_adjusted_dollars": 275252.6295492704,
+            "plan_median": 6374873.144013197,
+            "baseline_median": 2785464.421671055,
+            "plan_ce": 856194.3889774974,
+            "baseline_ce": 580941.759428227,
+            "years": 42.0,
+            "median_range": [
+              0.0,
+              0.0
+            ],
+            "risk_adjusted_range": [
+              0.0,
+              0.0
+            ]
+          },
+          "held_out": {
+            "median": 0.018437810891680506,
+            "risk_adjusted": -0.003708076043564046,
+            "median_dollars": 3045794.291826137,
+            "risk_adjusted_dollars": -74290.31926326908,
+            "plan_median": 5685086.308704518,
+            "baseline_median": 2639292.016878381,
+            "plan_ce": 439952.9336008441,
+            "baseline_ce": 514243.2528641132,
+            "years": 42.0,
+            "median_range": [
+              0.017599247615651913,
+              0.018966368308755956
+            ],
+            "risk_adjusted_range": [
+              -0.00592532042150074,
+              -0.001595592924924094
+            ]
+          },
+          "shortfall": {
+            "plan": 0.0105,
+            "baseline": 0.006
+          }
+        }
+      }
+    },
+    {
+      "seed": 2028,
+      "years": 42,
+      "strategy": {
+        "stock_share": "100",
+        "conversion": "fill24_every",
+        "private_credit": "15",
+        "direct_indexing": "on",
+        "goal_bonds": "off",
+        "k401": "pretax",
+        "goal_funding": "borrow",
+        "reserve": "6"
+      },
+      "strategy_label": "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, direct indexing, borrow for goals",
+      "risk_aversion": 3.0,
+      "n_search": 400,
+      "n_eval": 2000,
+      "elapsed_seconds": 0.7485598959992785,
+      "baselines": {
+        "good_ria": {
+          "in_sample": {
+            "median": 0.015438514145308613,
+            "risk_adjusted": 0.002174758344036798,
+            "median_dollars": 2476252.4579796484,
+            "risk_adjusted_dollars": 40112.63718665042,
+            "plan_median": 5218320.454896419,
+            "baseline_median": 2742067.996916771,
+            "plan_ce": 459996.7487777061,
+            "baseline_ce": 419884.1115910557,
+            "years": 42.0,
+            "median_range": [
+              0.0,
+              0.0
+            ],
+            "risk_adjusted_range": [
+              0.0,
+              0.0
+            ]
+          },
+          "held_out": {
+            "median": 0.016617989354164697,
+            "risk_adjusted": 0.0025979029595124548,
+            "median_dollars": 2877724.8024878465,
+            "risk_adjusted_dollars": 63523.20775456948,
+            "plan_median": 5760795.09623735,
+            "baseline_median": 2883070.293749504,
+            "plan_ce": 615278.15689745,
+            "baseline_ce": 551754.9491428805,
+            "years": 42.0,
+            "median_range": [
+              0.016027285770862588,
+              0.01721097466064995
+            ],
+            "risk_adjusted_range": [
+              -1.8209309367095412e-05,
+              0.006227612318837572
+            ]
+          },
+          "shortfall": {
+            "plan": 0.005,
+            "baseline": 0.0045
+          }
+        },
+        "typical_advisor": {
+          "in_sample": {
+            "median": 0.016703447610753708,
+            "risk_adjusted": 0.002373976286072388,
+            "median_dollars": 2615942.9070685795,
+            "risk_adjusted_dollars": 43603.30915640958,
+            "plan_median": 5218320.454896419,
+            "baseline_median": 2602377.54782784,
+            "plan_ce": 459996.7487777061,
+            "baseline_ce": 416393.43962129654,
+            "years": 42.0,
+            "median_range": [
+              0.0,
+              0.0
+            ],
+            "risk_adjusted_range": [
+              0.0,
+              0.0
+            ]
+          },
+          "held_out": {
+            "median": 0.01790612530734026,
+            "risk_adjusted": 0.0035810679804360035,
+            "median_dollars": 3027050.974905057,
+            "risk_adjusted_dollars": 85775.45815192966,
+            "plan_median": 5760795.09623735,
+            "baseline_median": 2733744.1213322934,
+            "plan_ce": 615278.15689745,
+            "baseline_ce": 529502.6987455203,
+            "years": 42.0,
+            "median_range": [
+              0.01734180235308961,
+              0.018514644939650604
+            ],
+            "risk_adjusted_range": [
+              0.0009511907987566848,
+              0.0076436679760735655
+            ]
+          },
+          "shortfall": {
+            "plan": 0.005,
+            "baseline": 0.0045
+          }
+        }
+      }
+    },
+    {
+      "seed": 2029,
+      "years": 42,
+      "strategy": {
+        "stock_share": "100",
+        "conversion": "fill24_every",
+        "private_credit": "15",
+        "direct_indexing": "on",
+        "goal_bonds": "off",
+        "k401": "pretax",
+        "goal_funding": "sell",
+        "reserve": "6"
+      },
+      "strategy_label": "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, direct indexing",
+      "risk_aversion": 3.0,
+      "n_search": 400,
+      "n_eval": 2000,
+      "elapsed_seconds": 0.757041823999316,
+      "baselines": {
+        "good_ria": {
+          "in_sample": {
+            "median": 0.015397269956797466,
+            "risk_adjusted": 0.0015949756346402832,
+            "median_dollars": 2481459.4268141584,
+            "risk_adjusted_dollars": 41169.66620453296,
+            "plan_median": 5239199.05678515,
+            "baseline_median": 2757739.629970992,
+            "plan_ce": 635878.1881324967,
+            "baseline_ce": 594708.5219279637,
+            "years": 42.0,
+            "median_range": [
+              0.0,
+              0.0
+            ],
+            "risk_adjusted_range": [
+              0.0,
+              0.0
+            ]
+          },
+          "held_out": {
+            "median": 0.016643692392932286,
+            "risk_adjusted": 0.0010722088916241823,
+            "median_dollars": 2784515.0050367503,
+            "risk_adjusted_dollars": 21683.40604669857,
+            "plan_median": 5568281.741629532,
+            "baseline_median": 2783766.7365927813,
+            "plan_ce": 492683.90813598764,
+            "baseline_ce": 471000.5020892891,
+            "years": 42.0,
+            "median_range": [
+              0.016031876474793316,
+              0.017336402540908336
+            ],
+            "risk_adjusted_range": [
+              -0.0014992860107078787,
+              0.003827767499785673
+            ]
+          },
+          "shortfall": {
+            "plan": 0.0065,
+            "baseline": 0.007
+          }
+        },
+        "typical_advisor": {
+          "in_sample": {
+            "median": 0.0167238372758991,
+            "risk_adjusted": 0.0021035621368696855,
+            "median_dollars": 2628609.141111223,
+            "risk_adjusted_dollars": 53715.348667739425,
+            "plan_median": 5239199.05678515,
+            "baseline_median": 2610589.9156739274,
+            "plan_ce": 635878.1881324967,
+            "baseline_ce": 582162.8394647572,
+            "years": 42.0,
+            "median_range": [
+              0.0,
+              0.0
+            ],
+            "risk_adjusted_range": [
+              0.0,
+              0.0
+            ]
+          },
+          "held_out": {
+            "median": 0.017999068412950292,
+            "risk_adjusted": 0.001827350299531405,
+            "median_dollars": 2936006.9941435135,
+            "risk_adjusted_dollars": 36366.27361987351,
+            "plan_median": 5568281.741629532,
+            "baseline_median": 2632274.747486018,
+            "plan_ce": 492683.90813598764,
+            "baseline_ce": 456317.63451611414,
+            "years": 42.0,
+            "median_range": [
+              0.01736364533712509,
+              0.018670809060857562
+            ],
+            "risk_adjusted_range": [
+              -0.0007282112948225172,
+              0.004577436408610958
+            ]
+          },
+          "shortfall": {
+            "plan": 0.0065,
+            "baseline": 0.0075
+          }
+        }
+      }
+    },
+    {
+      "seed": 2030,
+      "years": 42,
+      "strategy": {
+        "stock_share": "100",
+        "conversion": "fill24_every",
+        "private_credit": "15",
+        "direct_indexing": "on",
+        "goal_bonds": "off",
+        "k401": "pretax",
+        "goal_funding": "borrow",
+        "reserve": "6"
+      },
+      "strategy_label": "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, direct indexing, borrow for goals",
+      "risk_aversion": 3.0,
+      "n_search": 400,
+      "n_eval": 2000,
+      "elapsed_seconds": 0.5882444190001479,
+      "baselines": {
+        "good_ria": {
+          "in_sample": {
+            "median": 0.0169939742736549,
+            "risk_adjusted": 0.003059347890180142,
+            "median_dollars": 2976616.776474463,
+            "risk_adjusted_dollars": 57469.191851692914,
+            "plan_median": 5868164.067040243,
+            "baseline_median": 2891547.2905657804,
+            "plan_ce": 477289.44243484625,
+            "baseline_ce": 419820.25058315333,
+            "years": 42.0,
+            "median_range": [
+              0.0,
+              0.0
+            ],
+            "risk_adjusted_range": [
+              0.0,
+              0.0
+            ]
+          },
+          "held_out": {
+            "median": 0.016686816524928316,
+            "risk_adjusted": 0.0013164677649113443,
+            "median_dollars": 2872869.222996586,
+            "risk_adjusted_dollars": 28838.17494800454,
+            "plan_median": 5734761.657269603,
+            "baseline_median": 2861892.4342730166,
+            "plan_ce": 536459.8800872999,
+            "baseline_ce": 507621.7051392953,
+            "years": 42.0,
+            "median_range": [
+              0.016213905180989176,
+              0.017247254406097957
+            ],
+            "risk_adjusted_range": [
+              -0.0006555589860221977,
+              0.0036696431441003885
+            ]
+          },
+          "shortfall": {
+            "plan": 0.006,
+            "baseline": 0.005
+          }
+        },
+        "typical_advisor": {
+          "in_sample": {
+            "median": 0.018464392416126296,
+            "risk_adjusted": 0.0032401223291562697,
+            "median_dollars": 3146863.220484178,
+            "risk_adjusted_dollars": 60634.68553890538,
+            "plan_median": 5868164.067040243,
+            "baseline_median": 2721300.846556065,
+            "plan_ce": 477289.44243484625,
+            "baseline_ce": 416654.75689594087,
+            "years": 42.0,
+            "median_range": [
+              0.0,
+              0.0
+            ],
+            "risk_adjusted_range": [
+              0.0,
+              0.0
+            ]
+          },
+          "held_out": {
+            "median": 0.018080686005155444,
+            "risk_adjusted": 0.0023124503430027588,
+            "median_dollars": 3032900.4575444837,
+            "risk_adjusted_dollars": 49597.747752280615,
+            "plan_median": 5734761.657269603,
+            "baseline_median": 2701861.199725119,
+            "plan_ce": 536459.8800872999,
+            "baseline_ce": 486862.13233501924,
+            "years": 42.0,
+            "median_range": [
+              0.017538486333403568,
+              0.01860606599795035
+            ],
+            "risk_adjusted_range": [
+              0.00030635615121223927,
+              0.004566491564742314
+            ]
+          },
+          "shortfall": {
+            "plan": 0.006,
+            "baseline": 0.006
+          }
+        }
+      }
+    }
+  ],
+  "mean": {
+    "good_ria": {
+      "in_sample": {
+        "median": 0.016604715819258153,
+        "risk_adjusted": 0.0033275934202510625
+      },
+      "held_out": {
+        "median": 0.01664105998662966,
+        "risk_adjusted": 0.0003559124722642748
+      },
+      "shortfall": {
+        "plan": 0.0071,
+        "baseline": 0.0056
+      }
+    },
+    "typical_advisor": {
+      "in_sample": {
+        "median": 0.017955814207661146,
+        "risk_adjusted": 0.003830363381621016
+      },
+      "held_out": {
+        "median": 0.017973008304363568,
+        "risk_adjusted": 0.001193177381939825
+      },
+      "shortfall": {
+        "plan": 0.0071,
+        "baseline": 0.0060999999999999995
+      }
+    }
+  },
+  "choices_by_seed": [
+    [
+      2026,
+      "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit"
+    ],
+    [
+      2027,
+      "2-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, direct indexing"
+    ],
+    [
+      2028,
+      "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, direct indexing, borrow for goals"
+    ],
+    [
+      2029,
+      "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, direct indexing"
+    ],
+    [
+      2030,
+      "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, direct indexing, borrow for goals"
+    ]
+  ],
+  "label": "A11: spending reserve, equity-first planning style (the default)",
+  "git": "5b2125f"
+}

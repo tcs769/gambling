@@ -4,9 +4,11 @@ Drop model files in `backend/models/` (or the directory named by `DONABACH_MODEL
 
     recommender.pkl   a pickled object with  recommend(household) -> Recommendation
     forecaster.pkl    a pickled object with  forecast(household, years) -> IncomeForecast
+    policy.pkl        a pickled object with  propose(state, max_actions) -> ActionProposal
+    value.pkl         a pickled object with  value(state, actions) -> ValueEstimate
 
-(`Recommendation` and `IncomeForecast` are in `app.ml.interfaces`; a plain dict or any object
-with the same fields is accepted and validated against them.) The class of the pickled object
+(The result types are in `app.ml.interfaces`; a plain dict or any object with the same fields is
+accepted and validated against them. The last two serve the year-by-year planner's search.) The class of the pickled object
 must be importable when the server starts. Pickle files can run arbitrary code when loaded, so
 only drop in files you trust.
 
@@ -23,15 +25,22 @@ import pickle
 import threading
 from dataclasses import dataclass
 from pathlib import Path
+from collections.abc import Sequence
 from typing import Any, Literal
 
 from pydantic import BaseModel, ValidationError
 
 from app.ml.interfaces import (
+    ActionChoice,
+    ActionProposal,
+    DecisionState,
     IncomeForecast,
     IncomeForecaster,
+    PolicyModel,
     Recommendation,
     StrategyRecommender,
+    ValueEstimate,
+    ValueModel,
 )
 from app.schemas import Household
 
@@ -39,13 +48,23 @@ MODELS_DIR_ENV = "DONABACH_MODELS_DIR"
 DEFAULT_MODELS_DIR = Path(__file__).resolve().parents[2] / "models"
 RECOMMENDER_FILE = "recommender.pkl"
 FORECASTER_FILE = "forecaster.pkl"
+POLICY_FILE = "policy.pkl"
+VALUE_FILE = "value.pkl"
+
+ModelName = Literal["recommender", "forecaster", "policy", "value"]
+MODEL_FILES: dict[str, str] = {
+    "recommender": RECOMMENDER_FILE,
+    "forecaster": FORECASTER_FILE,
+    "policy": POLICY_FILE,
+    "value": VALUE_FILE,
+}
 
 
 class NotConnected(BaseModel):
     """What the app shows instead of a prediction when a model is unavailable."""
 
     connected: Literal[False] = False
-    model: Literal["recommender", "forecaster"]
+    model: ModelName
     reason: str
     expected_path: str
 
@@ -93,6 +112,28 @@ class _ValidatedForecaster:
         return result
 
 
+class _ValidatedPolicy:
+    def __init__(self, model: PolicyModel):
+        self._model = model
+
+    def propose(self, state: DecisionState, max_actions: int) -> ActionProposal:
+        result = _coerce(ActionProposal, self._model.propose(state, max_actions), "The policy model")
+        if len(result.actions) > max_actions:
+            raise ModelContractError(f"The policy model proposed {len(result.actions)} actions but at most {max_actions} were asked for")
+        return result
+
+
+class _ValidatedValue:
+    def __init__(self, model: ValueModel):
+        self._model = model
+
+    def value(self, state: DecisionState, actions: Sequence[ActionChoice]) -> ValueEstimate:
+        result = _coerce(ValueEstimate, self._model.value(state, actions), "The value model")
+        if len(result.values) != len(actions):
+            raise ModelContractError(f"The value model returned {len(result.values)} values for {len(actions)} actions")
+        return result
+
+
 @dataclass
 class _Cached:
     mtime_ns: int
@@ -104,7 +145,7 @@ _cache: dict[Path, _Cached] = {}
 _lock = threading.Lock()
 
 
-def _load(path: Path, model: Literal["recommender", "forecaster"], method: str, wrap: type) -> Any:
+def _load(path: Path, model: ModelName, method: str, wrap: type) -> Any:
     if not path.is_file():
         return NotConnected(model=model, reason=f"No model file at {path}", expected_path=str(path))
     stat = path.stat()
@@ -144,7 +185,17 @@ def load_forecaster(directory: Path | None = None) -> IncomeForecaster | NotConn
     return _load(path, "forecaster", "forecast", _ValidatedForecaster)
 
 
-def not_connected(model: Literal["recommender", "forecaster"], reason: str) -> NotConnected:
+def load_policy_model(directory: Path | None = None) -> PolicyModel | NotConnected:
+    path = (directory or models_dir()) / POLICY_FILE
+    return _load(path, "policy", "propose", _ValidatedPolicy)
+
+
+def load_value_model(directory: Path | None = None) -> ValueModel | NotConnected:
+    path = (directory or models_dir()) / VALUE_FILE
+    return _load(path, "value", "value", _ValidatedValue)
+
+
+def not_connected(model: ModelName, reason: str) -> NotConnected:
     """A NotConnected for a model that is installed but failed at call time."""
-    path = models_dir() / (RECOMMENDER_FILE if model == "recommender" else FORECASTER_FILE)
+    path = models_dir() / MODEL_FILES[model]
     return NotConnected(model=model, reason=reason, expected_path=str(path))

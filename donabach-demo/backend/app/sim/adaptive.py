@@ -63,6 +63,9 @@ from app.sim.simulate import (
     S_PE,
     S_PP,
     S_UNFUNDED,
+    SP_GLIDE_DROP,
+    SP_GLIDE_START,
+    TV_AGE,
     TV_AGED,
     TV_DEPS,
     TV_GOAL,
@@ -71,6 +74,7 @@ from app.sim.simulate import (
     Policy,
     SimInputs,
     _run_years,
+    _stock_share,
 )
 from app.tax import params_2026 as P
 from app.tax.engine import pretax_withdrawal_rate, tax_core
@@ -91,8 +95,10 @@ PC_GRID = np.array([0.0, 0.05, 0.10, 0.15])
 MAX_CANDIDATES = 48
 
 # Settings vector.
-CFG_K, CFG_ZMIN, CFG_GAMMA, CFG_FLOOR, CFG_PASSES, CFG_DIMS = range(6)
-NCFG = 6
+CFG_K, CFG_ZMIN, CFG_GAMMA, CFG_FLOOR, CFG_PASSES, CFG_DIMS, CFG_CONFIRM_K, CFG_CONFIRM_Z, CFG_APPLY, CFG_TILT = range(10)
+NCFG = 10
+MAX_MOVES = 16  # decisions the search can change in one year (two passes over six dimensions, with room to spare)
+NEXTRA = 4  # per decision: moves proposed, moves confirmed, certainty equivalent of the final action and of the continuation on the fresh futures
 
 
 # --------------------------------------------------------------------------------------------
@@ -128,21 +134,46 @@ def _decision_stream(seed, path, year):
     return _mix64(a ^ (np.uint64(year) * np.uint64(_M2) + np.uint64(7)))
 
 
+@jit
+def _confirmation_stream(stream):
+    """The stream of the fresh futures a proposed change is confirmed on: independent of the one it was proposed on."""
+    return _mix64(stream ^ np.uint64(0xC2B2AE3D27D4EB4F))
+
+
+
 # --------------------------------------------------------------------------------------------
 # The futures a decision is scored on
 # --------------------------------------------------------------------------------------------
 
 
 @jit
+def _mixture_weight(total_shock, n_future, tilt):
+    """Importance weight of a rollout whose equity shocks (standard-normal units) summed to `total_shock` over
+    `n_future` years, when half the rollouts come from the market and half from the market shifted down by
+    `tilt` a year: market density / (0.5 market + 0.5 shifted) = 1 / (0.5 + 0.5 L), L = shifted / market."""
+    log_ratio = -tilt * total_shock - 0.5 * n_future * tilt * tilt
+    return 1.0 / (0.5 + 0.5 * np.exp(min(log_ratio, 700.0)))
+
+
+@jit
 def _make_futures(
     stream, t, k_roll, tv, mk_means, mk_sds, mk_chol, inc_base, inc_growth, inc_working, n_earn, lp0,
-    rets_p, wages_p, k401_p, wt_p, fut_rets, fut_wages, fut_k, fut_wt,
+    rets_p, wages_p, k401_p, wt_p, fut_rets, fut_wages, fut_k, fut_wt, fut_w, tilt,
 ):
     """Fill the rollout arrays for decision year `t`: index t holds the real year (already seen), every later
     year is a fresh draw. Rollouts come in antithetic pairs (the second mirrors the first's normals), so the
     average of the rollouts' returns is exactly the expected return: no sampling error in the first moment.
+
+    With `tilt` > 0 every other pair is drawn from a proposal whose equity shocks are shifted down by `tilt`
+    standard deviations a year, and each rollout carries an importance weight `fut_w` (the likelihood ratio of
+    the market against the 50/50 mixture of market and proposal, so the weights stay between 0 and 2). The
+    weighted average of any outcome is still an unbiased estimate under the market's own distribution, but the
+    bad stretches that decide a certainty equivalent (it is dominated by the few futures in which money runs
+    out) are in the sample about as often as the good ones instead of once in several hundred rollouts.
     """
     n_years = tv.shape[0]
+    for k in range(k_roll):
+        fut_w[k] = 1.0
     for k in range(k_roll):
         fut_rets[k, t, :] = rets_p[t, :]
         fut_wages[k, t] = wages_p[t]
@@ -157,6 +188,9 @@ def _make_futures(
         b = a + 1
         lp_a[0], lp_a[1] = lp0[0], lp0[1]
         lp_b[0], lp_b[1] = lp0[0], lp0[1]
+        shift = -tilt if (tilt > 0.0 and q % 2 == 1) else 0.0
+        sum_a = 0.0
+        sum_b = 0.0
         for m in range(1, n_years - t):
             s = t + m
             n0 = (q * n_years + m) * N_DRAWS
@@ -167,10 +201,14 @@ def _make_futures(
                 z[2 * j] = radius * np.cos(2.0 * np.pi * u2)
                 z[2 * j + 1] = radius * np.sin(2.0 * np.pi * u2)
             # returns: correlated through the Cholesky factor of the correlation matrix
+            za = z[0] + shift
+            zb = -z[0] + shift
+            sum_a += za
+            sum_b += zb
             for i in range(3):
-                corr = mk_chol[i, 0] * z[0] + mk_chol[i, 1] * z[1] + mk_chol[i, 2] * z[2]
-                fut_rets[a, s, i] = max(mk_means[i] + mk_sds[i] * corr, markets.MIN_RETURN)
-                fut_rets[b, s, i] = max(mk_means[i] - mk_sds[i] * corr, markets.MIN_RETURN)
+                rest = mk_chol[i, 1] * z[1] + mk_chol[i, 2] * z[2]
+                fut_rets[a, s, i] = max(mk_means[i] + mk_sds[i] * (mk_chol[i, 0] * za + rest), markets.MIN_RETURN)
+                fut_rets[b, s, i] = max(mk_means[i] + mk_sds[i] * (mk_chol[i, 0] * zb - rest), markets.MIN_RETURN)
             # wages: each earner's permanent level moves with growth and a shock, plus a transitory shock
             wage_a = 0.0
             wage_b = 0.0
@@ -198,6 +236,10 @@ def _make_futures(
                 else:
                     fut_wt[k, s, 0] = 0.0
                     fut_wt[k, s, 1] = 0.0
+        if tilt > 0.0:
+            n_future = n_years - t - 1
+            fut_w[a] = _mixture_weight(sum_a, n_future, tilt)
+            fut_w[b] = _mixture_weight(sum_b, n_future, tilt)
 
 
 # --------------------------------------------------------------------------------------------
@@ -222,10 +264,12 @@ def _certainty_equivalent(mean_utility, gamma):
 
 
 @jit
-def _score(st, ys, act_candidate, t, k_roll, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt, st_r, ys_r, act_r, scratch_pw, scratch_log, gamma, floor, util_out):
-    """Mean utility over the rollouts of applying `act_candidate` in year t, then the continuation policy to the horizon."""
+def _score(st, ys, act_candidate, t, k_roll, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt, fut_w, st_r, ys_r, act_r, scratch_pw, scratch_log, gamma, floor, util_out):
+    """Mean utility over the rollouts (importance-weighted, self-normalized) of applying `act_candidate` in year t,
+    then the continuation policy to the horizon."""
     n_years = tv.shape[0]
     total = 0.0
+    weights = 0.0
     for k in range(k_roll):
         st_r[:] = st
         ys_r[:] = ys
@@ -236,13 +280,17 @@ def _score(st, ys, act_candidate, t, k_roll, tv, hhc, row, gates1, fut_rets, fut
         )
         u = _utility(wealth, gamma, floor)
         util_out[k] = u
-        total += u
-    return total / k_roll
+        total += fut_w[k] * u
+        weights += fut_w[k]
+    return total / weights
 
 
 @jit
-def _dim_values(dim, st, tv, t, k_t, vals):
-    """The values worth trying for one decision this year (none when it cannot matter)."""
+def _dim_values(dim, st, tv, t, k_t, row, vals):
+    """The values worth trying for one decision this year (none when it cannot matter).
+
+    Stock-share candidates are the menu's shares *with the strategy's glide path applied*, exactly as a fixed
+    strategy holding that share would: late in life "60% stocks" means 60% less the glide, not a flat 60%."""
     if dim == A_CONV_TOP:
         if st[S_PE] + st[S_PB] + st[S_PP] > 1.0:
             for i in range(CONV_GRID.shape[0]):
@@ -273,7 +321,7 @@ def _dim_values(dim, st, tv, t, k_t, vals):
         return PC_GRID.shape[0]
     if dim == A_STOCK:
         for i in range(STOCK_GRID.shape[0]):
-            vals[i] = STOCK_GRID[i]
+            vals[i] = _stock_share(tv[t, TV_AGE], STOCK_GRID[i], row[SP_GLIDE_START], row[SP_GLIDE_DROP])
         return STOCK_GRID.shape[0]
     return 0
 
@@ -292,44 +340,54 @@ def _find(cand_act, n, trial):
 
 
 @jit
-def _significant(cand_k, a, b, k_roll, z_min):
-    """Is candidate `a` better than candidate `b` by at least `z_min` standard errors (paired over rollouts)?"""
+def _significant_vec(u_a, u_b, w, k_roll, z_min):
+    """Is `a` better than `b` by at least `z_min` standard errors? Paired over the first `k_roll` rollouts, with the
+    importance weights `w` (all 1 without a tilt; then this is the usual paired t statistic)."""
+    weights = 0.0
     mean = 0.0
     for k in range(k_roll):
-        mean += cand_k[a, k] - cand_k[b, k]
-    mean /= k_roll
+        weights += w[k]
+        mean += w[k] * (u_a[k] - u_b[k])
+    mean /= weights
     if mean <= 0.0:
         return False
     var = 0.0
     for k in range(k_roll):
-        d = cand_k[a, k] - cand_k[b, k] - mean
-        var += d * d
-    var /= max(1, k_roll - 1)
+        d = u_a[k] - u_b[k] - mean
+        var += w[k] * w[k] * d * d
+    var = var / (weights * weights) * k_roll / max(1, k_roll - 1)
     if var <= 0.0:
         return True
-    return mean / np.sqrt(var / k_roll) >= z_min
+    return mean / np.sqrt(var) >= z_min
+
+
+@jit
+def _significant(cand_k, a, b, w, k_roll, z_min):
+    return _significant_vec(cand_k[a], cand_k[b], w, k_roll, z_min)
 
 
 @jit
 def _coordinate_search(
-    st, ys, act0, t, k_t, k_roll, passes, z_min, dims_mask, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt,
-    st_r, ys_r, act_r, scratch_pw, scratch_log, gamma, floor, cand_act, cand_u, cand_k, trial, vals,
+    st, ys, act0, t, k_t, k_roll, passes, z_min, dims_mask, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt, fut_w,
+    st_r, ys_r, act_r, scratch_pw, scratch_log, gamma, floor, cand_act, cand_u, cand_k, trial, vals, mv_dim, mv_val,
 ):
-    """Coordinate search from the continuation action. Returns (number of candidates scored, index of the winner)."""
+    """Coordinate search from the continuation action. Returns (candidates scored, index of the winner, changes made).
+    The changes, in the order they were made, are left in `mv_dim` / `mv_val` (one decision, one new value each)."""
     cand_act[0, :] = act0
     cand_u[0] = _score(
-        st, ys, cand_act[0], t, k_roll, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt, st_r, ys_r, act_r,
+        st, ys, cand_act[0], t, k_roll, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt, fut_w, st_r, ys_r, act_r,
         scratch_pw, scratch_log, gamma, floor, cand_k[0],
     )
     n = 1
     best = 0
+    n_moves = 0
     for _ in range(passes):
         improved = False
         for di in range(ND):
             if (dims_mask >> di) & 1 == 0:
                 continue  # this decision is not the planner's to make in this run
             dim = DIMS[di]
-            nv = _dim_values(dim, st, tv, t, k_t, vals)
+            nv = _dim_values(dim, st, tv, t, k_t, row, vals)
             best_here = -1
             for vi in range(nv):
                 value = vals[vi]
@@ -339,23 +397,65 @@ def _coordinate_search(
                 trial[dim] = value
                 idx = _find(cand_act, n, trial)
                 if idx < 0:
-                    if n >= MAX_CANDIDATES:
+                    if n >= MAX_CANDIDATES - 1:  # one slot stays free for the action finally taken
                         continue
                     idx = n
                     cand_act[idx, :] = trial
                     cand_u[idx] = _score(
-                        st, ys, cand_act[idx], t, k_roll, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt,
+                        st, ys, cand_act[idx], t, k_roll, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt, fut_w,
                         st_r, ys_r, act_r, scratch_pw, scratch_log, gamma, floor, cand_k[idx],
                     )
                     n += 1
                 if best_here < 0 or cand_u[idx] > cand_u[best_here]:
                     best_here = idx
-            if best_here >= 0 and cand_u[best_here] > cand_u[best] and _significant(cand_k, best_here, best, k_roll, z_min):
+            if best_here >= 0 and cand_u[best_here] > cand_u[best] and _significant(cand_k, best_here, best, fut_w, k_roll, z_min):
+                if n_moves < MAX_MOVES:
+                    mv_dim[n_moves] = di
+                    mv_val[n_moves] = cand_act[best_here, dim]
+                    n_moves += 1
                 best = best_here
                 improved = True
         if not improved:
             break
-    return n, best
+    return n, best, n_moves
+
+
+@jit
+def _confirm_moves(
+    st, ys, act0, t, k2, z_c, mv_dim, mv_val, n_moves, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt, fut_w,
+    st_r, ys_r, act_r, scratch_pw, scratch_log, gamma, floor, picked, trial, u_inc, u_try, means,
+):
+    """Re-test the changes the search proposed on FRESH futures, which the search never saw.
+
+    The search picks the best of several dozen candidates on one sample, so the winner's advantage is partly luck
+    (the optimizer's curse). Here each proposed change is applied to the action confirmed so far and kept only if
+    it beats it by `z_c` standard errors on futures drawn independently of the ones it was chosen on: one test per
+    change, no selection among candidates, so nothing is flattered. Returns the number of changes kept; `picked`
+    holds the final action, and `means` the mean utility of the continuation and of the final action on the fresh futures.
+    """
+    picked[:] = act0
+    mean_inc = _score(
+        st, ys, picked, t, k2, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt, fut_w, st_r, ys_r, act_r,
+        scratch_pw, scratch_log, gamma, floor, u_inc,
+    )
+    means[0] = mean_inc
+    kept = 0
+    for mi in range(n_moves):
+        trial[:] = picked
+        trial[DIMS[mv_dim[mi]]] = mv_val[mi]
+        if trial[DIMS[mv_dim[mi]]] == picked[DIMS[mv_dim[mi]]]:
+            continue
+        mean_try = _score(
+            st, ys, trial, t, k2, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt, fut_w, st_r, ys_r, act_r,
+            scratch_pw, scratch_log, gamma, floor, u_try,
+        )
+        if mean_try > mean_inc and _significant_vec(u_try, u_inc, fut_w, k2, z_c):
+            picked[:] = trial
+            u_inc[:k2] = u_try[:k2]
+            mean_inc = mean_try
+            kept += 1
+    means[1] = mean_inc
+    return kept
 
 
 # --------------------------------------------------------------------------------------------
@@ -366,25 +466,37 @@ def _coordinate_search(
 @jit
 def _adaptive_path(
     p, p_abs, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
-    inc_working, n_earn, cfg, seed, force, record, out, path_wealth, chosen, cont, ce_chosen, ce_cont, n_cand,
-    rec_act, rec_ce, log, do_log,
+    inc_working, n_earn, cfg, seed, force, record, out, path_wealth, chosen, cont, ce_chosen, ce_cont, n_cand, extra,
+    rec_act, rec_ce, rec_state, record_state, log, do_log,
 ):
     n_years = tv.shape[0]
     k_roll = int(cfg[CFG_K])
+    k2 = int(cfg[CFG_CONFIRM_K])
     passes = int(cfg[CFG_PASSES])
     z_min = cfg[CFG_ZMIN]
+    z_c = cfg[CFG_CONFIRM_Z]
     dims_mask = int(cfg[CFG_DIMS])
     gamma = cfg[CFG_GAMMA]
     floor = cfg[CFG_FLOOR]
+    tilt = cfg[CFG_TILT]
+    apply = cfg[CFG_APPLY] > 0.5
+    cap2 = max(k2, 2)
     st = init.copy()
     ys = np.zeros(NY)
     act0 = np.zeros(NACT)
     act = np.zeros(NACT)
+    picked = np.zeros(NACT)
     gates1 = np.ones((n_years, NGATE))
     fut_rets = np.zeros((k_roll, n_years, 3))
     fut_wages = np.zeros((k_roll, n_years))
     fut_k = np.zeros((k_roll, n_years))
     fut_wt = np.zeros((k_roll, n_years, 2))
+    fut_w = np.ones(k_roll)
+    fut2_w = np.ones(cap2)
+    fut2_rets = np.zeros((cap2, n_years, 3))
+    fut2_wages = np.zeros((cap2, n_years))
+    fut2_k = np.zeros((cap2, n_years))
+    fut2_wt = np.zeros((cap2, n_years, 2))
     st_r = np.zeros(NSTATE)
     ys_r = np.zeros(NY)
     act_r = np.zeros(NACT)
@@ -393,6 +505,11 @@ def _adaptive_path(
     cand_k = np.zeros((MAX_CANDIDATES, k_roll))
     trial = np.zeros(NACT)
     vals = np.zeros(8)
+    mv_dim = np.zeros(MAX_MOVES, dtype=np.int64)
+    mv_val = np.zeros(MAX_MOVES)
+    u_inc = np.zeros(cap2)
+    u_try = np.zeros(cap2)
+    means = np.zeros(2)
     scratch_pw = np.zeros(n_years)
     scratch_log = np.zeros((1, NLOG))
     lp0 = np.zeros(2)
@@ -401,29 +518,62 @@ def _adaptive_path(
     for t in range(n_years):
         _run_years(st, ys, act0, tv, hhc, row, gates1, rets[p], wages[p], k401[p], wt[p], t, t + 1, RUN_BEGIN, False, False, scratch_pw, False, scratch_log)
         act[:] = act0
+        picked[:] = act0
+        if record_state:
+            rec_state[p, t, :] = st
         if not force:
             lp0[0] = logperm[p, t, 0]
             lp0[1] = logperm[p, t, 1]
             stream = _decision_stream(seed, p_abs, t)
             _make_futures(
                 stream, t, k_roll, tv, mk_means, mk_sds, mk_chol, inc_base, inc_growth, inc_working, n_earn, lp0,
-                rets[p], wages[p], k401[p], wt[p], fut_rets, fut_wages, fut_k, fut_wt,
+                rets[p], wages[p], k401[p], wt[p], fut_rets, fut_wages, fut_k, fut_wt, fut_w, tilt,
             )
-            n, best = _coordinate_search(
-                st, ys, act0, t, k401[p, t], k_roll, passes, z_min, dims_mask, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt,
-                st_r, ys_r, act_r, scratch_pw, scratch_log, gamma, floor, cand_act, cand_u, cand_k, trial, vals,
+            n, best, n_moves = _coordinate_search(
+                st, ys, act0, t, k401[p, t], k_roll, passes, z_min, dims_mask, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt, fut_w,
+                st_r, ys_r, act_r, scratch_pw, scratch_log, gamma, floor, cand_act, cand_u, cand_k, trial, vals, mv_dim, mv_val,
             )
-            act[:] = cand_act[best]
+            picked[:] = cand_act[best]
+            kept = n_moves
+            fresh_chosen = cand_u[best]
+            fresh_cont = cand_u[0]
+            if k2 > 0 and n_moves > 0:
+                _make_futures(
+                    _confirmation_stream(stream), t, k2, tv, mk_means, mk_sds, mk_chol, inc_base, inc_growth, inc_working, n_earn, lp0,
+                    rets[p], wages[p], k401[p], wt[p], fut2_rets, fut2_wages, fut2_k, fut2_wt, fut2_w, tilt,
+                )
+                kept = _confirm_moves(
+                    st, ys, act0, t, k2, z_c, mv_dim, mv_val, n_moves, tv, hhc, row, gates1, fut2_rets, fut2_wages, fut2_k, fut2_wt, fut2_w,
+                    st_r, ys_r, act_r, scratch_pw, scratch_log, gamma, floor, picked, trial, u_inc, u_try, means,
+                )
+                fresh_cont = means[0]
+                fresh_chosen = means[1]
+                # the action finally taken may be one the search never scored (some of its changes were dropped)
+                best = _find(cand_act, n, picked)
+                if best < 0:
+                    best = n
+                    cand_act[best, :] = picked
+                    cand_u[best] = _score(
+                        st, ys, picked, t, k_roll, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt, fut_w, st_r, ys_r, act_r,
+                        scratch_pw, scratch_log, gamma, floor, cand_k[best],
+                    )
+                    n += 1
+            if apply:
+                act[:] = picked
             n_cand[p, t] = n
             ce_chosen[p, t] = _certainty_equivalent(cand_u[best], gamma)
             ce_cont[p, t] = _certainty_equivalent(cand_u[0], gamma)
+            extra[p, t, 0] = n_moves
+            extra[p, t, 1] = kept
+            extra[p, t, 2] = _certainty_equivalent(fresh_chosen, gamma)
+            extra[p, t, 3] = _certainty_equivalent(fresh_cont, gamma)
             if record:
                 for c in range(n):
                     for d in range(ND):
                         rec_act[p, t, c, d] = cand_act[c, DIMS[d]]
                     rec_ce[p, t, c] = _certainty_equivalent(cand_u[c], gamma)
         for d in range(ND):
-            chosen[p, t, d] = act[DIMS[d]]
+            chosen[p, t, d] = picked[DIMS[d]]
             cont[p, t, d] = act0[DIMS[d]]
         w, tax = _run_years(
             st, ys, act, tv, hhc, row, gates1, rets[p], wages[p], k401[p], wt[p], t, t + 1, RUN_REST, t == n_years - 1,
@@ -439,18 +589,92 @@ def _adaptive_path(
     out[p, 3] = st[S_UNFUNDED]
 
 
-@jit(parallel=True)
+@jit(parallel=True, nogil=True)
 def _adaptive_batch(
     p_offset, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
-    inc_working, n_earn, cfg, seed, force, record, out, path_wealth, chosen, cont, ce_chosen, ce_cont, n_cand,
-    rec_act, rec_ce, log, log_path,
+    inc_working, n_earn, cfg, seed, force, record, out, path_wealth, chosen, cont, ce_chosen, ce_cont, n_cand, extra,
+    rec_act, rec_ce, rec_state, record_state, log, log_path,
 ):
     n_paths = rets.shape[0]
     for p in prange(n_paths):
         _adaptive_path(
             p, p_offset + p, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base,
             inc_growth, inc_working, n_earn, cfg, seed, force, record, out, path_wealth, chosen, cont, ce_chosen,
-            ce_cont, n_cand, rec_act, rec_ce, log, p == log_path,
+            ce_cont, n_cand, extra, rec_act, rec_ce, rec_state, record_state, log, p == log_path,
+        )
+
+
+@jit(nogil=True)
+def _adaptive_batch_serial(
+    p_offset, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
+    inc_working, n_earn, cfg, seed, force, record, out, path_wealth, chosen, cont, ce_chosen, ce_cont, n_cand, extra,
+    rec_act, rec_ce, rec_state, record_state, log, log_path,
+):
+    """The same loop on the calling thread alone: for one or a few paths, where a parallel launch gains nothing.
+    It never touches numba's threading layer, so it needs no kernel lock and runs beside other requests' kernels."""
+    n_paths = rets.shape[0]
+    for p in range(n_paths):
+        _adaptive_path(
+            p, p_offset + p, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base,
+            inc_growth, inc_working, n_earn, cfg, seed, force, record, out, path_wealth, chosen, cont, ce_chosen,
+            ce_cont, n_cand, extra, rec_act, rec_ce, rec_state, record_state, log, p == log_path,
+        )
+
+
+@jit
+def _probe_path(
+    p, p_abs, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
+    inc_working, n_earn, gamma, floor, tilt, ref_seed, ref_k, cand_vals, n_cand, picked_vals, out_u,
+):
+    """Walk path `p` with the continuation policy (the planner's own decisions are not applied) and, in each year,
+    score the candidates the planner considered (and the action it took) on `ref_k` reference futures drawn from
+    a stream the planner never used. The result is an independent estimate of what each candidate was worth."""
+    n_years = tv.shape[0]
+    st = init.copy()
+    ys = np.zeros(NY)
+    act0 = np.zeros(NACT)
+    act = np.zeros(NACT)
+    gates1 = np.ones((n_years, NGATE))
+    fut_rets = np.zeros((ref_k, n_years, 3))
+    fut_wages = np.zeros((ref_k, n_years))
+    fut_k = np.zeros((ref_k, n_years))
+    fut_wt = np.zeros((ref_k, n_years, 2))
+    fut_w = np.ones(ref_k)
+    st_r = np.zeros(NSTATE)
+    ys_r = np.zeros(NY)
+    act_r = np.zeros(NACT)
+    util = np.zeros(ref_k)
+    scratch_pw = np.zeros(n_years)
+    scratch_log = np.zeros((1, NLOG))
+    lp0 = np.zeros(2)
+    for t in range(n_years):
+        _run_years(st, ys, act0, tv, hhc, row, gates1, rets[p], wages[p], k401[p], wt[p], t, t + 1, RUN_BEGIN, False, False, scratch_pw, False, scratch_log)
+        lp0[0] = logperm[p, t, 0]
+        lp0[1] = logperm[p, t, 1]
+        _make_futures(
+            _decision_stream(ref_seed, p_abs, t), t, ref_k, tv, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
+            inc_working, n_earn, lp0, rets[p], wages[p], k401[p], wt[p], fut_rets, fut_wages, fut_k, fut_wt, fut_w, tilt,
+        )
+        for c in range(n_cand[p, t] + 1):
+            act[:] = act0
+            for d in range(ND):
+                act[DIMS[d]] = cand_vals[p, t, c, d] if c < n_cand[p, t] else picked_vals[p, t, d]
+            out_u[p, t, c] = _score(
+                st, ys, act, t, ref_k, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt, fut_w, st_r, ys_r, act_r,
+                scratch_pw, scratch_log, gamma, floor, util,
+            )
+        _run_years(st, ys, act0, tv, hhc, row, gates1, rets[p], wages[p], k401[p], wt[p], t, t + 1, RUN_REST, False, False, scratch_pw, False, scratch_log)
+
+
+@jit(parallel=True, nogil=True)
+def _probe_batch(
+    p_offset, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
+    inc_working, n_earn, gamma, floor, tilt, ref_seed, ref_k, cand_vals, n_cand, picked_vals, out_u,
+):
+    for p in prange(rets.shape[0]):
+        _probe_path(
+            p, p_offset + p, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base,
+            inc_growth, inc_working, n_earn, gamma, floor, tilt, ref_seed, ref_k, cand_vals, n_cand, picked_vals, out_u,
         )
 
 
@@ -458,9 +682,13 @@ def _adaptive_batch(
 # Python layer
 # --------------------------------------------------------------------------------------------
 
+SERIAL_PATHS = 2  # runs of this many paths or fewer use the serial kernel
 DEFAULT_K = 32
 DEFAULT_Z_MIN = 1.0
 DEFAULT_PASSES = 2
+DEFAULT_CONFIRM_K = 64
+DEFAULT_CONFIRM_Z = 1.645
+DEFAULT_TILT = 0.25
 
 
 @dataclass(frozen=True)
@@ -472,10 +700,18 @@ class AdaptiveSettings:
     passes: int = DEFAULT_PASSES
     force_continuation: bool = False  # skip the search and take the continuation action every year (consistency test)
     dimensions: tuple[str, ...] = DIM_NAMES  # which decisions the planner may change (the rest follow the continuation)
+    confirm_k: int = DEFAULT_CONFIRM_K  # fresh futures each proposed change is re-tested on (0: no confirmation step)
+    confirm_z: float = DEFAULT_CONFIRM_Z  # standard errors a change must win by on the fresh futures
+    tilt: float = DEFAULT_TILT  # importance sampling: half the rollouts' equity shocks shifted down by this many SDs a year
+    shadow: bool = False  # search and record, but follow the continuation policy (to study decisions on a fixed path)
 
     @property
     def rollouts(self) -> int:
         return self.k + (self.k % 2)
+
+    @property
+    def confirm_rollouts(self) -> int:
+        return self.confirm_k + (self.confirm_k % 2)
 
     @property
     def dimension_mask(self) -> int:
@@ -502,6 +738,11 @@ class AdaptiveResult:
     elapsed_seconds: float
     settings: AdaptiveSettings
     rollout_seed: int
+    proposed: np.ndarray  # (paths, years) changes the search proposed
+    kept: np.ndarray  # (paths, years) changes kept (all of them without a confirmation step)
+    ce_fresh_chosen: np.ndarray  # (paths, years) CE of the final action on the fresh confirmation futures (else as `ce_chosen`)
+    ce_fresh_continuation: np.ndarray  # (paths, years) the same for the continuation action
+    states: np.ndarray | None = None  # (paths, years, NSTATE) the state each decision was taken in, when recorded
     log: dict[str, np.ndarray] | None = None  # the year log of path `detail_path`, if asked for
 
 
@@ -529,13 +770,15 @@ def run_adaptive(
     settings: AdaptiveSettings | None = None,
     record_candidates: bool = False,
     detail_path: int | None = None,
-    chunk: int = 25,
+    chunk: int = 12,
     on_progress=None,
+    record_states: bool = False,
 ) -> AdaptiveResult:
     """Run the adaptive planner on every path of `inputs`, continuing with `policy` (the best fixed strategy).
 
-    The work is done in chunks of `chunk` paths, releasing the kernel lock between them so other requests'
-    simulations can interleave; the result does not depend on the chunk size.
+    The work is done in chunks of `chunk` paths (about half a second each on four cores), at background priority: other
+    requests' simulations take the kernel lock between chunks, so a plan asked for while this runs is not stuck
+    behind it. The result does not depend on the chunk size.
     """
     settings = settings or AdaptiveSettings()
     if inputs.logperm is None or inputs.inc_base is None:
@@ -550,6 +793,10 @@ def run_adaptive(
     cfg[CFG_FLOOR] = settings.floor
     cfg[CFG_PASSES] = settings.passes
     cfg[CFG_DIMS] = settings.dimension_mask
+    cfg[CFG_CONFIRM_K] = settings.confirm_rollouts
+    cfg[CFG_CONFIRM_Z] = settings.confirm_z
+    cfg[CFG_APPLY] = 0.0 if settings.shadow else 1.0
+    cfg[CFG_TILT] = settings.tilt
     means, sds, chol = _market_arrays(inputs.market)
     seed = rollout_seed(inputs.seed)
 
@@ -560,12 +807,14 @@ def run_adaptive(
     ce_chosen = np.zeros((n_paths, n_years))
     ce_cont = np.zeros((n_paths, n_years))
     n_cand = np.zeros((n_paths, n_years), dtype=np.int64)
+    extra = np.zeros((n_paths, n_years, NEXTRA))
     if record_candidates:
         rec_act = np.zeros((n_paths, n_years, MAX_CANDIDATES, ND))
         rec_ce = np.zeros((n_paths, n_years, MAX_CANDIDATES))
     else:
         rec_act = np.zeros((1, 1, 1, 1))
         rec_ce = np.zeros((1, 1, 1))
+    rec_state = np.zeros((n_paths, n_years, NSTATE)) if record_states else np.zeros((1, 1, 1))
     log = np.zeros((n_years, NLOG)) if detail_path is not None else np.zeros((1, NLOG))
 
     for p0 in range(0, n_paths, chunk):
@@ -574,22 +823,27 @@ def run_adaptive(
         local_log_path = detail_path - p0 if detail_path is not None and p0 <= detail_path < p1 else -1
         part = dict(
             out=out[sl], path_wealth=path_wealth[sl], chosen=chosen[sl], cont=cont[sl], ce_chosen=ce_chosen[sl],
-            ce_cont=ce_cont[sl], n_cand=n_cand[sl],
+            ce_cont=ce_cont[sl], n_cand=n_cand[sl], extra=extra[sl],
         )
         if record_candidates:
             part["rec_act"], part["rec_ce"] = rec_act[sl], rec_ce[sl]
         else:
             part["rec_act"], part["rec_ce"] = rec_act, rec_ce
+        part["rec_state"] = rec_state[sl] if record_states else rec_state
         # basic slices of C-contiguous arrays are views: the kernel writes straight into the full arrays
-        with _KERNEL_LOCK:
-            _adaptive_batch(
-                p0, row, inputs.tv, inputs.init, inputs.hhc,
-                inputs.rets[sl], inputs.wages[sl], inputs.k401[sl], inputs.wage_tax[sl], inputs.logperm[sl],
-                means, sds, chol, inputs.inc_base, inputs.inc_growth, inputs.inc_working, int(inputs.n_earners),
-                cfg, seed, settings.force_continuation, record_candidates,
-                part["out"], part["path_wealth"], part["chosen"], part["cont"], part["ce_chosen"], part["ce_cont"],
-                part["n_cand"], part["rec_act"], part["rec_ce"], log, local_log_path,
-            )
+        args = (
+            p0, row, inputs.tv, inputs.init, inputs.hhc,
+            inputs.rets[sl], inputs.wages[sl], inputs.k401[sl], inputs.wage_tax[sl], inputs.logperm[sl],
+            means, sds, chol, inputs.inc_base, inputs.inc_growth, inputs.inc_working, int(inputs.n_earners),
+            cfg, seed, settings.force_continuation, record_candidates,
+            part["out"], part["path_wealth"], part["chosen"], part["cont"], part["ce_chosen"], part["ce_cont"],
+            part["n_cand"], part["extra"], part["rec_act"], part["rec_ce"], part["rec_state"], record_states, log, local_log_path,
+        )
+        if n_paths <= SERIAL_PATHS:
+            _adaptive_batch_serial(*args)  # one path (the plan path): no parallel launch, so no lock to queue for
+        else:
+            with _KERNEL_LOCK.background():
+                _adaptive_batch(*args)
         if on_progress is not None:
             on_progress(p1, n_paths)
 
@@ -609,8 +863,63 @@ def run_adaptive(
         elapsed_seconds=time.perf_counter() - started,
         settings=settings,
         rollout_seed=seed,
+        proposed=extra[:, :, 0].astype(np.int64),
+        kept=extra[:, :, 1].astype(np.int64),
+        ce_fresh_chosen=extra[:, :, 2].copy(),
+        ce_fresh_continuation=extra[:, :, 3].copy(),
+        states=rec_state if record_states else None,
         log=None if detail_path is None else {name: log[:, i].copy() for i, name in enumerate(sorted_log_names())},
     )
+
+
+def certainty_equivalent_of_utility(mean_utility: np.ndarray, risk_aversion: float) -> np.ndarray:
+    """Certainty-equivalent wealth from mean CRRA utility (the inverse of the utility the rollouts average)."""
+    if abs(risk_aversion - 1.0) < 1e-9:
+        return np.exp(mean_utility)
+    return ((1.0 - risk_aversion) * mean_utility) ** (1.0 / (1.0 - risk_aversion))
+
+
+def probe_candidates(
+    inputs: SimInputs,
+    policy: Policy,
+    result: AdaptiveResult,
+    reference_k: int = 2_048,
+    reference_stream: int = 1,
+    chunk: int = 25,
+    reference_tilt: float | None = None,
+) -> np.ndarray:
+    """What was each candidate the planner considered, and the action it took, really worth?
+
+    `result` must come from a run with `record_candidates=True`. Each path is walked with the continuation policy
+    (the planner's own choices are not applied, so the states are the same whatever the planner decided) and in
+    every year the recorded candidates and the chosen action are re-scored on `reference_k` futures drawn from a
+    stream the planner never used. Returns mean utility, shape (paths, years, MAX_CANDIDATES + 1): the candidates
+    in the order recorded, and the chosen action in the slot after the last of them. Because the reference
+    futures are independent of the ones the choice was made on, the differences between them are unbiased
+    measures of decision quality (no winner's curse).
+    """
+    if result.cand_actions is None:
+        raise ValueError("probe_candidates needs a result recorded with record_candidates=True")
+    settings = result.settings
+    row = np.ascontiguousarray(policy.row(inputs.current_age))
+    means, sds, chol = _market_arrays(inputs.market)
+    n_paths, n_years = inputs.n_paths, inputs.n_years
+    ref_seed = (rollout_seed(inputs.seed) + 1_000_003 * int(reference_stream)) & 0x7FFF_FFFF_FFFF_FFFF
+    out = np.zeros((n_paths, n_years, MAX_CANDIDATES + 1))
+    for p0 in range(0, n_paths, chunk):
+        p1 = min(n_paths, p0 + chunk)
+        sl = slice(p0, p1)
+        with _KERNEL_LOCK.background():
+            _probe_batch(
+                p0, row, inputs.tv, inputs.init, inputs.hhc,
+                inputs.rets[sl], inputs.wages[sl], inputs.k401[sl], inputs.wage_tax[sl], inputs.logperm[sl],
+                means, sds, chol, inputs.inc_base, inputs.inc_growth, inputs.inc_working, int(inputs.n_earners),
+                settings.risk_aversion, settings.floor,
+                settings.tilt if reference_tilt is None else reference_tilt, ref_seed, int(reference_k),
+                np.ascontiguousarray(result.cand_actions[sl]), np.ascontiguousarray(result.n_candidates[sl]),
+                np.ascontiguousarray(result.chosen[sl]), out[sl],
+            )
+    return out
 
 
 def sorted_log_names() -> list[str]:

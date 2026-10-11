@@ -62,8 +62,9 @@ def test_health_and_openapi():
 
 def test_models_status_reports_not_connected_without_files(models_dir):
     status = client.get("/models/status").json()
-    for model in ("recommender", "forecaster"):
+    for model in ("recommender", "forecaster", "policy", "value"):
         assert status[model]["connected"] is False and "No model file" in status[model]["reason"]
+        assert status[model]["model"] == model
 
 
 # --- Documents ------------------------------------------------------------------------------
@@ -532,3 +533,161 @@ def test_demo_mode_results_are_identical_across_runs(household_json):
     b = client.post("/plan", json={"household": household_json}).json()
     a["settings"].pop("elapsed_seconds"), b["settings"].pop("elapsed_seconds")
     assert a == b
+
+
+# --- The adaptive plan (spec part B) ------------------------------------------------------------
+
+SMALL = {"n_eval_paths": 60, "adaptive_rollouts": 8}
+
+
+def _adaptive(household_json, **extra):
+    from app.planner import adaptive_service
+
+    r = client.post("/plan", json={"household": household_json, **SMALL, **extra})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    if body["adaptive"] is not None:
+        return body, body["adaptive"]
+    job = adaptive_service.service.wait(body["adaptive_job"], timeout=300)
+    assert job.status == "done", job.error
+    return body, job.result.model_dump()
+
+
+def test_the_fixed_plan_returns_at_once_and_the_adaptive_plan_follows_in_the_background(household_json):
+    from app.planner import adaptive_service
+
+    adaptive_service.service.clear()
+    start = time.perf_counter()
+    r = client.post("/plan", json={"household": household_json, **SMALL, "seed": 77, "demo_mode": False})
+    assert r.status_code == 200 and time.perf_counter() - start < 3.0
+    body = r.json()
+    assert body["adaptive"] is None and body["adaptive_job"]  # not ready yet, but a job is computing it
+    job = client.get(f"/plan/adaptive/{body['adaptive_job']}").json()
+    assert job["status"] in ("running", "done") and 0.0 <= job["progress"] <= 1.0
+    done = adaptive_service.service.wait(body["adaptive_job"], timeout=300)
+    assert done.status == "done" and done.progress == 1.0 and done.result is not None
+    assert client.get("/plan/adaptive/nonexistent").status_code == 404
+
+
+def test_a_plan_can_skip_the_adaptive_planner(household_json):
+    r = client.post("/plan", json={"household": household_json, "adaptive": False}).json()
+    assert r["adaptive"] is None and r["adaptive_job"] is None
+
+
+def test_the_adaptive_section_compares_four_strategies_on_the_same_futures(household_json):
+    body, a = _adaptive(household_json)
+    keys = [s["key"] for s in a["strategies"]]
+    assert keys == ["typical_advisor", "good_ria", "best_fixed", "adaptive"]
+    assert a["n_eval_paths"] == 60 and a["k"] == 8 and a["z_min"] == 1.0
+    by = {s["key"]: s for s in a["strategies"]}
+    for s in a["strategies"]:
+        assert s["fan"]["ages"][-1] == HORIZON_AGE and s["fan"]["p50"][-1] == pytest.approx(s["outcome"]["median"])
+        assert 0 <= s["shortfall_chance"] <= 1 and s["lifetime_taxes"] > 0
+        for adv in (s["advantage_vs_typical"], s["advantage_vs_ria"]):
+            assert adv["median_low"] <= adv["median"] <= adv["median_high"]
+    # the best fixed strategy here is the plan's own; the baselines are the same ones the Compare screen shows
+    plan_outcome = body["strategy"]["outcome"]
+    assert by["best_fixed"]["outcome"]["median"] != plan_outcome["median"] or a["n_eval_paths"] == body["settings"]["n_eval_paths"]
+    ria = next(b for b in body["baselines"] if b["key"] == "good_ria")
+    assert by["best_fixed"]["advantage_vs_ria"]["median"] == pytest.approx(ria["advantage"]["median"])
+    assert by["good_ria"]["outcome"]["median"] == pytest.approx(ria["outcome"]["median"])
+    assert by["typical_advisor"]["advantage_vs_typical"]["median"] == pytest.approx(0.0)
+    # the value of judgment over time is the adaptive plan against the best fixed strategy
+    v = a["value_of_judgment"]
+    assert v["median_dollars"] == pytest.approx(by["adaptive"]["outcome"]["median"] - by["best_fixed"]["outcome"]["median"])
+    assert v["risk_adjusted_dollars"] == pytest.approx(by["adaptive"]["outcome"]["score"] - by["best_fixed"]["outcome"]["score"])
+
+
+def test_the_adaptive_plan_table_marks_the_years_it_departs_from_the_fixed_strategy(household_json):
+    _, a = _adaptive(household_json)
+    rows, decisions = a["rows"], a["decisions"]
+    assert [r["age"] for r in rows] == list(range(38, HORIZON_AGE)) == [d["age"] for d in decisions]
+    # every year has its full tax return (for the year detail panel) and agrees with the table
+    details = a["year_details"]
+    assert [x["age"] for x in details] == [r["age"] for r in rows]
+    for row, detail in zip(rows, details, strict=True):
+        assert detail["wealth_at_year_end"] == pytest.approx(row["wealth"]) and detail["tax_lines"] and detail["tax_return"]["grand_total"] >= 0
+        assert detail["decisions"] and all(not x["valued"] for x in detail["decisions"])
+    for row, d in zip(rows, decisions, strict=True):
+        assert row["departs"] == d["departs"] == bool(d["departures"])
+        assert d["why"] and d["candidates_scored"] >= 1 and len(d["alternatives"]) <= 2
+        assert d["ce_chosen"] >= d["ce_fixed"] - 1e-6  # never worse than the fixed action in the rollouts
+        assert all(alt["ce_gap"] == pytest.approx(d["ce_chosen"] - alt["ce"]) for alt in d["alternatives"])
+        assert all(alt["differs_in"] for alt in d["alternatives"])
+    assert any(d["departs"] for d in decisions) and not all(d["departs"] for d in decisions)
+    assert 0 < a["departure_share"] < 1 and set(a["departure_by_decision"]) == {
+        "conversion", "realize_gains", "goal_funding", "k401", "private_credit", "stock_share"
+    }
+    # a year that departs says what it did and why, from computed numbers
+    departing = next(d for d in decisions if d["departs"])
+    assert "The rollouts scored this" in departing["why"] and departing["facts"]["market_return"] == pytest.approx(0.055)
+    steady = next(d for d in decisions if not d["departs"])
+    assert steady["why"].startswith("No change from the fixed strategy")
+
+
+def test_the_market_drop_preset_visibly_changes_the_plan_and_the_decisions_after_it(household_json):
+    """A 30% fall next year changes the recommended plan and the year-by-year plan; the planner sees the fall in its year."""
+    from app.planner import adaptive_service
+
+    adaptive_service.service.clear()
+    calm_body = client.post("/plan", json={"household": household_json}).json()
+    calm = calm_body["adaptive"] or adaptive_service.service.wait(calm_body["adaptive_job"], timeout=600).result.model_dump()
+    r = client.post("/plan/whatif", json={"household": household_json, "presets": ["market_drop_30"]})
+    assert r.status_code == 200, r.text
+    whatif = r.json()
+    body = whatif["plan"]
+    assert whatif["shock"]["year"] == 1 and whatif["shock"]["equity_return"] == pytest.approx(-0.30)
+    assert body["adaptive"] is None and body["adaptive_job"]  # the fast plan is here; the year-by-year plan is refining
+    job = adaptive_service.service.wait(body["adaptive_job"], timeout=600)
+    assert job.status == "done"
+    shocked = job.result.model_dump()
+    # the planner sees the fall in the year it happens, and the balances are lower from then on
+    year1 = shocked["decisions"][1]
+    assert year1["facts"]["market_return"] == pytest.approx(-0.30) and calm["decisions"][1]["facts"]["market_return"] == pytest.approx(0.055)
+    assert shocked["rows"][1]["wealth"] < 0.95 * calm["rows"][1]["wealth"]
+    # what the fixed search recommends changes: after the fall it holds the home purchase's money in bonds
+    assert calm_body["strategy"]["choices"] != body["strategy"]["choices"]
+    assert body["strategy"]["choices"]["goal_bonds"] == "on" and calm_body["strategy"]["choices"]["goal_bonds"] == "off"
+    # and the year-by-year plan changes with it: money moves into the goal bond bucket ahead of the home purchase
+    assert max(r["goal_bonds_balance"] for r in calm["rows"]) == 0.0 < max(r["goal_bonds_balance"] for r in shocked["rows"])
+    assert any(r["goal_bonds_flow"] > 0 for r in shocked["rows"][:3])
+    # how often the planner changes things is reported by year, for both plans (the fall itself does not move it much:
+    # with returns that do not mean-revert a lower balance does not change what is worth doing)
+    for section in (calm, shocked):
+        assert len(section["departure_by_year"]) == len(section["rows"]) and all(0 <= x <= 1 for x in section["departure_by_year"])
+        assert set(section["departure_by_year_and_decision"]) == set(section["departure_by_decision"])
+    assert [d["age"] for d in shocked["year_details"]] == [r["age"] for r in shocked["rows"]]
+
+
+def test_demo_mode_adaptive_results_are_identical_across_runs(household_json):
+    from app.planner import adaptive_service
+
+    adaptive_service.service.clear()
+    _, first = _adaptive(household_json)
+    adaptive_service.service.clear()
+    _, second = _adaptive(household_json)
+    for a in (first, second):
+        a.pop("elapsed_seconds"), a.pop("seconds_per_path"), a.pop("from_cache")
+    assert first == second  # same seed, same plan, to the last digit
+
+
+def test_a_repeat_request_is_served_from_the_cache(household_json):
+    from app.planner import adaptive_service
+
+    adaptive_service.service.clear()
+    _adaptive(household_json)
+    r = client.post("/plan", json={"household": household_json, **SMALL}).json()
+    assert r["adaptive"] is not None and r["adaptive"]["from_cache"] is True and r["adaptive_job"] is None
+    other = client.post("/plan", json={"household": household_json, **SMALL, "risk_aversion": 5.0}).json()
+    assert other["adaptive"] is None and other["adaptive_job"]  # different settings: not a hit
+
+
+def test_a_failing_adaptive_job_is_reported_not_swallowed():
+    from app.planner import adaptive_service
+
+    def broken(progress):
+        raise RuntimeError("kernel exploded")
+
+    _, job_id = adaptive_service.service.request("broken-key", broken)
+    done = adaptive_service.service.wait(job_id)
+    assert done.status == "error" and "kernel exploded" in done.error and done.result is None

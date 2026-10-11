@@ -33,6 +33,7 @@ Simplifications worth knowing (all applied identically to every policy):
 from __future__ import annotations
 
 import threading
+import time
 from dataclasses import dataclass, replace
 
 import numpy as np
@@ -981,7 +982,7 @@ def _simulate_path(s, p, strat, gates, tv, init, hhc, rets, wages, k401, wage_ta
     return wealth, taxes_paid, owed, st[S_UNFUNDED]
 
 
-@jit(parallel=True)
+@jit(parallel=True, nogil=True)
 def _simulate_batch(strat, gates, tv, init, hhc, rets, wages, k401, wage_tax, out, path_wealth, record, log, log_index):
     n_policies = strat.shape[0]
     n_paths = rets.shape[0]
@@ -996,7 +997,7 @@ def _simulate_batch(strat, gates, tv, init, hhc, rets, wages, k401, wage_tax, ou
         out[s, p, R_UNFUNDED] = res[3]
 
 
-@jit(parallel=True)
+@jit(parallel=True, nogil=True)
 def _wage_tax_table(wages, k401, tv, out):
     n_paths = wages.shape[0]
     n_years = wages.shape[1]
@@ -1016,7 +1017,61 @@ def _wage_tax_table(wages, k401, tv, out):
 
 # numba's `workqueue` threading layer (the fallback when OpenMP/TBB are unavailable) aborts the whole
 # process on concurrent parallel launches, so every parallel kernel call goes through this lock.
-_KERNEL_LOCK = threading.Lock()
+class _KernelLock:
+    """A mutex with two priorities. Foreground work (`with _KERNEL_LOCK:`, a request waiting for its plan) takes the
+    lock as soon as the kernel in flight finishes. Background work (`with _KERNEL_LOCK.background():`, the adaptive
+    planner's chunks of paths) also waits while foreground work is queued and for a short grace after it, so a request
+    that makes several kernel calls in a row is not interleaved with long background chunks."""
+
+    GRACE_SECONDS = 0.05
+
+    def __init__(self) -> None:
+        self._cond = threading.Condition()
+        self._busy = False
+        self._waiting = 0  # foreground callers waiting
+        self._last_foreground = -1e9
+
+    def _acquire(self, background: bool) -> None:
+        with self._cond:
+            if background:
+                while self._busy or self._waiting or time.monotonic() - self._last_foreground < self.GRACE_SECONDS:
+                    self._cond.wait(self.GRACE_SECONDS)  # also re-checks when the grace period has run out
+            else:
+                self._waiting += 1
+                while self._busy:
+                    self._cond.wait()
+                self._waiting -= 1
+            self._busy = True
+
+    def _release(self, background: bool) -> None:
+        with self._cond:
+            self._busy = False
+            if not background:
+                self._last_foreground = time.monotonic()
+            self._cond.notify_all()
+
+    def __enter__(self) -> None:
+        self._acquire(False)
+
+    def __exit__(self, *exc) -> None:
+        self._release(False)
+
+    def background(self) -> _BackgroundLock:
+        return _BackgroundLock(self)
+
+
+class _BackgroundLock:
+    def __init__(self, lock: _KernelLock) -> None:
+        self._lock = lock
+
+    def __enter__(self) -> None:
+        self._lock._acquire(True)
+
+    def __exit__(self, *exc) -> None:
+        self._lock._release(True)
+
+
+_KERNEL_LOCK = _KernelLock()
 
 
 @dataclass(frozen=True)

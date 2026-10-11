@@ -15,6 +15,17 @@ Income forecaster
     Per-year quantiles (p10, p25, p50, p75, p90) of household income in real 2026 dollars, for
     the next `years` years, plus `top_factors`.
 
+Policy model (year-by-year planner)
+    `propose(state, max_actions) -> ActionProposal`
+    The year-by-year planner picks each year's action by simulating rollouts (spec part B). The policy
+    model is trained on what that search chose and will propose the actions worth scoring, each with the
+    probability that the search would pick it, so the search can score a handful instead of dozens.
+
+Value model (year-by-year planner)
+    `value(state, actions) -> ValueEstimate`
+    Trained on the certainty-equivalent scores the rollouts gave every candidate action. It estimates
+    those scores from the state so the search can skip candidates that are clearly worse.
+
 Until a model file is dropped in (see `app.ml.adapters`) the app shows "Model not connected".
 Nothing here, or anywhere else in the app, invents a prediction.
 """
@@ -22,11 +33,12 @@ Nothing here, or anywhere else in the app, invents a prediction.
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from typing import Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.planner.strategies import CHOICE_OPTIONS, CHOICES
+from app.planner.strategies import CHOICE_OPTIONS, CHOICES, PRIVATE_CREDIT_SHARES, STOCK_SHARES
 from app.schemas import Household
 from app.tax.picture import children_under_17, current_tax_return
 
@@ -124,6 +136,157 @@ class StrategyRecommender(Protocol):
 @runtime_checkable
 class IncomeForecaster(Protocol):
     def forecast(self, household: Household, years: int) -> IncomeForecast: ...
+
+
+# --------------------------------------------------------------------------------------------
+# The year-by-year planner's helper models (spec B7)
+# --------------------------------------------------------------------------------------------
+
+CONVERSION_BRACKETS = (0, 12, 22, 24)  # 0: no Roth conversion; else fill that federal bracket this year
+
+# What the planner knows at a decision, beyond the household as it started (`household_features`): the
+# state of the plan after this year's returns, in real 2026 dollars. Built by `app.planner.decision_data`.
+STATE_FEATURE_NAMES = (
+    # when
+    "age",
+    "year_index",
+    "years_remaining",
+    "retired",
+    "years_to_retirement",
+    "aged_spouses",
+    "rmds_required",
+    # balances by account and asset class
+    "pretax_equity",
+    "pretax_bonds",
+    "pretax_private_credit",
+    "roth_equity",
+    "roth_bonds",
+    "roth_private_credit",
+    "brokerage_equity",
+    "brokerage_basis",
+    "brokerage_bonds_and_cash",
+    "brokerage_private_credit",
+    "goal_bucket",
+    # shape of the balance sheet
+    "total_wealth",
+    "pretax_share",
+    "roth_share",
+    "taxable_share",
+    "equity_share",
+    "private_credit_share",
+    "brokerage_unrealized_gain_share",
+    "loss_carryforward",
+    "loan",
+    "loan_to_brokerage",
+    "unfunded_so_far",
+    # income
+    "wages_this_year",
+    "wages_expected_this_year",
+    "wages_vs_expected",
+    "k401_contribution_room_used",
+    "social_security_this_year",
+    "spending_need_from_portfolio",
+    # goals
+    "goal_due_this_year",
+    "goal_amount_this_year",
+    "goal_amount_next_three_years",
+    "years_to_next_goal",
+    # recent markets
+    "equity_return_this_year",
+    "bond_return_this_year",
+    "equity_growth_last_three_years",
+    "equity_growth_since_start",
+)
+
+
+class ActionChoice(BaseModel):
+    """One year's action: the six decisions the year-by-year planner makes (spec B3)."""
+
+    stock_share: float  # one of STOCK_SHARES
+    conversion_bracket: int  # one of CONVERSION_BRACKETS
+    private_credit: float  # one of PRIVATE_CREDIT_SHARES
+    k401: Literal["pretax", "roth"]  # type of this year's 401(k) contribution
+    goal_funding: Literal["sell", "borrow"]  # how a goal due this year is paid (ignored when none is due)
+    realize_gains: bool  # realize gains up to the top of the 0% capital-gains bracket
+
+    @model_validator(mode="after")
+    def _on_the_menu(self) -> ActionChoice:
+        if not any(abs(self.stock_share - share) < 1e-9 for share in STOCK_SHARES):
+            raise ValueError(f"stock share {self.stock_share!r} is not one of {STOCK_SHARES}")
+        if self.conversion_bracket not in CONVERSION_BRACKETS:
+            raise ValueError(f"conversion bracket {self.conversion_bracket!r} is not one of {CONVERSION_BRACKETS}")
+        if not any(abs(self.private_credit - share) < 1e-9 for share in PRIVATE_CREDIT_SHARES):
+            raise ValueError(f"private credit share {self.private_credit!r} is not one of {PRIVATE_CREDIT_SHARES}")
+        return self
+
+    def key(self) -> tuple:
+        return (round(self.stock_share, 6), self.conversion_bracket, round(self.private_credit, 6), self.k401, self.goal_funding, self.realize_gains)
+
+
+class DecisionState(BaseModel):
+    """What a helper model is shown at one decision of one path."""
+
+    household: dict[str, float]  # `household_features` of the household as the plan started (FEATURE_NAMES)
+    state: dict[str, float]  # the plan's state at this decision (STATE_FEATURE_NAMES)
+    continuation: ActionChoice  # what the best fixed strategy would do this year
+
+    @model_validator(mode="after")
+    def _complete_and_finite(self) -> DecisionState:
+        for label, values, names in (("household", self.household, FEATURE_NAMES), ("state", self.state, STATE_FEATURE_NAMES)):
+            if set(values) != set(names):
+                missing, extra = sorted(set(names) - set(values)), sorted(set(values) - set(names))
+                raise ValueError(f"{label} features must be exactly the documented names (missing {missing}, unexpected {extra})")
+            bad = [name for name, value in values.items() if not math.isfinite(value)]
+            if bad:
+                raise ValueError(f"{label} features must be finite; got non-finite values for {bad}")
+        return self
+
+
+class ProposedAction(BaseModel):
+    action: ActionChoice
+    probability: float = Field(ge=0.0, le=1.0)  # how likely the model thinks the search is to take this action
+
+
+class ActionProposal(BaseModel):
+    """The actions the policy model thinks worth scoring, best first."""
+
+    actions: list[ProposedAction] = Field(min_length=1)
+    top_factors: list[Factor] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _ordered_and_distinct(self) -> ActionProposal:
+        probabilities = [a.probability for a in self.actions]
+        if any(a < b - 1e-9 for a, b in zip(probabilities, probabilities[1:], strict=False)):
+            raise ValueError("actions must be ordered from most to least probable")
+        if sum(probabilities) > 1.0 + 1e-6:
+            raise ValueError("the probabilities of distinct actions cannot sum to more than 1")
+        if len({a.action.key() for a in self.actions}) != len(self.actions):
+            raise ValueError("an action may be proposed only once")
+        return self
+
+
+class ValueEstimate(BaseModel):
+    """Estimated certainty-equivalent after-tax wealth at the horizon (real 2026 dollars) of each action asked about."""
+
+    values: list[float]
+    top_factors: list[Factor] = Field(default_factory=list)
+
+    @field_validator("values")
+    @classmethod
+    def _positive_and_finite(cls, values: list[float]) -> list[float]:
+        if not all(math.isfinite(v) and v > 0 for v in values):
+            raise ValueError("estimated values must be finite and positive dollars")
+        return values
+
+
+@runtime_checkable
+class PolicyModel(Protocol):
+    def propose(self, state: DecisionState, max_actions: int) -> ActionProposal: ...
+
+
+@runtime_checkable
+class ValueModel(Protocol):
+    def value(self, state: DecisionState, actions: Sequence[ActionChoice]) -> ValueEstimate: ...
 
 
 # --------------------------------------------------------------------------------------------
@@ -240,14 +403,23 @@ def feature_vector(household: Household) -> list[float]:
 
 
 __all__ = [
+    "CONVERSION_BRACKETS",
     "FEATURE_NAMES",
+    "STATE_FEATURE_NAMES",
+    "ActionChoice",
+    "ActionProposal",
     "ChoiceRecommendation",
+    "DecisionState",
     "Factor",
     "IncomeForecast",
     "IncomeForecaster",
     "OptionProbability",
+    "PolicyModel",
+    "ProposedAction",
     "Recommendation",
     "StrategyRecommender",
+    "ValueEstimate",
+    "ValueModel",
     "feature_vector",
     "household_features",
 ]

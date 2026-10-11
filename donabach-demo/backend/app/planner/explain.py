@@ -255,6 +255,11 @@ def year_detail(inputs_det: SimInputs, strategy: Strategy, year_index: int) -> Y
         for decision, wealth_without in zip(decisions, without, strict=True):
             decision.value = float(full.wealth[0, 0] - wealth_without)
 
+    return _finish_year(policy, log, t, decisions)
+
+
+def _finish_year(policy: Policy, log: dict[str, np.ndarray], t: int, decisions: list[Decision]) -> YearDetail:
+    """Add the unvalued entries (a forced sale, the stock share) and the year's full tax return."""
     if log["forced_sale"][t] > 0:
         decisions.append(
             Decision(
@@ -286,6 +291,17 @@ def year_detail(inputs_det: SimInputs, strategy: Strategy, year_index: int) -> Y
         tax_return=tax_return,
         wealth_at_year_end=float(log["wealth"][t]),
     )
+
+
+def year_detail_from_log(strategy: Strategy, policy: Policy, log: dict[str, np.ndarray], t: int) -> YearDetail:
+    """One year of a plan whose path is already simulated (the adaptive plan's): what was done and the tax return.
+
+    `strategy` and `policy` describe that year's choices. The decisions are not valued here (a value by removing a
+    decision needs a re-run of the whole plan; the adaptive planner's own scores are in its "Why this year")."""
+    decisions = _active_decisions(strategy, policy, log, t)
+    for decision in decisions:
+        decision.valued = False
+    return _finish_year(policy, log, t, decisions)
 
 
 # --------------------------------------------------------------------------------------------

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from app.docs.models import DocKind, ParsedDocument
 from app.ml.interfaces import Factor, IncomeForecast, Recommendation
-from app.planner.explain import AdvantageStep
+from app.planner.explain import AdvantageStep, YearDetail
 from app.schemas import Household, MarketShock
 from app.tax.engine import TaxLine, TaxReturn
 
@@ -102,7 +102,7 @@ class HouseholdProfile(BaseModel):
 
 
 class ModelStatus(BaseModel):
-    model: Literal["recommender", "forecaster"]
+    model: Literal["recommender", "forecaster", "policy", "value"]
     connected: bool
     reason: str | None = None
     expected_path: str | None = None
@@ -111,6 +111,8 @@ class ModelStatus(BaseModel):
 class ModelsStatus(BaseModel):
     recommender: ModelStatus
     forecaster: ModelStatus
+    policy: ModelStatus  # proposes candidate actions for the year-by-year planner's search
+    value: ModelStatus  # estimates candidate scores for the year-by-year planner's search
 
 
 class ForecastRequest(BaseModel):
@@ -144,6 +146,8 @@ class PlanRequest(BaseModel):
     seed: int | None = None
     shock: MarketShock | None = None
     risk_aversion: float = Field(3.0, ge=0.5, le=10.0, description="CRRA coefficient behind the score")
+    adaptive: bool = Field(True, description="Also compute the year-by-year adaptive plan (in the background)")
+    adaptive_rollouts: int = Field(32, ge=4, le=128, description="Rollouts (fresh futures) scored per candidate action")
 
 
 class OutcomeView(BaseModel):
@@ -191,6 +195,12 @@ class PlanRow(BaseModel):
     federal_tax: float
     illinois_tax: float
     wealth: float  # after-tax wealth at year end
+    required_distribution: float = 0.0  # RMD taken this year
+    private_credit_balance: float = 0.0  # held across all three accounts at year end
+    roth_401k_contribution: float = 0.0  # this year's 401(k) contribution that went to the Roth side
+    borrowed: float = 0.0  # new box-spread borrowing for a goal this year
+    loan_balance: float = 0.0  # box-spread loan outstanding at year end
+    gains_realized_tax_free: float = 0.0  # gains realized up to the 0% bracket (adaptive plans only)
 
 
 class RecommenderPanel(BaseModel):
@@ -270,6 +280,101 @@ class PlanSettings(BaseModel):
     market_shock: MarketShock | None = None
 
 
+# --- The adaptive planner (spec part B) ---------------------------------------------------------
+
+
+class ActionView(BaseModel):
+    """One year's decisions."""
+
+    stock_share: float
+    conversion_bracket: int | None  # fill the 12%, 22% or 24% bracket, or None
+    private_credit: float
+    k401: Literal["pretax", "roth"]
+    goal_funding: Literal["sell", "borrow"] | None  # None in a year with no goal due
+    realize_gains: bool
+    label: str
+
+
+class AlternativeView(BaseModel):
+    action: ActionView
+    ce: float  # certainty-equivalent after-tax wealth at the horizon, from the rollouts
+    ce_gap: float  # the chosen action's CE minus this one's (negative: scored higher but not convincingly)
+    differs_in: list[str]  # which decisions differ from the chosen action
+
+
+class YearDecisionView(BaseModel):
+    """Why this year: what the adaptive planner chose along the plan path, and what it weighed."""
+
+    year_index: int
+    age: int
+    chosen: ActionView
+    fixed: ActionView  # what the fixed (continuation) strategy does this year
+    departs: bool
+    departures: list[str]  # the decisions that differ from the fixed strategy
+    alternatives: list[AlternativeView]  # the next best alternatives to the chosen action
+    ce_chosen: float  # certainty-equivalent wealth at the horizon of the chosen action, from the search's rollouts
+    ce_fixed: float  # ... and of the fixed strategy's action
+    candidates_scored: int
+    changes_proposed: int  # changes the search proposed this year
+    changes_kept: int  # ... that held up when re-tested on fresh futures
+    ce_chosen_fresh: float  # the chosen action's certainty equivalent on the fresh re-test futures (= ce_chosen if none)
+    ce_fixed_fresh: float  # ... the fixed strategy's action on the same fresh futures
+    why: str  # a few computed sentences
+    facts: dict[str, float]  # the numbers behind the sentences
+
+
+class AdaptivePlanRow(PlanRow):
+    departs: bool = False
+    departures: list[str] = Field(default_factory=list)
+
+
+class StrategyOutcome(BaseModel):
+    """One of the four strategies, measured on the same evaluation futures."""
+
+    key: Literal["typical_advisor", "good_ria", "best_fixed", "adaptive"]
+    label: str
+    definition: str
+    outcome: OutcomeView
+    lifetime_taxes: float
+    shortfall_chance: float
+    fan: FanSeries
+    advantage_vs_typical: AdvantageView | None = None  # its advantage over each baseline
+    advantage_vs_ria: AdvantageView | None = None
+
+
+class AdaptiveSection(BaseModel):
+    k: int  # rollouts per candidate on the evaluation futures
+    n_eval_paths: int
+    z_min: float
+    confirm_k: int  # fresh futures a proposed change is re-tested on (0: no re-test)
+    confirm_z: float  # standard errors a change must win by on them
+    tilt: float  # how far (SDs a year) the importance-sampled half of the rollouts shifts equity returns down
+    plan_path_k: int  # rollouts per candidate along the plan path (the table and "Why this year"): more, since it is one path
+    plan_path_confirm_k: int
+    risk_aversion: float
+    elapsed_seconds: float  # for the whole adaptive computation
+    seconds_per_path: float
+    search: str  # how candidates are chosen, in words
+    rows: list[AdaptivePlanRow]  # the adaptive plan along the plan path (expected returns plus any shock)
+    year_details: list[YearDetail]  # what was done each year of that path, with its full tax return (decisions are not valued)
+    decisions: list[YearDecisionView]
+    strategies: list[StrategyOutcome]  # typical advisor, good RIA, best fixed, adaptive
+    value_of_judgment: AdvantageView  # adaptive over the best fixed strategy, on the same futures
+    departure_share: float  # share of decision-years (over every evaluation path) the planner leaves the fixed strategy
+    departure_by_decision: dict[str, float]
+    departure_by_year: list[float]  # for each year, the share of evaluation futures in which the planner changes anything
+    departure_by_year_and_decision: dict[str, list[float]]  # ... and for each decision separately
+    from_cache: bool = False
+
+
+class AdaptiveJob(BaseModel):
+    id: str
+    status: Literal["running", "done", "error"]
+    progress: float  # 0 to 1
+    error: str | None = None
+    result: AdaptiveSection | None = None
+
+
 class PlanResponse(BaseModel):
     planner_label: str
     strategy: StrategyView
@@ -284,6 +389,8 @@ class PlanResponse(BaseModel):
     advantage: list[AdvantageStep]
     searched: list[RankedRow]
     settings: PlanSettings
+    adaptive: AdaptiveSection | None = None  # present at once when it was precomputed (demo mode), else see adaptive_job
+    adaptive_job: str | None = None  # poll GET /plan/adaptive/{id} for the year-by-year plan
 
 
 class YearDetailRequest(BaseModel):
@@ -327,6 +434,8 @@ class WhatIfRequest(BaseModel):
     demo_mode: bool = True
     seed: int | None = None
     risk_aversion: float = Field(3.0, ge=0.5, le=10.0)
+    adaptive: bool = True
+    adaptive_rollouts: int = Field(32, ge=4, le=128)
     shock: MarketShock | None = None  # an existing shock to keep (from a previous what-if)
 
 

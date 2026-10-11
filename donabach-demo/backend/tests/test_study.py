@@ -98,3 +98,65 @@ def test_the_cap_only_ever_lowers_spending():
         capped = hh.cap_retirement_spending(raw)
         assert capped.goals.retirement_spending <= raw.goals.retirement_spending
         assert capped.accounts == raw.accounts and capped.people == raw.people
+
+
+# --- The adaptive planner in the study (spec B5) -----------------------------------------------------
+
+
+def test_the_household_row_carries_the_four_way_comparison_and_the_value_of_judgment():
+    from app.study.household_study import household_row
+
+    item = generate(seed=10, per_type=1)[0]
+    plain = household_row(item, 0, 60, 60, 3.0)
+    assert "judgment_median" not in plain  # without --adaptive-paths the study is exactly what it was
+    row = household_row(item, 0, 60, 60, 3.0, adaptive_paths=8)
+    for key in ("typical_advisor", "good_ria", "best_fixed", "adaptive"):
+        for name in ("median", "ce", "p10", "taxes", "shortfall"):
+            assert np.isfinite(row[f"fw_{key}_{name}"])
+    years = row["years"]
+    assert row["judgment_median"] == pytest.approx((row["fw_adaptive_median"] / row["fw_best_fixed_median"]) ** (1 / years) - 1)
+    assert row["judgment_risk_adjusted"] == pytest.approx((row["fw_adaptive_ce"] / row["fw_best_fixed_ce"]) ** (1 / years) - 1)
+    assert row["fw_adaptive_adv_median_vs_good_ria"] == pytest.approx((row["fw_adaptive_median"] / row["fw_good_ria_median"]) ** (1 / years) - 1)
+    assert 0.0 <= row["departure_share"] <= 1.0 and set(f"departure_{n}" for n in ("conversion", "private_credit", "stock_share")) <= set(row)
+    assert row["adaptive_paths"] == 8 and row["adaptive_seconds"] > 0
+    assert all(row[k] == plain[k] for k in plain if isinstance(plain[k], str))  # the fixed-planner columns are the same households
+
+
+def test_the_study_report_gains_the_adaptive_sections_and_can_resume_from_a_checkpoint(tmp_path):
+    from app.study.household_study import run, summarize
+
+    checkpoint = tmp_path / "partial.csv"
+    full = run(per_type=1, n_eval=50, adaptive_paths=6, checkpoint=checkpoint)
+    assert len(full) == 6 and full["judgment_median"].notna().all()
+    text = summarize(full, 50, 3.0)
+    assert "## The adaptive planner: four strategies, by type" in text and "## The value of judgment over time, by type" in text
+    assert text.count("| Adaptive planner |") == 6 and "**All 6 households**" in text
+    # a checkpoint holding the first three households is picked up and the rest are computed to the same answer
+    full.head(3).to_csv(checkpoint, index=False)
+    resumed = run(per_type=1, n_eval=50, adaptive_paths=6, checkpoint=checkpoint)
+    import pandas as pd
+
+    timing = ["adaptive_seconds"]  # wall-clock time is the one column that is not a function of the inputs
+    pd.testing.assert_frame_equal(full.drop(columns=timing), resumed.drop(columns=timing), check_exact=False, rtol=1e-9)
+    # a checkpoint from a run without the adaptive columns is not reused for an adaptive run
+    plain_checkpoint = tmp_path / "plain.csv"
+    run(per_type=1, n_eval=50).head(2).to_csv(plain_checkpoint, index=False)
+    fresh = run(per_type=1, n_eval=50, adaptive_paths=6, checkpoint=plain_checkpoint)
+    assert fresh["judgment_median"].notna().all() and len(fresh) == 6
+    assert "adaptive_paths" not in summarize(run(per_type=1, n_eval=50), 50, 3.0)
+
+
+def test_the_single_household_evaluation_is_consistent_and_writes_a_report():
+    from app.study import adaptive_evaluation as ev
+
+    result = ev.run(n_paths=40, rollouts=(), extra_seeds=(1,))
+    fw = result.main
+    assert set(fw.wealth) == {"typical_advisor", "good_ria", "best_fixed", "adaptive"} and all(len(w) == 40 for w in fw.wealth.values())
+    j = fw.judgment
+    assert j.plan_median == np.median(fw.wealth["adaptive"]) and j.baseline_median == np.median(fw.wealth["best_fixed"])
+    assert fw.advantage("best_fixed", "typical_advisor").median > fw.advantage("good_ria", "typical_advisor").median - 0.05  # sanity: ordering is plausible
+    assert set(result.decomposition) == {"tax timing only", "allocation only", "all six decisions"}
+    assert len(result.by_futures) == 2 and result.by_futures[0][1] == fw.judgment
+    text = ev.report(result)
+    for needle in ("## The four strategies", "## What judgment over time adds", "### Where it comes from", "### Other futures", "Adaptive planner"):
+        assert needle in text

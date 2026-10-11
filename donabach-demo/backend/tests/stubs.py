@@ -6,11 +6,15 @@ These are not models and are never installed in `backend/models/`.
 from __future__ import annotations
 
 from app.ml.interfaces import (
+    ActionChoice,
+    ActionProposal,
     ChoiceRecommendation,
     Factor,
     IncomeForecast,
     OptionProbability,
+    ProposedAction,
     Recommendation,
+    ValueEstimate,
 )
 from app.planner.strategies import CHOICE_OPTIONS, CHOICES
 
@@ -85,3 +89,51 @@ class WrongLengthForecaster:
 
 class NoMethod:
     pass
+
+
+class StubPolicyModel:
+    """Proposes the continuation action first, then the same action with one more year of private credit."""
+
+    def propose(self, state, max_actions):
+        base = state.continuation
+        other = base.model_copy(update={"private_credit": 0.15 if base.private_credit < 0.15 else 0.0})
+        actions = [ProposedAction(action=base, probability=0.7), ProposedAction(action=other, probability=0.2)]
+        return ActionProposal(actions=actions[:max_actions], top_factors=[Factor(feature="total_wealth", direction="up", weight=0.4)])
+
+
+class StubValueModel:
+    """Values every action at the household's wealth, a little more for a higher stock share."""
+
+    def value(self, state, actions):
+        wealth = max(state.state["total_wealth"], 1.0)
+        return ValueEstimate(values=[wealth * (1.0 + 0.1 * a.stock_share) for a in actions])
+
+
+class DictPolicyModel:
+    def propose(self, state, max_actions):
+        action = state.continuation.model_dump()
+        return {"actions": [{"action": action, "probability": 0.5}]}
+
+
+class TooManyActionsPolicyModel:
+    def propose(self, state, max_actions):
+        actions = []
+        for share in (0.5, 0.6, 0.7, 0.8):
+            actions.append(ProposedAction(action=state.continuation.model_copy(update={"stock_share": share}), probability=0.2))
+        return ActionProposal(actions=actions)
+
+
+class WrongLengthValueModel:
+    def value(self, state, actions):
+        return ValueEstimate(values=[1.0] * (len(actions) + 1))
+
+
+class NegativeValueModel:
+    def value(self, state, actions):
+        return {"values": [-5.0 for _ in actions]}
+
+
+def sample_action(**overrides) -> ActionChoice:
+    data = dict(stock_share=0.5, conversion_bracket=24, private_credit=0.15, k401="pretax", goal_funding="sell", realize_gains=False)
+    data.update(overrides)
+    return ActionChoice(**data)

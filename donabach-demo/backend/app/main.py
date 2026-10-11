@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse
 
 from app import builder, forecast, warmup, whatif
 from app.api_models import (
+    AdaptiveJob,
     DocumentList,
     ForecastRequest,
     ForecastResponse,
@@ -33,7 +34,7 @@ from app.api_models import (
 )
 from app.ml import adapters
 from app.ml.adapters import NotConnected
-from app.planner import explain, plan
+from app.planner import adaptive_service, explain, plan
 from app.planner.strategies import CHOICES, Strategy
 from app.sim.simulate import build_inputs
 from app.store import NotAPdf, store
@@ -41,8 +42,10 @@ from app.store import NotAPdf, store
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # Compile (or load from cache) the simulation kernels so the first request is fast.
+    # Compile (or load from cache) the simulation kernels so the first request is fast, then start
+    # computing the demo household's adaptive plan in the background so the Plan screen can show it at once.
     warmup.warm()
+    warmup.precompute_demo()
     yield
 
 
@@ -71,6 +74,8 @@ def models_status() -> ModelsStatus:
     return ModelsStatus(
         recommender=_status("recommender", adapters.load_recommender()),
         forecaster=_status("forecaster", adapters.load_forecaster()),
+        policy=_status("policy", adapters.load_policy_model()),
+        value=_status("value", adapters.load_value_model()),
     )
 
 
@@ -142,12 +147,42 @@ def income_forecast(request: ForecastRequest) -> ForecastResponse:
     return forecast.forecast(request.household, request.n_paths, seed)
 
 
+def _with_adaptive(
+    response: PlanResponse, household, adaptive: bool, rollouts: int, n_eval_paths: int, risk_aversion: float, shock
+) -> PlanResponse:
+    """Attach the adaptive plan: at once if it is already known, else the id of the job computing it."""
+    if not adaptive:
+        return response
+    section, job = adaptive_service.request_plan(
+        household,
+        Strategy.from_choices(response.strategy.choices),
+        response.settings.seed,
+        n_eval_paths,
+        shock,
+        risk_aversion,
+        rollouts,
+    )
+    return response.model_copy(update={"adaptive": section, "adaptive_job": job})
+
+
 @app.post("/plan", response_model=PlanResponse)
 def make_plan(request: PlanRequest) -> PlanResponse:
-    return plan.build_plan(
+    response = plan.build_plan(
         request.household, request.n_paths, request.demo_mode, request.seed, request.shock,
         request.n_eval_paths, request.risk_aversion,
     )
+    return _with_adaptive(
+        response, request.household, request.adaptive, request.adaptive_rollouts, request.n_eval_paths,
+        request.risk_aversion, request.shock,
+    )
+
+
+@app.get("/plan/adaptive/{job_id}", response_model=AdaptiveJob)
+def adaptive_job(job_id: str) -> AdaptiveJob:
+    job = adaptive_service.service.job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"No adaptive job with id {job_id}")
+    return job
 
 
 @app.post("/plan/year-detail", response_model=explain.YearDetail)
@@ -172,5 +207,8 @@ def plan_whatif(request: WhatIfRequest) -> WhatIfResponse:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     result = plan.build_plan(
         household, request.n_paths, request.demo_mode, request.seed, shock, request.n_eval_paths, request.risk_aversion
+    )
+    result = _with_adaptive(
+        result, household, request.adaptive, request.adaptive_rollouts, request.n_eval_paths, request.risk_aversion, shock
     )
     return WhatIfResponse(changes=changes, household=household, shock=shock, plan=result)

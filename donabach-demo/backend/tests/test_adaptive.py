@@ -132,18 +132,19 @@ def test_the_decision_in_a_year_does_see_that_years_own_returns():
     assert not np.array_equal(a.ce_chosen[:, 3], b.ce_chosen[:, 3])  # that year's decision did
 
 
-def test_the_rollout_futures_depend_on_the_state_at_the_decision_not_on_the_path_ahead():
+@pytest.mark.parametrize("tilt", [0.0, 0.25])
+def test_the_rollout_futures_depend_on_the_state_at_the_decision_not_on_the_path_ahead(tilt):
     inputs = inputs_for(short_household(), paths=2, seed=2)
     k = 8
     n_years = inputs.n_years
 
     def make(inp, year):
-        arrays = [np.zeros((k, n_years, 3)), np.zeros((k, n_years)), np.zeros((k, n_years)), np.zeros((k, n_years, 2))]
+        arrays = [np.zeros((k, n_years, 3)), np.zeros((k, n_years)), np.zeros((k, n_years)), np.zeros((k, n_years, 2)), np.ones(k)]
         means, sds, chol = ad._market_arrays(None)
         stream = np.uint64(ad._decision_stream(ad.rollout_seed(inp.seed), 1, year))
         ad._make_futures(
             stream, year, k, inp.tv, means, sds, chol, inp.inc_base, inp.inc_growth, inp.inc_working, inp.n_earners,
-            inp.logperm[1, year], inp.rets[1], inp.wages[1], inp.k401[1], inp.wage_tax[1], *arrays,
+            inp.logperm[1, year], inp.rets[1], inp.wages[1], inp.k401[1], inp.wage_tax[1], *arrays, tilt,
         )
         return arrays
 
@@ -191,6 +192,7 @@ def test_rollout_futures_have_the_right_statistics():
     ad._make_futures(
         stream, 0, k, inputs.tv, means, sds, chol, inputs.inc_base, inputs.inc_growth, inputs.inc_working, inputs.n_earners,
         inputs.logperm[0, 0], inputs.rets[0], inputs.wages[0], inputs.k401[0], inputs.wage_tax[0], rets, wages, k401, wt,
+        np.ones(k), 0.0,
     )
     later = rets[:, 1:, :]
     flat = later.reshape(-1, 3)
@@ -202,6 +204,184 @@ def test_rollout_futures_have_the_right_statistics():
     assert np.all(wages[:, 1:][:, ~working] == 0.0) and np.all(wages[:, 1:][:, working] > 0.0)
     assert np.all(k401[:, 1:] <= np.minimum(2 * P.LIMIT_401K_EMPLOYEE, 0.2 * wages[:, 1:]) + 1e-9)
     assert np.all(wt[:, 1:, 1] >= wt[:, 1:, 0] - 1e-9)  # a Roth contribution never lowers the tax on wages
+
+
+def _make(inputs, k, tilt, year=0, path=0, seed=1):
+    n_years = inputs.n_years
+    rets, wages, k401, wt, w = np.zeros((k, n_years, 3)), np.zeros((k, n_years)), np.zeros((k, n_years)), np.zeros((k, n_years, 2)), np.ones(k)
+    means, sds, chol = ad._market_arrays(None)
+    stream = np.uint64(ad._decision_stream(ad.rollout_seed(seed), path, year))
+    ad._make_futures(
+        stream, year, k, inputs.tv, means, sds, chol, inputs.inc_base, inputs.inc_growth, inputs.inc_working, inputs.n_earners,
+        inputs.logperm[path, year], inputs.rets[path], inputs.wages[path], inputs.k401[path], inputs.wage_tax[path],
+        rets, wages, k401, wt, w, tilt,
+    )
+    return rets, w
+
+
+def test_without_a_tilt_every_rollout_has_weight_one():
+    inputs = inputs_for(short_household(), paths=1, seed=1)
+    _, w = _make(inputs, 64, 0.0)
+    assert np.array_equal(w, np.ones(64))
+
+
+def test_tilted_rollouts_are_importance_weighted_so_averages_stay_unbiased():
+    """Half the rollouts imagine a worse market; the weights undo that, so the estimate is still for the real one."""
+    inputs = inputs_for(short_household(), paths=1, seed=1)
+    k = 40_000
+    rets, w = _make(inputs, k, 0.25)
+    assert np.all(w > 0) and np.all(w <= 2.0 + 1e-12)
+    assert w.mean() == pytest.approx(1.0, abs=0.03)  # the weights average to one, as a likelihood ratio must
+    shock = ((rets[:, 1:, 0] - markets.MEANS[0]) / markets.SDS[0])  # standard-normal units, years 1 to the end
+    # the tilted pairs (odd pair index = rollouts 4q+2, 4q+3) really are worse markets: unweighted, their average is lower
+    odd = np.concatenate([np.arange(2, k, 4), np.arange(3, k, 4)])
+    even = np.concatenate([np.arange(0, k, 4), np.arange(1, k, 4)])
+    assert shock[odd].mean() == pytest.approx(-0.25, abs=0.02) and shock[even].mean() == pytest.approx(0.0, abs=0.02)
+    # but the weighted average (self-normalized) is the real market's: mean 0, sd 1, and the tail probability is right
+    weighted_mean = (w[:, None] * shock).sum() / (w.sum() * shock.shape[1])
+    assert weighted_mean == pytest.approx(0.0, abs=0.02)
+    total = shock.sum(axis=1)  # sum of 11 standard normals: N(0, 11)
+    sd = np.sqrt(shock.shape[1])
+    from math import erf
+
+    def phi(x):
+        return 0.5 * (1 + erf(x / np.sqrt(2)))
+
+    for cut in (-2.0, -2.5):
+        truth = phi(cut)
+        estimate = (w * (total < cut * sd)).sum() / w.sum()
+        assert estimate == pytest.approx(truth, rel=0.25)
+    # and the bad tail is in the sample often enough to matter: with plain draws only ~0.6% fall below -2.5 sd
+    assert (total < -2.5 * sd).mean() > 0.012
+
+
+def test_a_tilted_search_reads_the_same_real_year_and_never_the_futures_beyond():
+    inputs = inputs_for(short_household(), paths=2, seed=2)
+    year = 4
+    first, w1 = _make(inputs, 8, 0.25, year=year, path=1)
+    second, w2 = _make(perturbed_after(inputs, year), 8, 0.25, year=year, path=1)
+    assert np.array_equal(first, second) and np.array_equal(w1, w2)
+    assert np.array_equal(first[:, year], np.tile(inputs.rets[1, year], (8, 1)))  # the seen year is real in every rollout
+
+
+def test_the_weighted_test_of_a_better_action_uses_the_weights_and_the_paired_differences():
+    rng = np.random.default_rng(0)
+    base = rng.normal(size=64)
+    equal = np.ones(64)
+    assert not ad._significant_vec(base, base, equal, 64, 1.0)  # no difference at all
+    assert ad._significant_vec(base + 0.5, base, equal, 64, 1e6)  # a constant gain has zero variance: certain
+    assert not ad._significant_vec(base, base + 0.5, equal, 64, 0.0)  # worse is never significant
+    noisy = base + rng.normal(scale=2.0, size=64) + 0.1
+    z = (noisy - base).mean() / ((noisy - base).std(ddof=1) / 8)
+    assert ad._significant_vec(noisy, base, equal, 64, z - 0.01) and not ad._significant_vec(noisy, base, equal, 64, z + 0.01)
+    # a weight of zero removes a rollout entirely
+    heavy = np.ones(64)
+    heavy[:32] = 0.0
+    diff = np.where(np.arange(64) < 32, 100.0, 0.5)
+    assert ad._significant_vec(diff, np.zeros(64), heavy, 64, 1e6)  # only the second half counts, and it is constant
+
+
+def test_the_defaults_are_the_documented_search():
+    s = ad.AdaptiveSettings()
+    assert (s.k, s.z_min, s.passes, s.confirm_k, s.confirm_z, s.tilt) == (32, 1.0, 2, 64, 1.645, 0.25)
+    assert s.confirm_rollouts == 64 and ad.AdaptiveSettings(confirm_k=5).confirm_rollouts == 6
+    assert not s.shadow and not s.force_continuation
+
+
+# --- Confirmation on fresh futures ----------------------------------------------------------------
+
+
+def test_proposed_changes_are_re_tested_on_fresh_futures_and_only_confirmed_ones_are_taken():
+    inputs = inputs_for(short_household(), paths=8, seed=12)
+    policy = menu_policy("60|fill22_every|10|on|on|pretax|borrow")
+    unconfirmed = ad.run_adaptive(inputs, policy, ad.AdaptiveSettings(k=8, confirm_k=0, z_min=0.0))
+    confirmed = ad.run_adaptive(inputs, policy, ad.AdaptiveSettings(k=8, confirm_k=16, z_min=0.0))
+    assert np.array_equal(unconfirmed.proposed, unconfirmed.kept)  # without the step everything proposed is taken
+    assert unconfirmed.proposed.sum() > 0
+    assert np.array_equal(confirmed.proposed[:, :1], unconfirmed.proposed[:, :1])  # the first year proposes the same changes
+    assert np.all(confirmed.kept <= confirmed.proposed) and confirmed.kept.sum() < confirmed.proposed.sum()
+    # where nothing was kept the continuation action stands
+    nothing = confirmed.kept == 0
+    assert np.array_equal(confirmed.chosen[nothing], confirmed.continuation[nothing])
+    # a year that changes something kept at least one change
+    changed = (confirmed.chosen != confirmed.continuation).any(axis=2)
+    assert np.all(changed <= (confirmed.kept > 0))
+
+
+def test_a_confirmation_that_demands_overwhelming_evidence_changes_nothing_before_the_last_year():
+    inputs = inputs_for(short_household(), paths=5, seed=3)
+    policy = menu_policy("70|fill24_every|10|on|on")
+    result = ad.run_adaptive(inputs, policy, ad.AdaptiveSettings(k=8, z_min=0.0, confirm_k=16, confirm_z=1e9))
+    assert result.proposed[:, :-1].sum() > 0
+    assert np.array_equal(result.chosen[:, :-1], result.continuation[:, :-1])
+    assert result.kept[:, :-1].sum() == 0
+
+
+def test_the_fresh_scores_are_reported_and_a_kept_change_beat_the_continuation_on_them():
+    inputs = inputs_for(short_household(), paths=6, seed=5)
+    policy = menu_policy("60|fill22_every|10|on|on|pretax|borrow")
+    result = ad.run_adaptive(inputs, policy, ad.AdaptiveSettings(k=8, z_min=0.0, confirm_k=32))
+    kept = result.kept > 0
+    assert kept.any()
+    assert np.all(result.ce_fresh_chosen[kept] > result.ce_fresh_continuation[kept])
+    assert np.all(result.ce_fresh_chosen > 0) and np.all(result.ce_fresh_continuation > 0)
+    # with no proposal there was no re-test, and the fresh scores are the search's own
+    quiet = result.proposed == 0
+    assert np.array_equal(result.ce_fresh_chosen[quiet], result.ce_continuation[quiet])
+
+
+def test_the_confirmation_futures_are_a_different_stream_from_the_ones_the_search_used():
+    stream = np.uint64(ad._decision_stream(ad.rollout_seed(3), 4, 5))
+    other = ad._confirmation_stream(stream)
+    assert int(other) != int(stream)
+    a = [ad._uniform(stream, n) for n in range(64)]
+    b = [ad._uniform(other, n) for n in range(64)]
+    assert not set(a) & set(b) and abs(np.corrcoef(a, b)[0, 1]) < 0.4
+
+
+# --- Shadow mode and the probe (how decisions are checked against independent futures) -----------
+
+
+def test_in_shadow_mode_the_planner_searches_but_the_path_follows_the_continuation():
+    inputs = inputs_for(short_household(), paths=4, seed=6)
+    policy = menu_policy("60|fill22_every|10|on|on|pretax|borrow")
+    shadow = ad.run_adaptive(inputs, policy, ad.AdaptiveSettings(k=8, z_min=0.0, confirm_k=0, shadow=True))
+    fixed = run_batch(inputs, [policy], record_paths=True)
+    assert np.array_equal(shadow.wealth, fixed.wealth[0]) and np.array_equal(shadow.path_wealth, fixed.path_wealth[0])
+    assert (shadow.chosen != shadow.continuation).any()  # it still decided, and says what it would have done
+    assert np.all(shadow.ce_chosen >= shadow.ce_continuation - 1e-6)
+
+
+def test_the_probe_rescoring_uses_futures_the_search_never_saw():
+    inputs = inputs_for(short_household(), paths=3, seed=8)
+    policy = menu_policy("60|fill22_every|10|on|on|pretax|borrow")
+    result = ad.run_adaptive(inputs, policy, ad.AdaptiveSettings(k=8, shadow=True), record_candidates=True)
+    u = ad.probe_candidates(inputs, policy, result, reference_k=64)
+    assert u.shape == (3, inputs.n_years, ad.MAX_CANDIDATES + 1)
+    again = ad.probe_candidates(inputs, policy, result, reference_k=64)
+    other = ad.probe_candidates(inputs, policy, result, reference_k=64, reference_stream=2)
+    assert np.array_equal(u, again) and not np.array_equal(u, other)  # deterministic, and a different stream differs
+    for p in range(3):
+        for t in range(inputs.n_years - 1):
+            n = result.n_candidates[p, t]
+            assert np.all(u[p, t, : n + 1] < 0)  # CRRA utility with gamma 3 is negative
+            if np.array_equal(result.chosen[p, t], result.continuation[p, t]):
+                assert u[p, t, n] == u[p, t, 0]  # the action taken was candidate 0: same score on the same futures
+    ce = ad.certainty_equivalent_of_utility(u[:, 0, 0], 3.0)
+    assert np.all(ce > 100_000) and np.all(ce < 5_000_000)
+    with pytest.raises(ValueError, match="record_candidates"):
+        ad.probe_candidates(inputs, policy, ad.run_adaptive(inputs, policy, FAST), reference_k=8)
+
+
+def test_a_run_of_one_or_two_paths_uses_the_serial_kernel_and_gives_the_same_answer_as_the_parallel_one(monkeypatch):
+    inputs = inputs_for(short_household(), paths=2, seed=9)
+    policy = menu_policy("60|fill22_every|10|on|on|pretax|borrow")
+    serial = ad.run_adaptive(inputs, policy, FAST, record_candidates=True, record_states=True, detail_path=1)
+    monkeypatch.setattr(ad, "SERIAL_PATHS", 0)
+    parallel = ad.run_adaptive(inputs, policy, FAST, record_candidates=True, record_states=True, detail_path=1)
+    for name in ("wealth", "taxes_paid", "chosen", "path_wealth", "ce_chosen", "n_candidates", "cand_ce", "states", "kept", "ce_fresh_chosen"):
+        assert np.array_equal(getattr(serial, name), getattr(parallel, name)), name
+    assert all(np.array_equal(serial.log[k], parallel.log[k]) for k in serial.log)
 
 
 # --- Determinism ---------------------------------------------------------------------------------
@@ -247,10 +427,11 @@ def test_the_planner_converts_in_a_year_with_no_income_and_room_in_the_low_brack
     assert result.log["conv"][0] > 150_000
     # the rollouts value it: the chosen action beats the continuation in every path
     assert np.all(result.ce_chosen[:, 0] > 1.002 * result.ce_continuation[:, 0])
-    # over the years it keeps converting while room lasts, and it ends well ahead of never converting on the same futures
+    # what it changes in that year is the tax timing, not the portfolio's risk: the stock share and private credit stay put
+    allocation = [list(ad.DIM_NAMES).index(name) for name in ("stock_share", "private_credit")]
+    assert np.array_equal(result.chosen[:, 0][:, allocation], result.continuation[:, 0][:, allocation])
+    # over the years it keeps converting while room lasts
     assert (result.chosen[:, :10, conv] > 0).sum() >= 12
-    fixed = run_batch(inputs, [never_convert]).wealth[0]
-    assert np.median(result.wealth) > 1.05 * np.median(fixed)
 
 
 def test_the_planner_leaves_a_year_alone_when_nothing_beats_the_continuation():

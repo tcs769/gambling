@@ -117,6 +117,12 @@ def plan_rows(log: dict[str, np.ndarray], household: Household) -> list[PlanRow]
                 federal_tax=float(log["fed_tax"][t]),
                 illinois_tax=float(log["il_tax"][t]),
                 wealth=float(log["wealth"][t]),
+                required_distribution=float(log["rmd"][t]),
+                private_credit_balance=float(log["private_credit"][t]),
+                roth_401k_contribution=float(log["k401_roth"][t]),
+                borrowed=float(log["borrowed"][t]),
+                loan_balance=float(log["loan"][t]),
+                gains_realized_tax_free=float(log["gain_harvest"][t]),
             )
         )
     return rows

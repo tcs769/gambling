@@ -1,4 +1,6 @@
-"""Export training data for the strategy recommender.
+"""Export training data for the ML models.
+
+Strategy recommender (one row per household):
 
     python export_training_data.py --k 2000 --paths 150 --seed 1 --out data/training_data.parquet
 
@@ -12,6 +14,17 @@ for the RIA baseline, and how far the best strategy with a different result trai
 (`score_gap_to_second`; near zero means several strategies are close and the label is soft).
 When strategies tie exactly, the label is the first in menu order (e.g. "low-income years only"
 rather than "every year").
+
+Year-by-year planner's policy and value models (one row per household-year decision, spec B7):
+
+    python export_training_data.py --decisions --k 200 --decision-paths 4 --seed 1 --decisions-dir data/decisions
+
+Each of K synthetic households is planned by the adaptive planner on a few futures; the state of every
+decision, the action the rollout search chose, the score of every candidate it fully scored and the realized
+outcome at the horizon are written as `households.parquet`, `decisions.parquet` and `candidates.parquet`
+(format: backend/models/README.md; builder: `app.planner.decision_data`). The rollout search is exactly the
+data a learned policy (state -> chosen action) and a learned value model (state, action -> score) train on.
+Nothing is trained here.
 """
 
 from __future__ import annotations
@@ -25,11 +38,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from app.ml.interfaces import FEATURE_NAMES, household_features
+from app.ml.interfaces import FEATURE_NAMES, STATE_FEATURE_NAMES, household_features
 from app.planner.baseline import RIA_BASELINE
+from app.planner.decision_data import ACTION_COLUMNS, DecisionTables, export_decisions
 from app.planner.search import Outcome, search
 from app.planner.strategies import CHOICES
 from app.schemas import Accounts, Goals, Household, Person, SocialSecurity
+from app.sim import adaptive
 from app.sim.simulate import build_inputs, run_batch
 
 
@@ -151,13 +166,45 @@ def export(
     return frame
 
 
+def export_decision_data(
+    k: int,
+    paths_per_household: int = 4,
+    seed: int = 1,
+    out_dir: Path | None = None,
+    ranges: SamplingRanges | None = None,
+    rollouts: int = adaptive.DEFAULT_K,
+    progress: bool = False,
+) -> DecisionTables:
+    """The year-by-year planner's decisions on K synthetic households (see `app.planner.decision_data`)."""
+    ranges = ranges or SamplingRanges()
+    rng = np.random.default_rng(seed)
+    households = [sample_household(rng, ranges) for _ in range(k)]
+    tables = export_decisions(
+        households, paths=paths_per_household, seed=seed, settings=adaptive.AdaptiveSettings(k=rollouts), progress=progress
+    )
+    if out_dir is not None:
+        tables.write(out_dir)
+    return tables
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--k", type=int, default=500, help="number of synthetic households")
     parser.add_argument("--paths", type=int, default=150, help="simulated futures per household")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--out", type=Path, default=Path("data/training_data.parquet"))
+    parser.add_argument("--decisions", action="store_true", help="export the year-by-year planner's decisions instead")
+    parser.add_argument("--decision-paths", type=int, default=4, help="futures planned per household with --decisions")
+    parser.add_argument("--rollouts", type=int, default=adaptive.DEFAULT_K, help="rollouts per candidate with --decisions")
+    parser.add_argument("--decisions-dir", type=Path, default=Path("data/decisions"))
     args = parser.parse_args(argv)
+    if args.decisions:
+        tables = export_decision_data(args.k, args.decision_paths, args.seed, args.decisions_dir, rollouts=args.rollouts, progress=True)
+        print(f"Wrote to {args.decisions_dir}:")
+        print(f"  households.parquet  {len(tables.households)} rows (household features and best fixed strategy)")
+        print(f"  decisions.parquet   {len(tables.decisions)} rows ({len(STATE_FEATURE_NAMES)} state features, {len(ACTION_COLUMNS)} chosen-action columns, outcome)")
+        print(f"  candidates.parquet  {len(tables.candidates)} rows (every candidate scored: action columns and certainty-equivalent score)")
+        return
     frame = export(args.k, args.paths, args.seed, args.out, progress=True)
     print(f"Wrote {len(frame)} rows x {len(frame.columns)} columns to {args.out}")
     print(f"Features ({len(FEATURE_NAMES)}): see app.ml.interfaces.FEATURE_NAMES")

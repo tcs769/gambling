@@ -17,12 +17,20 @@ from app.ml import adapters
 from app.ml.adapters import ModelContractError, NotConnected, load_forecaster, load_recommender
 from app.ml.interfaces import (
     FEATURE_NAMES,
+    STATE_FEATURE_NAMES,
+    ActionChoice,
+    ActionProposal,
     ChoiceRecommendation,
+    DecisionState,
     Factor,
     IncomeForecast,
     IncomeForecaster,
+    PolicyModel,
+    ProposedAction,
     Recommendation,
     StrategyRecommender,
+    ValueEstimate,
+    ValueModel,
     feature_vector,
     household_features,
 )
@@ -331,3 +339,138 @@ def test_export_is_reproducible():
 
 def test_every_menu_strategy_is_a_valid_label():
     assert {Strategy.from_choices(s.choices()) for s in menu()} == set(menu())
+
+
+# --- The year-by-year planner's policy and value models (spec B7) -----------------------------
+
+
+def _decision_state(**state_overrides) -> DecisionState:
+    state = {name: 1.0 for name in STATE_FEATURE_NAMES}
+    state.update(state_overrides)
+    return DecisionState(household=household_features(make_demo_household()), state=state, continuation=stubs.sample_action())
+
+
+def test_state_feature_names_are_unique_and_do_not_repeat_the_household_features():
+    assert len(set(STATE_FEATURE_NAMES)) == len(STATE_FEATURE_NAMES) > 40
+    assert "total_wealth" in STATE_FEATURE_NAMES and "loan" in STATE_FEATURE_NAMES and "loss_carryforward" in STATE_FEATURE_NAMES
+
+
+def test_a_decision_state_needs_exactly_the_documented_finite_features():
+    assert _decision_state().continuation.stock_share == 0.5
+    household = household_features(make_demo_household())
+    ok = {name: 0.0 for name in STATE_FEATURE_NAMES}
+    with pytest.raises(ValidationError, match="missing"):
+        DecisionState(household=household, state={k: v for k, v in ok.items() if k != "loan"}, continuation=stubs.sample_action())
+    with pytest.raises(ValidationError, match="unexpected"):
+        DecisionState(household=household, state={**ok, "made_up": 1.0}, continuation=stubs.sample_action())
+    with pytest.raises(ValidationError, match="finite"):
+        DecisionState(household=household, state={**ok, "loan": float("nan")}, continuation=stubs.sample_action())
+    with pytest.raises(ValidationError, match="household features"):
+        DecisionState(household={"age": 1.0}, state=ok, continuation=stubs.sample_action())
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [{"stock_share": 0.45}, {"conversion_bracket": 10}, {"private_credit": 0.07}, {"k401": "roth_low"}, {"goal_funding": "gift"}],
+)
+def test_an_action_must_be_on_the_planners_menu(overrides):
+    with pytest.raises(ValidationError):
+        stubs.sample_action(**overrides)
+
+
+def test_every_menu_combination_of_the_six_decisions_is_a_valid_action():
+    from app.ml.interfaces import CONVERSION_BRACKETS
+    from app.planner.strategies import PRIVATE_CREDIT_SHARES, STOCK_SHARES
+
+    for share in STOCK_SHARES:
+        for bracket in CONVERSION_BRACKETS:
+            for pc in PRIVATE_CREDIT_SHARES:
+                assert ActionChoice(stock_share=share, conversion_bracket=bracket, private_credit=pc, k401="roth", goal_funding="borrow", realize_gains=True)
+
+
+def test_an_action_proposal_is_ordered_distinct_and_a_probability_distribution():
+    a, b = stubs.sample_action(), stubs.sample_action(stock_share=0.6)
+    ok = ActionProposal(actions=[ProposedAction(action=a, probability=0.6), ProposedAction(action=b, probability=0.3)])
+    assert [x.probability for x in ok.actions] == [0.6, 0.3]
+    with pytest.raises(ValidationError, match="ordered"):
+        ActionProposal(actions=[ProposedAction(action=a, probability=0.3), ProposedAction(action=b, probability=0.6)])
+    with pytest.raises(ValidationError, match="more than 1"):
+        ActionProposal(actions=[ProposedAction(action=a, probability=0.7), ProposedAction(action=b, probability=0.6)])
+    with pytest.raises(ValidationError, match="only once"):
+        ActionProposal(actions=[ProposedAction(action=a, probability=0.4), ProposedAction(action=a, probability=0.3)])
+    with pytest.raises(ValidationError):
+        ActionProposal(actions=[])
+    with pytest.raises(ValidationError):
+        ProposedAction(action=a, probability=1.2)
+
+
+def test_a_value_estimate_must_be_finite_positive_dollars():
+    assert ValueEstimate(values=[1.0e6, 2.0e6]).values == [1.0e6, 2.0e6]
+    for bad in ([0.0], [-1.0], [float("inf")], [float("nan")]):
+        with pytest.raises(ValidationError):
+            ValueEstimate(values=bad)
+
+
+def test_stub_policy_and_value_models_satisfy_the_protocols():
+    assert isinstance(stubs.StubPolicyModel(), PolicyModel) and isinstance(stubs.StubValueModel(), ValueModel)
+    assert not isinstance(stubs.NoMethod(), PolicyModel) and not isinstance(stubs.NoMethod(), ValueModel)
+
+
+def test_no_policy_or_value_model_means_not_connected_never_a_fallback(tmp_path):
+    for result, model in ((adapters.load_policy_model(tmp_path), "policy"), (adapters.load_value_model(tmp_path), "value")):
+        assert isinstance(result, NotConnected) and result.model == model
+        assert "No model file" in result.reason and result.expected_path.endswith(f"{model}.pkl")
+        assert not hasattr(result, "propose") and not hasattr(result, "value")
+
+
+def test_the_repo_ships_without_the_planners_helper_models():
+    assert isinstance(adapters.load_policy_model(), NotConnected)
+    assert isinstance(adapters.load_value_model(), NotConnected)
+
+
+def test_a_dropped_in_policy_model_is_loaded_and_its_proposals_validated(tmp_path):
+    _drop(tmp_path, "policy.pkl", stubs.StubPolicyModel())
+    model = adapters.load_policy_model(tmp_path)
+    assert not isinstance(model, NotConnected)
+    proposal = model.propose(_decision_state(), 5)
+    assert isinstance(proposal, ActionProposal) and len(proposal.actions) == 2 and proposal.actions[0].action == stubs.sample_action()
+    assert len(model.propose(_decision_state(), 1).actions) == 1
+
+
+def test_a_policy_model_cannot_propose_more_than_it_was_asked_for(tmp_path):
+    _drop(tmp_path, "policy.pkl", stubs.TooManyActionsPolicyModel())
+    with pytest.raises(ModelContractError, match="at most 2"):
+        adapters.load_policy_model(tmp_path).propose(_decision_state(), 2)
+
+
+def test_dict_outputs_of_the_helper_models_are_validated(tmp_path):
+    _drop(tmp_path, "policy.pkl", stubs.DictPolicyModel())
+    assert isinstance(adapters.load_policy_model(tmp_path).propose(_decision_state(), 3), ActionProposal)
+    _drop(tmp_path, "value.pkl", stubs.NegativeValueModel())
+    with pytest.raises(ModelContractError, match="invalid ValueEstimate"):
+        adapters.load_value_model(tmp_path).value(_decision_state(), [stubs.sample_action()])
+
+
+def test_a_value_model_returns_one_value_per_action(tmp_path):
+    _drop(tmp_path, "value.pkl", stubs.StubValueModel())
+    model = adapters.load_value_model(tmp_path)
+    actions = [stubs.sample_action(), stubs.sample_action(stock_share=1.0), stubs.sample_action(private_credit=0.0)]
+    estimate = model.value(_decision_state(total_wealth=2_000_000.0), actions)
+    assert len(estimate.values) == 3 and estimate.values[1] > estimate.values[0]
+    _drop(tmp_path, "value.pkl", stubs.WrongLengthValueModel())
+    with pytest.raises(ModelContractError, match="values for 3 actions"):
+        adapters.load_value_model(tmp_path).value(_decision_state(), actions)
+
+
+def test_helper_models_without_the_method_are_not_connected(tmp_path):
+    _drop(tmp_path, "policy.pkl", stubs.NoMethod())
+    _drop(tmp_path, "value.pkl", stubs.NoMethod())
+    assert "no propose() method" in adapters.load_policy_model(tmp_path).reason
+    assert "no value() method" in adapters.load_value_model(tmp_path).reason
+
+
+def test_a_failed_helper_model_reports_not_connected_with_its_own_path(monkeypatch, tmp_path):
+    monkeypatch.setenv(adapters.MODELS_DIR_ENV, str(tmp_path))
+    for model in ("recommender", "forecaster", "policy", "value"):
+        result = adapters.not_connected(model, "it failed")
+        assert result.model == model and result.expected_path == str(tmp_path / f"{model}.pkl")

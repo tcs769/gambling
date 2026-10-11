@@ -46,7 +46,7 @@ export function GoalsTimeline({
             })}
           </svg>
           {dated.map((goal) => (
-            <span key={goal.key} className={styles.marker} style={{ left: `${at(goal)}%` }} />
+            <span key={goal.key} className={styles.marker} data-goal={goal.key} style={{ left: `${at(goal)}%` }} />
           ))}
         </div>
       )}
@@ -54,7 +54,7 @@ export function GoalsTimeline({
       {n > 0 && (
         <ol className={styles.goals} style={{ "--n": n } as CSSProperties}>
           {dated.map((goal) => (
-            <li key={goal.key} className={styles.goal}>
+            <li key={goal.key} className={styles.goal} data-goal={goal.key}>
               {startAge !== undefined && <span className={styles.age}>Age {startAge + goal.years_from_now}</span>}
               <strong className={styles.title}>{goal.label}</strong>
               <span className={styles.detail}>{goal.detail}</span>

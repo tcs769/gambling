@@ -22,7 +22,7 @@ import {
   type Unit,
   type WaterfallRow,
 } from "./waterfall";
-import { strategies } from "./text";
+import { strategiesOn } from "./text";
 import styles from "./Waterfall.module.css";
 
 interface Hover {
@@ -96,11 +96,13 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle, onAllO
     // A mouse click that focuses a switch has no need of the tooltip; the keyboard does.
     if (!(event.target as Element).matches(":focus-visible")) return;
     const box = chart.current?.getBoundingClientRect();
-    const trackBox = event.currentTarget.querySelector<HTMLElement>("[data-track]")?.getBoundingClientRect();
-    const rowBox = event.currentTarget.getBoundingClientRect();
-    if (!box || !trackBox) return;
+    const trackEl = event.currentTarget.querySelector<HTMLElement>("[data-track]");
+    if (!box || !trackEl) return;
+    const trackBox = trackEl.getBoundingClientRect();
+    // Beside the end of the row's bar: how far down the track its middle is is a style (--mid), as it differs by layout.
+    const mid = parseFloat(getComputedStyle(trackEl).getPropertyValue("--mid")) || 28;
     const x = trackBox.left - box.left + (place(axis, row.to[unit]) / 100) * trackBox.width;
-    setHover({ key: row.key, x, y: rowBox.top - box.top + 28, width: box.width });
+    setHover({ key: row.key, x, y: trackBox.top - box.top + mid, width: box.width });
   };
   const leave = (event: FocusEvent<HTMLElement>) => {
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHover(null);
@@ -111,16 +113,18 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle, onAllO
   const biggest = biggestStep(analysis);
   const total = analysis.advantage;
 
+  // The figure's text alternative, in words: how many strategies are on, what they come to, and the biggest step.
+  const advisorName = analysis.advisor_label.toLowerCase();
+  const ahead = total.median_dollars >= 0;
   const summary = (
     <>
-      {on === analysis.bars.length ? `All ${strategies(on)} on` : `${on} of ${analysis.bars.length} strategies on`}:{" "}
+      {strategiesOn(on, analysis.bars.length)}:{" "}
       {on === 0 ? (
-        <>Donabach&apos;s plan is the advisor&apos;s own, so the advantage is zero.</>
+        <>Donabach&apos;s plan is the {advisorName}&apos;s own, so the advantage is zero.</>
       ) : (
         <>
-          Donabach ends {dollarsText(total.median_dollars, horizon)} ahead of the {analysis.advisor_label.toLowerCase()}{" "}
-          ({rateText(total.median_rate)}
-          ).
+          at {horizon} Donabach is {money(Math.abs(total.median_dollars))} {ahead ? "ahead of" : "behind"} the{" "}
+          {advisorName} ({rateText(total.median_rate)}).
           {biggest && (
             <>
               {" "}

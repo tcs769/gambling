@@ -1,9 +1,9 @@
 // The arithmetic and wording of the strategy waterfall, kept apart from the drawing so both are easy to check.
 // Nothing here makes a number up: positions, totals and labels come from the API's bars and advantage.
 
-import { niceScale } from "@/components/charts/chartTheme";
 import { money, rateDigits, signedMoney, signedPercent } from "@/lib/format";
 import type { ShowcaseAnalysis } from "@/lib/types";
+import { niceAxis, type Axis } from "./axis";
 
 /** What the length of a bar encodes: dollars of median after-tax wealth at the horizon, or a yearly rate. */
 export type Unit = "dollars" | "rate";
@@ -79,11 +79,7 @@ export function waterfallRows(analysis: ShowcaseAnalysis): WaterfallRow[] {
   return rows;
 }
 
-export interface Axis {
-  min: number;
-  max: number;
-  ticks: number[];
-}
+export type { Axis };
 
 /**
  * The axis for one unit, from zero (the advisor's result) in clean steps. It has to hold every bar of every analysis given
@@ -93,16 +89,7 @@ export interface Axis {
  */
 export function axisFor(unit: Unit, analyses: readonly ShowcaseAnalysis[], maxIntervals = 6): Axis {
   const values = [0, ...analyses.flatMap((a) => waterfallRows(a).flatMap((row) => [row.from[unit], row.to[unit]]))];
-  const max = Math.max(...values);
-  const min = Math.min(...values);
-  if (max <= 0 && min >= 0) return { min: 0, max: 1, ticks: [0] };
-  const { ticks } = niceScale(Math.max(max, -min), maxIntervals);
-  const step = ticks[1] - ticks[0];
-  const up = max > 0 ? Math.ceil(max / step - 1e-9) : 0;
-  const down = min < 0 ? Math.ceil(-min / step - 1e-9) : 0;
-  const all: number[] = [];
-  for (let i = -down; i <= Math.max(up, 1); i++) all.push(i * step);
-  return { min: -down * step, max: Math.max(up, 1) * step, ticks: all };
+  return niceAxis(Math.min(...values), Math.max(...values), maxIntervals);
 }
 
 /** Where a value falls on an axis, as a percentage of its width. */

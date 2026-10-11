@@ -15,3 +15,7 @@ export function childrenText(ages: readonly number[]): string {
 
 /** "1 strategy", "3 strategies". */
 export const strategies = (n: number): string => `${n} ${n === 1 ? "strategy" : "strategies"}`;
+
+/** "All 7 strategies on", "5 of 7 strategies on", "0 of 1 strategy on". */
+export const strategiesOn = (on: number, total: number): string =>
+  on === total ? `All ${strategies(on)} on` : `${on} of ${strategies(total)} on`;

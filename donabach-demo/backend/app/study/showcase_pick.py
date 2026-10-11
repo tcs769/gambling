@@ -138,28 +138,29 @@ def remeasure(frame: pd.DataFrame, built, count: int) -> list[Candidate]:
     pool = frame.sort_values("adv_median_vs_good_ria", ascending=False).head(count)
     showcase.reset()
     measured: list[Candidate] = []
-    for i, (_, row) in enumerate(pool.iterrows()):
+    for _, row in pool.iterrows():
         study = built[(row["type"], int(row["index"]))]
-        naming = NAMES[i % len(NAMES)]
-        household = _name_household(study, naming)
         fixture = showcase.Fixture(
-            id=f"{row['type']}-{int(row['index'])}",
-            name=f"The {naming[0]} family",
-            type_label=TYPES[row["type"]],
-            tagline="",
-            household=household,
+            id=f"{row['type']}-{int(row['index'])}", name="", type_label=TYPES[row["type"]], tagline="", household=study.household
         )
         prepared = showcase.prepare(fixture)
         analysis = showcase.analyze(prepared)
-        measured.append(Candidate(0, row, study, naming[0], fixture, analysis, prepared.strategy.short_label()))
+        measured.append(Candidate(0, row, study, "", fixture, analysis, prepared.strategy.short_label()))
     measured.sort(key=lambda c: c.analysis.advantage.median_rate, reverse=True)
     for rank, c in enumerate(measured, start=1):
-        c.rank = rank
+        # Names go by rank, so the list reads the same however the pool was drawn (they play no part in the simulation).
+        naming = NAMES[(rank - 1) % len(NAMES)]
+        c.rank, c.name = rank, naming[0]
+        c.fixture = c.fixture.model_copy(update={"name": f"The {naming[0]} family", "household": _name_household(c.study, naming)})
     return measured
 
 
 def _pct(x: float) -> str:
     return f"{x * 100:+.2f}%"
+
+
+def _usd(x: float) -> str:
+    return f"-${-x:,.0f}" if x < 0 else f"${x:,.0f}"
 
 
 def render(frame_all: pd.DataFrame, passed: pd.DataFrame, removed, candidates: list[Candidate], seconds: float | None = None) -> str:
@@ -201,7 +202,12 @@ def render(frame_all: pd.DataFrame, passed: pd.DataFrame, removed, candidates: l
             f"${a.plan_median_at_horizon:,.0f} against ${a.advisor_median_at_horizon:,.0f}), {_pct(a.risk_adjusted_rate)} risk-adjusted; "
             f"10th percentile ${a.plan_p10_at_horizon:,.0f} against ${a.advisor_p10_at_horizon:,.0f}; runs out of money in "
             f"{a.plan_shortfall:.1%} of futures against {a.advisor_shortfall:.1%}.",
-            "* **Where it comes from:** " + "; ".join(f"{b.label} {_pct(b.delta_rate)} a year (${b.delta_dollars:,.0f})" for b in biggest) + ".",
+            "* **Where it comes from:** " + "; ".join(f"{b.label} {_pct(b.delta_rate)} a year ({_usd(b.delta_dollars)})" for b in biggest) + ".",
+            "* **Tax lots:** " + (
+                f"selling the highest-cost lots first is worth {_pct(lots.delta_rate)} a year ({_usd(lots.delta_dollars)}) of that."
+                if (lots := next((b for b in c.analysis.bars if b.key == "lots"), None)) is not None
+                else "not used."
+            ),
             "",
         ]
     if candidates[5:]:

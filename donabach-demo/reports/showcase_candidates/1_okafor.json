@@ -1,0 +1,47 @@
+{
+  "id": "okafor",
+  "name": "The Okafor family",
+  "type_label": "Concentrated single stock (40%+ of investable assets, low basis)",
+  "tagline": "two earners aged 43 and 39, $363k of wages, $0.77M saved ($0.52M taxable with $0.39M of unrealized gain, $0.21M pre-tax, $0.01M Roth); retiring at 61 on $145k a year.",
+  "household": {
+    "people": [
+      {
+        "name": "Chidi Okafor",
+        "age": 43,
+        "wages": 197073.17747323937,
+        "pretax_401k": 0.0
+      },
+      {
+        "name": "Amara Okafor",
+        "age": 39,
+        "wages": 165873.15836318722,
+        "pretax_401k": 0.0
+      }
+    ],
+    "children_ages": [],
+    "accounts": {
+      "brokerage_value": 523252.8199037889,
+      "brokerage_basis": 134377.0891665412,
+      "pretax_balance": 209413.41023005606,
+      "pretax_equity_share": 0.684,
+      "roth_balance": 5702.123368469892,
+      "roth_equity_share": 1.0,
+      "cash": 32299.985456694187
+    },
+    "goals": {
+      "home_purchase_in_years": null,
+      "home_down_payment": 120000.0,
+      "college_starts_in_years": null,
+      "college_annual_cost": 35000.0,
+      "college_years": 4,
+      "retirement_age": 61,
+      "retirement_spending": 145154.59983975926
+    },
+    "social_security": {
+      "annual_benefit": 70000.0,
+      "start_age": 67
+    },
+    "snapshot": null,
+    "estimated": []
+  }
+}

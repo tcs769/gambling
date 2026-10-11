@@ -12,7 +12,7 @@ API model, with the backend running: `npm run gen:api`.
     npm run e2e        # walk the whole demo in Chromium and check it (API and app must be running)
                        # env: BASE_URL (default http://localhost:3000), OUT_DIR (screenshots), CHROMIUM_PATH
     npm run typecheck  # tsc --noEmit
-    npm run check:colors  # the chart series colours: contrast on the panel and colour-blind separation, all four pairs
+    npm run check:colors  # the chart series colours: contrast on the panel and colour-blind separation, all four pairs, in the light and the dark theme
 
 The PDF viewer loads pdf.js's legacy build (it bundles the polyfills pdf.js 6 needs); the matching worker is copied to
 `public/pdf.worker.min.mjs` by `npm install` and is git-ignored.
@@ -44,6 +44,53 @@ panel against the plan it started from. `src/lib/adaptive.ts` holds the words an
 The fourth chart colour (the adaptive planner, drawn dotted) and how it was chosen are documented next to the
 series tokens in `src/app/globals.css`; `npm run check:colors` covers all four.
 
+## The showcase flow (`/showcase`)
+
+A separate three-step walk on one household, for showing the idea in a few minutes without any documents. The home page
+(Upload) has an "Open the showcase" link; inside the flow the header shows three steps (Household, Strategies, Wealth) in
+place of the demo's seven, with the brand still leading home, and every screen ends in a primary "next" button with a back
+link beside it.
+
+1. **`/showcase`, the household card**: the household's name, type and tagline, who is in it (wages, children), annual income
+   and total saved, where the savings are (a stacked bar of taxable / pre-tax / Roth / cash with a legend, and the taxable
+   account's basis and unrealized gain called out), what they are saving for (home, college, retirement and Social Security
+   on a line from today to the horizon age, each with the API's detail sentence) and what stands out (the API's notes).
+2. **`/showcase/strategies`, the waterfall**: from a good advisor's result to Donabach's, one floating bar per strategy in the
+   order the API switched them on, ending in a total bar. Every row writes both the percent a year and the dollars at the
+   horizon, and a segmented control chooses which of the two the bar's length shows. Every strategy has a switch (a
+   checkbox with the switch role, labelled with its name, with a button that opens the API's sentence on what it does).
+   The total and the two medians are in large type above, the same numbers are a toggle away as a table, and the figure
+   has a text alternative.
+3. **`/showcase/wealth`, wealth over time**: the median advantage and the risk-adjusted one (the API's label and one-line
+   explanation, word for word), then after-tax wealth by age for Donabach and the advisor as four lines (the typical future
+   solid, the bad-market 10th percentile dashed, one colour for each entity), a tooltip with all four at an age, end labels,
+   a table twin, the two 10th-percentile values at the horizon and the chance of running out of money for both.
+
+The data is two calls: `GET /showcase` (the household, its card and the analysis with every strategy on) and
+`POST /showcase/analysis {enabled}` (the analysis with only those strategies on). No number on these screens is typed in the
+app, and nothing about the household is: the e2e checks them against the API's own answers, and the screens were looked at
+with households of other shapes (one earner, no children, no taxable account, early retirement, strategies that cost a little).
+
+**How the switches flow.** `src/lib/showcase.tsx` holds the flow's state (the household, which strategies are on, the analysis
+on screen) in a provider rendered by `src/app/showcase/layout.tsx`, so the wealth screen shows what was chosen on the
+strategies screen. The shell keeps one `main` for the whole flow (it keys the demo's `main` by route, which would remount
+the provider and drop the choices), and each screen eases in by itself (`ShowcasePage`). Switching a strategy moves its switch at
+once and asks the API for the new set (about half a second the first time). Until the answer arrives the bars and numbers
+stay on screen, dimmed, with "Recomputing…" and a polite announcement for screen readers; when it arrives the bars glide
+to their new places and the recomputed total is announced. Answers are kept by the set they are for, so switching a
+strategy back is instant. A change made while an answer is on its way drops that answer (its request is aborted, and one that
+arrives anyway is ignored). If the API refuses a change, its message is shown and the switches go back to what the numbers on
+screen are for. Opening the wealth screen directly loads the household with every strategy on.
+
+**The dark theme** belongs to this flow only. The demo's other screens are light; while the showcase is on the page,
+`:root:has([data-showcase])` in `src/app/globals.css` re-declares the tokens for a system that asks for dark. Series colours
+are restepped for the dark panel (not inverted), and `npm run check:colors` runs the same gates on them, and on the colours
+side by side in the savings bar. The e2e looks at every screen in both themes at 390, 768 and 1280 wide (overflow, text
+size, contrast of every piece of text).
+
+`e2e/showcase.mjs` holds the checks, called at the end of `walkthrough.mjs`; run alone it takes about a minute
+(`BASE_URL=... CHROMIUM_PATH=... node e2e/showcase.mjs`).
+
 ## Known limits
 
 * A failed year-by-year job is reported with the API's error text and the fixed plan stays fully usable, but there is
@@ -55,3 +102,6 @@ series tokens in `src/app/globals.css`; `npm run check:colors` covers all four.
 * The Plan table and the chart's table twin scroll sideways inside their panels when the window is narrow (below
   about 700px for the table, about 960px of panel room for the twin); no heading word is cut off. The step
   navigation overflows the page below about 720px wide.
+* The showcase's dark theme needs `:has()` (Chrome 105, Safari 15.4, Firefox 121 or later); older browsers keep the light theme.
+* In the showcase, a bad-market (10th percentile) future that runs out of money is a negative wealth in the API's lines, and
+  the wealth chart's axis reaches below zero to show it (the API does not floor it).

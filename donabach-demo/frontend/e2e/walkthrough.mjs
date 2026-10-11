@@ -9,6 +9,9 @@
 // against what the API sent for the plan (its horizon, advisor definitions, advantage figures,
 // table size), not against copy typed here. Exits non-zero if anything fails.
 //
+// The showcase flow (/showcase: the household card, the strategy waterfall, wealth over time) is checked at the end by
+// e2e/showcase.mjs, also against the API's own responses (it can be run alone: `node e2e/showcase.mjs`, same environment).
+//
 // The year-by-year (adaptive) plan is checked the same way: the years highlighted in the plan table, the "Why this
 // year" panel, the four-way comparison, what judgment over time adds and the "What changed" panel are compared with
 // the adaptive plan the API sent (in the plan response, or as the result of its background job, read from
@@ -19,6 +22,7 @@
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { chromium } from "playwright-core";
+import { runShowcase } from "./showcase.mjs";
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const OUT = resolve(process.env.OUT_DIR ?? new URL("../../.screenshots", import.meta.url).pathname);
@@ -1172,6 +1176,10 @@ check(fresh[0] === fresh[1], `demo mode: two fresh sessions show identical numbe
   check(true, "no tax form: the profile's tax picture is labelled as an estimate");
   await ctx.close();
 }
+
+// --- The showcase flow: household card, strategy waterfall, wealth over time (e2e/showcase.mjs) ----------------------
+// Its own section of checks, all read from the API's /showcase responses; they count with the rest.
+await runShowcase({ browser, base: BASE, out: OUT, check, notes });
 
 await browser.close();
 for (const n of notes) console.log(` note  ${n}`);

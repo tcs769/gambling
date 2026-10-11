@@ -6,6 +6,7 @@ import { ShowcasePending } from "@/components/showcase/ShowcasePending";
 import { TotalPanel } from "@/components/showcase/TotalPanel";
 import { Waterfall } from "@/components/showcase/Waterfall";
 import { ratePercent, dollarsText } from "@/components/showcase/waterfall";
+import { strategiesOn } from "@/components/showcase/text";
 import styles from "@/components/showcase/Showcase.module.css";
 import { Disclosure, PageHeader, Panel, PanelTitle, ResultsFooter } from "@/components/ui";
 import { count } from "@/lib/format";
@@ -30,7 +31,7 @@ export default function ShowcaseStrategiesPage() {
   // Said aloud when the numbers change: that something is being worked out, then what the total came to.
   const announcement = computing
     ? "Recomputing the waterfall."
-    : `Recomputed with ${on} of ${total} strategies on. Total advantage ${ratePercent(analysis.advantage.median_rate)} a year, ${dollarsText(
+    : `Recomputed: ${strategiesOn(on, total)}. Total advantage ${ratePercent(analysis.advantage.median_rate)} a year, ${dollarsText(
         analysis.advantage.median_dollars,
         horizon,
       )}, median of ${count(analysis.n_paths)} simulated futures.`;

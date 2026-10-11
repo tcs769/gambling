@@ -5,6 +5,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -13,16 +14,9 @@ import {
   useYAxisScale,
 } from "recharts";
 import { spreadLabels } from "@/components/charts/FanChart";
-import {
-  ANIMATION_MS,
-  GRID_STROKE,
-  SURFACE,
-  TICK_STYLE,
-  ageTicks,
-  lineStroke,
-  niceScale,
-} from "@/components/charts/chartTheme";
+import { ANIMATION_MS, GRID_STROKE, SURFACE, TICK_STYLE, ageTicks, lineStroke } from "@/components/charts/chartTheme";
 import { money } from "@/lib/format";
+import { niceAxis } from "./axis";
 import { WealthTooltip } from "./WealthTooltip";
 import type { WealthRow, WealthSeries } from "./wealthData";
 
@@ -99,10 +93,11 @@ interface WealthChartProps {
  */
 export function WealthChart({ rows, series, height, endLabelRoom }: WealthChartProps) {
   const last = rows[rows.length - 1];
-  const { ticks, domainMax } = useMemo(
-    () => niceScale(Math.max(0, ...rows.flatMap((row) => series.map((line) => row[line.key])))),
-    [rows, series],
-  );
+  // The axis reaches below zero when a bad-market future runs out of money and goes into debt (the API's number is negative).
+  const axis = useMemo(() => {
+    const values = rows.flatMap((row) => series.map((line) => row[line.key]));
+    return niceAxis(Math.min(0, ...values), Math.max(0, ...values), 6);
+  }, [rows, series]);
   const ages = useMemo(() => rows.map((row) => row.age), [rows]);
   return (
     <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 900, height }}>
@@ -121,14 +116,15 @@ export function WealthChart({ rows, series, height, endLabelRoom }: WealthChartP
         />
         <YAxis
           width={66}
-          domain={[0, domainMax]}
-          ticks={ticks}
+          domain={[axis.min, axis.max]}
+          ticks={axis.ticks}
           interval={0}
           tickFormatter={(value: number) => money(value)}
           tick={TICK_STYLE}
           tickLine={false}
           axisLine={false}
         />
+        {axis.min < 0 && <ReferenceLine y={0} stroke="var(--muted)" strokeWidth={1} />}
         {series.map((line) => (
           <Line
             key={line.key}

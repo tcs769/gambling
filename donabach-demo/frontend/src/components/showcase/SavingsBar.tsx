@@ -15,21 +15,25 @@ const LABEL_ROOM_PX = 52;
  */
 export function SavingsBar({ accounts, total }: { accounts: readonly CardAccount[]; total: number }) {
   const [measure, width] = useElementWidth<HTMLDivElement>();
+  // An account with nothing in it has no segment (its line in the legend says $0). Positions follow the shares of the
+  // segments drawn, so the labels sit over their segments whatever the shares add up to.
+  const shown = accounts.filter((account) => account.share > 0);
+  const sum = shown.reduce((total, account) => total + account.share, 0);
   const taxable = accounts.find((a) => a.key === "taxable");
   const gain = taxable?.unrealized_gain;
   return (
     <div className={styles.wrap}>
       <div className={styles.bar} ref={measure} aria-hidden="true">
         <div className={styles.labels}>
-          {accounts.map((account, i) => {
-            const before = accounts.slice(0, i).reduce((sum, a) => sum + a.share, 0);
-            const fits = account.share * width >= LABEL_ROOM_PX;
+          {shown.map((account, i) => {
+            const before = shown.slice(0, i).reduce((total, a) => total + a.share, 0);
+            const fits = (account.share / sum) * width >= LABEL_ROOM_PX;
             return (
               fits && (
                 <span
                   key={account.key}
                   className={styles.share}
-                  style={{ left: `${(before + account.share / 2) * 100}%` }}
+                  style={{ left: `${((before + account.share / 2) / sum) * 100}%` }}
                 >
                   {percent(account.share)}
                 </span>
@@ -38,12 +42,12 @@ export function SavingsBar({ accounts, total }: { accounts: readonly CardAccount
           })}
         </div>
         <div className={styles.segments}>
-          {accounts.map((account) => (
+          {shown.map((account) => (
             <span
               key={account.key}
               className={styles.segment}
               data-account={account.key}
-              style={{ flexGrow: Math.max(account.share, 0), flexBasis: 0 }}
+              style={{ flexGrow: account.share, flexBasis: 0 }}
             />
           ))}
         </div>
@@ -60,7 +64,7 @@ export function SavingsBar({ accounts, total }: { accounts: readonly CardAccount
         ))}
       </ul>
 
-      {taxable && typeof taxable.basis === "number" && (
+      {taxable && typeof taxable.basis === "number" && (taxable.value > 0 || taxable.basis > 0) && (
         <p className={styles.callout} data-account="taxable">
           <span className={styles.calloutTitle}>{taxable.label}</span>
           <span>

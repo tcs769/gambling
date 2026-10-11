@@ -1,0 +1,43 @@
+{
+  "id": "moreau",
+  "name": "The Moreau family",
+  "type_label": "Concentrated single stock (40%+ of investable assets, low basis)",
+  "tagline": "one earner aged 47, 1 child, $374k of wages, $0.85M saved ($0.45M taxable with $0.34M of unrealized gain, $0.33M pre-tax, $0.04M Roth); retiring at 61 on $102k a year; college from year 16.",
+  "household": {
+    "people": [
+      {
+        "name": "Julien Moreau",
+        "age": 47,
+        "wages": 373611.7449674645,
+        "pretax_401k": 0.0
+      }
+    ],
+    "children_ages": [
+      2
+    ],
+    "accounts": {
+      "brokerage_value": 452409.06325405743,
+      "brokerage_basis": 107445.26068177314,
+      "pretax_balance": 333659.35687730374,
+      "pretax_equity_share": 0.636,
+      "roth_balance": 44967.431105233445,
+      "roth_equity_share": 1.0,
+      "cash": 19685.724383509612
+    },
+    "goals": {
+      "home_purchase_in_years": null,
+      "home_down_payment": 120000.0,
+      "college_starts_in_years": 16,
+      "college_annual_cost": 31605.61325190749,
+      "college_years": 4,
+      "retirement_age": 61,
+      "retirement_spending": 101571.11310835663
+    },
+    "social_security": {
+      "annual_benefit": 70000.0,
+      "start_age": 67
+    },
+    "snapshot": null,
+    "estimated": []
+  }
+}

@@ -7,7 +7,7 @@ import { FlowNav } from "@/components/showcase/FlowNav";
 import { ShowcasePending } from "@/components/showcase/ShowcasePending";
 import { WealthFigure } from "@/components/showcase/WealthFigure";
 import { WealthHeadline } from "@/components/showcase/WealthHeadline";
-import { listOf, strategies } from "@/components/showcase/text";
+import { listOf, strategies, strategiesOn } from "@/components/showcase/text";
 import { dollarsText, ratePercent } from "@/components/showcase/waterfall";
 import styles from "@/components/showcase/Showcase.module.css";
 import { Icon, PageHeader, Panel, PanelTitle, ResultsFooter, Spinner } from "@/components/ui";
@@ -33,7 +33,7 @@ export default function ShowcaseWealthPage() {
   const off = analysis.bars.filter((bar) => !bar.enabled);
   const announcement = computing
     ? "Recomputing wealth over time."
-    : `Wealth over time with ${total - off.length} of ${total} strategies on. Median advantage ${ratePercent(
+    : `Wealth over time, ${strategiesOn(total - off.length, total).toLowerCase()}. Median advantage ${ratePercent(
         analysis.advantage.median_rate,
       )} a year, ${dollarsText(analysis.advantage.median_dollars, horizon)}.`;
 

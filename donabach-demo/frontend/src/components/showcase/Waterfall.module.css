@@ -82,7 +82,7 @@
 .nameLine {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 10px;
   min-height: 44px;
 }
 

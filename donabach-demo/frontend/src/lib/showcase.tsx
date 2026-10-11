@@ -74,6 +74,16 @@ export function errorMessage(error: unknown): string {
 
 const ShowcaseContext = createContext<ShowcaseValue | null>(null);
 
+// One request for the household at a time, shared by every mount that asks while it is on its way (in development React
+// mounts the provider twice, and the API should not be asked twice for the same thing).
+let loading: Promise<ShowcaseResponse> | null = null;
+function loadHousehold(): Promise<ShowcaseResponse> {
+  loading ??= api.showcase().finally(() => {
+    loading = null;
+  });
+  return loading;
+}
+
 export function ShowcaseProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ShowcaseState>({
     data: null,
@@ -96,9 +106,10 @@ export function ShowcaseProvider({ children }: { children: ReactNode }) {
 
   // The household and its analysis with every strategy on.
   useEffect(() => {
-    const controller = new AbortController();
-    api.showcase(controller.signal).then(
+    let current = true;
+    loadHousehold().then(
       (response) => {
+        if (!current) return;
         const set = response.analysis.enabled;
         const key = setKey(set);
         answers.current.clear();
@@ -110,10 +121,12 @@ export function ShowcaseProvider({ children }: { children: ReactNode }) {
         setState({ data: response, loadError: null, enabled: set, shown, changeError: null });
       },
       (error: unknown) => {
-        if (!controller.signal.aborted) setState((s) => ({ ...s, loadError: errorMessage(error) }));
+        if (current) setState((s) => ({ ...s, loadError: errorMessage(error) }));
       },
     );
-    return () => controller.abort();
+    return () => {
+      current = false;
+    };
   }, [attempt]);
 
   // Nobody is waiting for an answer once the flow is left.

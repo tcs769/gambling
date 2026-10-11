@@ -1,5 +1,6 @@
 import { count, money, signedMoney } from "@/lib/format";
 import type { ShowcaseAnalysis } from "@/lib/types";
+import { strategiesOn } from "./text";
 import { ratePercent } from "./waterfall";
 import styles from "./TotalPanel.module.css";
 
@@ -28,23 +29,23 @@ export function TotalPanel({ analysis, computing }: { analysis: ShowcaseAnalysis
             </span>
           </p>
           <p className={styles.basis}>
-            Median of {count(analysis.n_paths)} simulated futures.{" "}
-            {on === analysis.bars.length
-              ? `All ${on} strategies on.`
-              : `${on} of ${analysis.bars.length} strategies on.`}
+            Median of {count(analysis.n_paths)} simulated futures.
+            {analysis.bars.length > 0 && ` ${strategiesOn(on, analysis.bars.length)}.`}
           </p>
         </div>
-        <dl className={styles.medians}>
-          <div className={styles.median}>
-            <dt>{analysis.advisor_label}</dt>
-            <dd>{money(advantage.advisor_median_at_horizon)}</dd>
-          </div>
-          <div className={styles.median}>
-            <dt>Donabach</dt>
-            <dd>{money(advantage.plan_median_at_horizon)}</dd>
-          </div>
+        <div className={styles.medians}>
+          <dl className={styles.pair}>
+            <div className={styles.median}>
+              <dt>{analysis.advisor_label}</dt>
+              <dd>{money(advantage.advisor_median_at_horizon)}</dd>
+            </div>
+            <div className={styles.median}>
+              <dt>Donabach</dt>
+              <dd>{money(advantage.plan_median_at_horizon)}</dd>
+            </div>
+          </dl>
           <p className={styles.mediansNote}>median after-tax wealth at {horizon}</p>
-        </dl>
+        </div>
       </section>
     </div>
   );

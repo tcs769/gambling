@@ -30,7 +30,7 @@ Without `make`:
 # backend
 cd backend && python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --reload-dir app --port 8000
 
 # frontend (second terminal)
 cd frontend && npm install && npm run dev
@@ -163,7 +163,8 @@ What the numbers say is not tuned. For the sample household the engine's choice 
 lowest option on the menu) and no Roth conversions. With risk aversion 3 the safest stock share on the menu often
 wins (in a 100-household synthetic sample it was best for 66, against 12 for 100% stocks), and conversions at the
 22% bracket or higher cost more tax up front than the model's 20-year withdrawal rate saves later. For the sample
-household about 70% of the advantage over the baseline is simply the lower fee.
+household roughly three quarters of the advantage over the baseline (71% to 84% across 12 random seeds) is
+simply the lower fee; the recommendation itself was the same in all 12.
 
 ## Layout
 

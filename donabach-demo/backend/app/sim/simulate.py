@@ -74,13 +74,17 @@ NTV = 12
     SP_WD_TOP,
     SP_FEE_BREAKPOINTS,
     SP_FEE_FLAT,
-) = range(13)
-NSP = 13
+    SP_K401,
+) = range(14)
+NSP = 14
+
+# 401(k) contribution type (SP_K401).
+K401_PRETAX, K401_ROTH, K401_ROTH_LOW = 0.0, 1.0, 2.0
 
 # Per-(policy, year) switches. 1.0 = the decision is taken, 0.0 = removed for that year.
-G_CONV, G_HARVEST, G_BUCKET, G_LOCATION, G_WITHDRAW = range(5)
-NGATE = 5
-GATE_NAMES = ("conversion", "harvest", "bucket", "location", "withdraw")
+G_CONV, G_HARVEST, G_BUCKET, G_LOCATION, G_WITHDRAW, G_K401 = range(6)
+NGATE = 6
+GATE_NAMES = ("conversion", "harvest", "bucket", "location", "withdraw", "k401")
 
 # One year's action. The first six are the decisions the adaptive planner chooses among each year
 # (spec B3); the last four come from the fixed policy the planner continues with (and its gates).
@@ -154,6 +158,10 @@ LOG_COLUMNS = (
     "private_credit",
     "free_cash",
     "conv_cash",
+    "k401_roth",
+    "roth_extra_tax",
+    "brokerage_saving",
+    "roth_gap",
 )
 NLOG = len(LOG_COLUMNS)
 (
@@ -198,6 +206,10 @@ NLOG = len(LOG_COLUMNS)
     L_PC,
     L_FREECASH,
     L_CONVCASH,
+    L_K401ROTH,
+    L_ROTHTAX,
+    L_SAVING,
+    L_ROTHGAP,
 ) = range(NLOG)
 
 # --------------------------------------------------------------------------------------------
@@ -402,6 +414,9 @@ def _rebalance(st, equity, private_credit, uniform):
 # One household, one future: the year, in two halves
 # --------------------------------------------------------------------------------------------
 #
+# (The three year functions are inlined into the path loop: as separate calls each argument array is
+# reference-counted on entry and exit, which made the kernel about 40% slower.)
+#
 # A year is simulated by `_year_begin` (returns and loss harvesting: what the household sees
 # before it decides anything) and `_year_rest` (everything it then does, given an action). A fixed
 # policy turns its row into the year's action with `_policy_action`; the adaptive planner chooses
@@ -409,7 +424,7 @@ def _rebalance(st, equity, private_credit, uniform):
 # two functions, so a forced action reproduces a fixed policy exactly.
 
 
-@jit
+@jit(inline="always")
 def _policy_action(row, gates_row, tv, t, w, act):
     """Fill `act` with what the fixed policy `row` does in year `t` (a gate of 0 removes a decision)."""
     age = tv[t, TV_AGE]
@@ -421,7 +436,13 @@ def _policy_action(row, gates_row, tv, t, w, act):
         if row[SP_CONV_EVERY] > 0.5 or tv[t, TV_RETIRED] > 0.5 or low_income:
             conv_top = row[SP_CONV_TOP]
     act[A_CONV_TOP] = conv_top
-    act[A_K401_ROTH] = 0.0
+    roth = 0.0
+    if gates_row[G_K401] > 0.5:
+        if row[SP_K401] == K401_ROTH:
+            roth = 1.0
+        elif row[SP_K401] == K401_ROTH_LOW and w < LOW_INCOME_SHARE * tv[t, TV_EXPWAGE]:
+            roth = 1.0
+    act[A_K401_ROTH] = roth
     act[A_BORROW] = 0.0
     act[A_REALIZE] = 0.0
     harvest = 0.0
@@ -433,7 +454,7 @@ def _policy_action(row, gates_row, tv, t, w, act):
     act[A_WDBRACKET] = 1.0 if (row[SP_WD_BRACKET] > 0.5 and gates_row[G_WITHDRAW] > 0.5) else 0.0
 
 
-@jit
+@jit(inline="always")
 def _year_begin(st, ys, tv, t, act, r_e, r_b, r_c):
     """Steps 1-2: apply this year's returns, then harvest losses. Fills the year scratch `ys`."""
     age = tv[t, TV_AGE]
@@ -488,15 +509,26 @@ def _year_begin(st, ys, tv, t, act, r_e, r_b, r_c):
     ys[Y_HARVEST] = harvest
 
 
-@jit
-def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_log, log):
+@jit(inline="always")
+def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth, do_log, log):
     """Steps 3-11 for the action `act`. Returns (after-tax wealth if `want_wealth`, total income tax)."""
     age = tv[t, TV_AGE]
     ss = tv[t, TV_SS]
     taxable_ss = P.SS_TAXABLE_SHARE * ss
     kids = tv[t, TV_KIDS]
     deps = tv[t, TV_DEPS]
-    wages_taxable = w - k
+    # A Roth 401(k) contribution is made from after-tax pay: taxable wages are not reduced by it, and
+    # the extra tax comes out of brokerage saving first, so consumption stays where it was.
+    roth_401k = act[A_K401_ROTH] > 0.5 and k > 0.0
+    wages_taxable = w if roth_401k else w - k
+    wage_tax_t = wt_roth if roth_401k else wt_pre
+    extra_tax = wt_roth - wt_pre if roth_401k else 0.0
+    saved = BROKERAGE_SAVINGS_SHARE * w
+    saved_net = max(0.0, saved - extra_tax)
+    uncovered = extra_tax - (saved - saved_net)  # extra tax that brokerage saving does not cover
+    spare = max(0.0, w - wt_pre - k - saved - tv[t, TV_SPEND])  # spare wages before any Roth extra tax
+    free_cash = max(0.0, spare - uncovered)
+    roth_gap = max(0.0, uncovered - spare)  # extra tax even spare wages cannot cover: paid from the portfolio
     early = age < _EARLY_AGE
     ss_annual = hhc[HC_SS]
     aged = tv[t, TV_AGED]
@@ -606,7 +638,6 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
     # brokerage savings and normal spending are covered, but never out of the converted dollars.
     # Before retirement normal spending is taken to be what the household plans to spend in
     # retirement; the documents do not say what it spends today.
-    free_cash = max(0.0, w - wage_tax_t - k - BROKERAGE_SAVINGS_SHARE * w - tv[t, TV_SPEND])
     conv = 0.0
     if conv_top > 0.0:
         ordinary = _ordinary_income(wages_taxable, interest, taxable_ss, ret_dist, 0.0, realized, cf_in)
@@ -674,24 +705,34 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
         for i in range(N_BALANCES):
             st[i] *= 1.0 - f
 
-    # 11. Contributions: 401(k) to the pre-tax account, savings to the brokerage account.
+    # 11. Contributions: 401(k) to the pre-tax (or Roth) account, savings to the brokerage account.
     if k > 0.0:
-        pre = st[S_PE] + st[S_PB] + st[S_PP]
-        if pre > 0.0:
-            st[S_PE] += k * st[S_PE] / pre
-            st[S_PB] += k * st[S_PB] / pre
-            st[S_PP] += k * st[S_PP] / pre
+        if roth_401k:
+            ros = st[S_RE] + st[S_RB] + st[S_RP]
+            if ros > 0.0:
+                st[S_RE] += k * st[S_RE] / ros
+                st[S_RB] += k * st[S_RB] / ros
+                st[S_RP] += k * st[S_RP] / ros
+            else:
+                st[S_RE] += k
         else:
-            st[S_PE] += k
-    saved = BROKERAGE_SAVINGS_SHARE * w
-    if saved > 0.0:
+            pre = st[S_PE] + st[S_PB] + st[S_PP]
+            if pre > 0.0:
+                st[S_PE] += k * st[S_PE] / pre
+                st[S_PB] += k * st[S_PB] / pre
+                st[S_PP] += k * st[S_PP] / pre
+            else:
+                st[S_PE] += k
+    if saved_net > 0.0:
         brk = st[S_BE] + st[S_BB] + st[S_BP]
-        to_equity = min(saved, saved * st[S_BE] / brk) if brk > 0.0 else saved
-        to_pc = saved * st[S_BP] / brk if brk > 0.0 else 0.0
+        to_equity = min(saved_net, saved_net * st[S_BE] / brk) if brk > 0.0 else saved_net
+        to_pc = saved_net * st[S_BP] / brk if brk > 0.0 else 0.0
         st[S_BE] += to_equity
         st[S_BBASIS] += to_equity
         st[S_BP] += to_pc
-        st[S_BB] += saved - to_equity - to_pc
+        st[S_BB] += saved_net - to_equity - to_pc
+    if roth_gap > 0.0:
+        _pay_tax(st, roth_gap, 0.0)
 
     # After-tax wealth at the end of the year.
     wealth = 0.0
@@ -760,6 +801,10 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
         log[t, L_PC] = st[S_PP] + st[S_RP] + st[S_BP]
         log[t, L_FREECASH] = free_cash
         log[t, L_CONVCASH] = conv_cash
+        log[t, L_K401ROTH] = k if roth_401k else 0.0
+        log[t, L_ROTHTAX] = extra_tax
+        log[t, L_SAVING] = saved_net
+        log[t, L_ROTHGAP] = roth_gap
     return wealth, total_tax
 
 
@@ -777,7 +822,7 @@ def _simulate_path(s, p, strat, gates, tv, init, hhc, rets, wages, k401, wage_ta
         _policy_action(row, gates[s, t], tv, t, w, act)
         _year_begin(st, ys, tv, t, act, rets[p, t, 0], rets[p, t, 1], rets[p, t, 2])
         want = record or do_log or t == n_years - 1
-        res = _year_rest(st, ys, tv, t, hhc, row, act, w, k401[p, t], wage_tax[p, t], want, do_log, log)
+        res = _year_rest(st, ys, tv, t, hhc, row, act, w, k401[p, t], wage_tax[p, t, 0], wage_tax[p, t, 1], want, do_log, log)
         taxes_paid += res[1]
         if want:
             wealth = res[0]
@@ -810,8 +855,12 @@ def _wage_tax_table(wages, k401, tv, out):
     n_years = wages.shape[1]
     for p in prange(n_paths):
         for t in range(n_years):
-            r = tax_core(wages[p, t] - k401[p, t], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, tv[t, TV_KIDS], tv[t, TV_DEPS], 0.0, tv[t, TV_AGED])
-            out[p, t] = r.total_tax
+            # [..., 0]: the 401(k) contribution is pre-tax (taxable wages are reduced by it);
+            # [..., 1]: it is Roth (taxable wages are the full wages).
+            pre = tax_core(wages[p, t] - k401[p, t], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, tv[t, TV_KIDS], tv[t, TV_DEPS], 0.0, tv[t, TV_AGED])
+            roth = tax_core(wages[p, t], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, tv[t, TV_KIDS], tv[t, TV_DEPS], 0.0, tv[t, TV_AGED])
+            out[p, t, 0] = pre.total_tax
+            out[p, t, 1] = roth.total_tax
 
 
 # --------------------------------------------------------------------------------------------
@@ -840,6 +889,7 @@ class Policy:
     withdrawal_top: float = P.TOP_OF_22
     breakpoint_fees: bool = False  # RIA breakpoint schedule instead of the flat fee
     flat_fee: float = DONABACH_FLAT_FEE
+    k401: str = "pretax"  # 401(k) contributions: "pretax", "roth", or "roth_low" (Roth in low-income years only)
 
     def row(self, current_age: float) -> np.ndarray:
         r = np.zeros(NSP)
@@ -856,6 +906,7 @@ class Policy:
         r[SP_WD_TOP] = self.withdrawal_top
         r[SP_FEE_BREAKPOINTS] = float(self.breakpoint_fees)
         r[SP_FEE_FLAT] = self.flat_fee
+        r[SP_K401] = {"pretax": K401_PRETAX, "roth": K401_ROTH, "roth_low": K401_ROTH_LOW}[self.k401]
         return r
 
     def replace(self, **changes) -> Policy:
@@ -874,7 +925,7 @@ class SimInputs:
     rets: np.ndarray  # (paths, years, 3)
     wages: np.ndarray  # (paths, years) gross household wages
     k401: np.ndarray  # (paths, years)
-    wage_tax: np.ndarray  # (paths, years) tax on wages alone
+    wage_tax: np.ndarray  # (paths, years, 2) tax on wages alone: [..., 0] pre-tax 401(k), [..., 1] Roth 401(k)
 
     @property
     def ages(self) -> np.ndarray:
@@ -963,7 +1014,7 @@ def build_inputs(
 
     tv = _time_table(household, n_years, expected)
     k401 = np.minimum(P.LIMIT_401K_EMPLOYEE * tv[:, TV_NEARN][None, :], KEEP_401K_SHARE_OF_WAGES * wages)
-    wage_tax = np.zeros_like(wages)
+    wage_tax = np.zeros((*wages.shape, 2))
     with _KERNEL_LOCK:
         _wage_tax_table(np.ascontiguousarray(wages), np.ascontiguousarray(k401), tv, wage_tax)
 

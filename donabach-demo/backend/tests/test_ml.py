@@ -206,7 +206,7 @@ def test_models_are_reloaded_when_the_file_changes(tmp_path):
     first = load_recommender(tmp_path)
     assert load_recommender(tmp_path) is first  # cached while the file is unchanged
     picks = {"stock_share": "70", "conversion": "fill22_low", "private_credit": "0",
-             "direct_indexing": "off", "goal_bonds": "on"}
+             "direct_indexing": "off", "goal_bonds": "on", "k401": "pretax"}
     _drop(tmp_path, "recommender.pkl", stubs.StubRecommender(picks))
     assert load_recommender(tmp_path).recommend(make_demo_household()).option("stock_share") == "70"
     (tmp_path / "recommender.pkl").unlink()
@@ -266,10 +266,10 @@ def test_ties_between_equally_near_alternatives_follow_the_models_probabilities(
 def test_joint_probability_multiplies_the_per_choice_probabilities():
     rec = _rec()
     top = guided.strategy_from_recommendation(rec)
-    assert guided.joint_probability(rec, top) == pytest.approx(0.6**5)
+    assert guided.joint_probability(rec, top) == pytest.approx(0.6 ** len(CHOICES))
     others = len(CHOICE_OPTIONS["stock_share"]) - 1  # the stub spreads the remaining 0.4 over the other options
     assert guided.joint_probability(rec, Strategy(0.80, "none", 0.10, True, False)) == pytest.approx(
-        0.6**4 * (0.4 / others)
+        0.6 ** (len(CHOICES) - 1) * (0.4 / others)
     )
 
 

@@ -11,6 +11,7 @@ from tests.conftest import make_demo_household
 from app.planner import explain
 from app.planner.baseline import RIA_BASELINE
 from app.planner.search import (
+    SCREEN_KEEP,
     RISK_AVERSION,
     WEALTH_FLOOR,
     Outcome,
@@ -28,8 +29,8 @@ from app.tax import params_2026 as P
 
 def test_menu_has_every_combination_exactly_once():
     strategies = menu()
-    assert len(strategies) == 6 * 7 * 4 * 2 * 2 == 672
-    assert len({s.key for s in strategies}) == 672
+    assert len(strategies) == 6 * 7 * 4 * 2 * 2 * 3 == 2016
+    assert len({s.key for s in strategies}) == 2016
     assert len(CONVERSION_OPTIONS) == 7
     assert {s.stock_share for s in strategies} == {0.50, 0.60, 0.70, 0.80, 0.90, 1.00}
 
@@ -78,6 +79,20 @@ def test_private_credit_is_a_four_option_sleeve():
     assert "5% private credit sleeve" in text and "pre-tax account first" in text
     assert "15% private credit" in Strategy(0.8, "none", 0.15, False, False).short_label()
     assert "private credit" not in Strategy(0.8, "none", 0.0, False, False).short_label()
+
+
+def test_the_401k_choice_is_part_of_the_strategy():
+    assert CHOICE_OPTIONS["k401"] == ("pretax", "roth", "roth_low") and "k401" in CHOICES
+    assert {s.k401 for s in menu()} == {"pretax", "roth", "roth_low"}
+    assert Strategy(0.8, "none", 0.0, False, False).k401 == "pretax"  # the default is the old behaviour
+    for option in ("pretax", "roth", "roth_low"):
+        s = Strategy(0.8, "none", 0.0, False, False, option)
+        assert Strategy.from_choices(s.choices()) == s and s.policy().k401 == option
+    assert "Roth side" in Strategy(0.8, "none", 0.0, False, False, "roth").describe()
+    assert "low-income years" in Strategy(0.8, "none", 0.0, False, False, "roth_low").describe()
+    assert "401(k)" not in Strategy(0.8, "none", 0.0, False, False).describe()
+    with pytest.raises(ValueError):
+        Strategy(0.8, "none", 0.0, False, False, "after-tax")
 
 
 def test_unknown_conversion_option_is_rejected():
@@ -135,15 +150,47 @@ def result(futures):
     return search(futures, record_paths=False)
 
 
-def test_search_ranks_every_strategy_by_score(result):
-    ranked = result.ranked
-    assert len(ranked) == 672
+@pytest.fixture(scope="module")
+def exhaustive(futures):
+    return search(futures, exhaustive=True)
+
+
+def test_search_ranks_every_strategy_by_score(exhaustive):
+    ranked = exhaustive.ranked
+    assert len(ranked) == 2016 and exhaustive.n_considered == 2016
     scores = [r.outcome.score for r in ranked]
     assert scores == sorted(scores, reverse=True)
-    assert [r.rank for r in ranked] == list(range(1, 673))
-    assert result.best is ranked[0]
+    assert [r.rank for r in ranked] == list(range(1, 2017))
+    assert exhaustive.best is ranked[0]
     for r in ranked[:5]:
         assert r.outcome.p10 < r.outcome.median < r.outcome.p90
+
+
+def test_the_staged_search_scores_the_survivors_on_every_future(result):
+    assert result.n_considered == 2016 and len(result.ranked) == SCREEN_KEEP
+    scores = [r.outcome.score for r in result.ranked]
+    assert scores == sorted(scores, reverse=True)
+    assert [r.rank for r in result.ranked] == list(range(1, SCREEN_KEEP + 1))
+    assert result.batch.wealth.shape[1] == 400  # every survivor was run on all 400 futures
+    assert [s.key for s in result.strategies] == sorted((s.key for s in result.strategies), key=[m.key for m in menu()].index)
+
+
+def test_the_staged_search_finds_the_exhaustive_winner(result, exhaustive):
+    assert result.best.strategy == exhaustive.best.strategy
+    assert result.best.outcome == exhaustive.best.outcome
+    # and every one of the exhaustive top ten made it through the screen
+    survivors = {r.strategy for r in result.ranked}
+    assert all(r.strategy in survivors for r in exhaustive.ranked[:10])
+
+
+@pytest.mark.parametrize("seed", [11, 12, 13])
+def test_the_staged_search_agrees_with_the_exhaustive_one_on_other_households(seed):
+    from export_training_data import sample_household
+
+    household = sample_household(np.random.default_rng(seed))
+    inputs = build_inputs(household, n_paths=300, seed=seed)
+    staged, full = search(inputs), search(inputs, exhaustive=True)
+    assert staged.best.outcome.score == pytest.approx(full.best.outcome.score, rel=1e-9)
 
 
 def test_search_scores_come_from_the_simulated_futures(result):
@@ -159,7 +206,8 @@ def test_search_is_deterministic_for_a_seed(household):
     assert [r.strategy.key for r in a.ranked] == [r.strategy.key for r in b.ranked]
 
 
-def test_strategies_with_identical_results_are_marked_tied(result):
+def test_strategies_with_identical_results_are_marked_tied(exhaustive):
+    result = exhaustive
     tied = [r for r in result.ranked if r.tied_with is not None]
     assert tied, "fill-12% every year and low-income-only give identical results for this household"
     for r in tied:
@@ -181,7 +229,7 @@ def test_full_search_is_fast(futures):
     start = time.perf_counter()
     res = search(futures)
     assert time.perf_counter() - start < 2.0
-    assert res.elapsed_seconds < 2.0
+    assert res.elapsed_seconds < 2.0 and res.n_considered == 2016
 
 
 def test_a_strategy_subset_can_be_searched(futures):
@@ -200,12 +248,12 @@ def test_best_strategy_beats_the_ria_baseline_for_the_demo_household(futures, re
 
 
 @pytest.mark.parametrize(
-    "key", ["90|fill22_low|10|on|on", "70|none|0|off|off", "100|fill12_every|15|off|on"]
+    "key", ["90|fill22_low|10|on|on|pretax", "70|none|0|off|off|pretax", "100|fill12_every|15|off|on|roth", "60|none|5|on|off|roth_low"]
 )
 def test_attribution_steps_sum_to_the_total_advantage(futures, key):
-    stock, conv, pc, di, gb = key.split("|")
+    stock, conv, pc, di, gb, k401 = key.split("|")
     strategy = Strategy.from_choices(
-        dict(stock_share=stock, conversion=conv, private_credit=pc, direct_indexing=di, goal_bonds=gb)
+        dict(stock_share=stock, conversion=conv, private_credit=pc, direct_indexing=di, goal_bonds=gb, k401=k401)
     )
     steps = explain.advantage_steps(futures, strategy)
     assert [s.label for s in steps] == [

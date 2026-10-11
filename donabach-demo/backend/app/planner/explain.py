@@ -61,6 +61,7 @@ def advantage_policies(strategy: Strategy) -> list[tuple[str, Policy]]:
         conversion_every_year=chosen.conversion_every_year,
         bracket_withdrawals=chosen.bracket_withdrawals,
         withdrawal_top=chosen.withdrawal_top,
+        k401=chosen.k401,
     )
     assert p5 == chosen, "the last step must land exactly on the chosen strategy"
     return [
@@ -103,6 +104,7 @@ DECISION_GATES = {
     "bucket": sim.G_BUCKET,
     "location": sim.G_LOCATION,
     "withdraw": sim.G_WITHDRAW,
+    "k401": sim.G_K401,
 }
 
 
@@ -183,6 +185,17 @@ def _active_decisions(strategy: Strategy, policy: Policy, log: dict[str, np.ndar
                 description=f"{verb} {_money(abs(flow))} {'into' if flow > 0 else 'from'} the goal bond bucket, "
                 f"which now holds {_money(log['bucket'][t])} for goals due in the next four years.",
                 amount=flow,
+            )
+        )
+    if log["k401_roth"][t] > 0:
+        found.append(
+            Decision(
+                key="k401",
+                label="Roth 401(k)",
+                description=f"Contributed {_money(log['k401_roth'][t])} to the Roth side of the 401(k), after tax, "
+                f"instead of pre-tax; the extra {_money(log['roth_extra_tax'][t])} of tax this year came out of "
+                "brokerage saving.",
+                amount=float(log["k401_roth"][t]),
             )
         )
     if policy.donabach_location:

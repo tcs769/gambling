@@ -23,6 +23,7 @@ class StubRecommender:
             "private_credit": "10",
             "direct_indexing": "on",
             "goal_bonds": "off",
+            "k401": "pretax",
         }
         self.with_distribution = with_distribution
 

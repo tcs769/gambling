@@ -13,6 +13,7 @@ from tests.conftest import make_demo_household
 from app.docs import generate
 from app.main import app
 from app.ml import adapters
+from app.planner.search import SCREEN_KEEP
 from app.schemas import HORIZON_AGE
 from app.store import SAMPLE_IDS
 
@@ -249,14 +250,14 @@ def test_plan_without_a_recommender_is_the_labelled_search_planner(plan):
     assert plan["planner_label"] == "Search planner (model not connected)"
     assert plan["recommender"]["status"]["connected"] is False
     assert plan["recommender"]["recommendation"] is None and plan["recommender"]["candidates"] == []
-    assert plan["settings"]["strategies_searched"] == 672 and len(plan["searched"]) == 672
+    assert plan["settings"]["strategies_searched"] == 2016 and len(plan["searched"]) == SCREEN_KEEP
     assert plan["settings"]["risk_aversion"] == 3.0 and plan["settings"]["wealth_floor"] == 50_000
     assert plan["searched"][0]["is_chosen"] and plan["searched"][0]["rank"] == 1
 
 
 def test_plan_contents_are_consistent(plan):
     s, st = plan["strategy"], plan["stats"]
-    assert set(s["choices"]) == {"stock_share", "conversion", "private_credit", "direct_indexing", "goal_bonds"}
+    assert set(s["choices"]) == {"stock_share", "conversion", "private_credit", "direct_indexing", "goal_bonds", "k401"}
     assert s["sentence"].endswith(".") and "Hold" in s["sentence"] and plan["reason"]
     assert st["typical_outcome"] == s["outcome"] and st["years"] == HORIZON_AGE - 38
     assert st["advantage_total"] == pytest.approx(st["typical_outcome"]["median"] - st["ria_typical_outcome"]["median"])
@@ -325,7 +326,7 @@ def test_a_recommender_that_fails_is_reported_and_the_full_search_runs(household
     assert plan["planner_label"] == "Search planner (model not connected)"
     assert plan["recommender"]["status"]["connected"] is False
     assert "invalid Recommendation" in plan["recommender"]["status"]["reason"]
-    assert plan["settings"]["strategies_searched"] == 672
+    assert plan["settings"]["strategies_searched"] == 2016
     (models_dir / "recommender.pkl").write_bytes(pickle.dumps(stubs.RaisingRecommender()))
     again = client.post("/plan", json={"household": household_json}).json()
     assert "model blew up" in again["recommender"]["status"]["reason"]

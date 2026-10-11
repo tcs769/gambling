@@ -227,7 +227,7 @@ def build_plan(
             elapsed_seconds=time.perf_counter() - started,
             current_age=household.primary_age,
             horizon_age=HORIZON_AGE,
-            strategies_searched=len(result.ranked),
+            strategies_searched=result.n_considered or len(result.ranked),
             risk_aversion=RISK_AVERSION,
             wealth_floor=WEALTH_FLOOR,
             market_shock=shock,

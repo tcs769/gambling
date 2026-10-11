@@ -126,7 +126,8 @@ def test_log_constants_match_column_names():
         "fee": sim.L_FEE, "pretax": sim.L_PRETAX, "roth": sim.L_ROTH, "brokerage": sim.L_BROKERAGE,
         "wealth": sim.L_WEALTH, "unrealized_gain": sim.L_UNREALIZED,
         "aged": sim.L_AGED, "rmd": sim.L_RMD, "private_credit": sim.L_PC,
-        "free_cash": sim.L_FREECASH, "conv_cash": sim.L_CONVCASH,
+        "free_cash": sim.L_FREECASH, "conv_cash": sim.L_CONVCASH, "k401_roth": sim.L_K401ROTH,
+        "roth_extra_tax": sim.L_ROTHTAX, "brokerage_saving": sim.L_SAVING, "roth_gap": sim.L_ROTHGAP,
     }
     assert set(expected) == set(sim.LOG_COLUMNS)
     for name, index in expected.items():
@@ -175,7 +176,13 @@ def test_wage_tax_table_matches_the_tax_engine():
             children_under_17=int(inp.tv[t, sim.TV_KIDS]),
             dependents=int(inp.tv[t, sim.TV_DEPS]),
         ))
-        assert inp.wage_tax[p, t] == pytest.approx(r.grand_total, abs=1e-6)
+        assert inp.wage_tax[p, t, 0] == pytest.approx(r.grand_total, abs=1e-6)  # pre-tax 401(k)
+        roth = compute_return(TaxInputs(
+            wages=inp.wages[p, t],
+            children_under_17=int(inp.tv[t, sim.TV_KIDS]),
+            dependents=int(inp.tv[t, sim.TV_DEPS]),
+        ))
+        assert inp.wage_tax[p, t, 1] == pytest.approx(roth.grand_total, abs=1e-6)  # Roth 401(k): no deferral
 
 
 # --- Kernel mechanics ----------------------------------------------------------------------
@@ -448,6 +455,65 @@ def test_paying_tax_from_the_portfolio_never_touches_the_roth_dollars_just_conve
     assert free[sim.S_RE] == pytest.approx(60_000.0) and free[sim.S_DDIST] == 0.0
 
 
+def test_a_roth_401k_contribution_is_after_tax_and_lands_in_the_roth_account():
+    pre = detail(menu_policy("90|none|off|off|off|pretax")).log
+    roth = detail(menu_policy("90|none|off|off|off|roth")).log
+    for t in (0, 10, 23):
+        k = pre["k401"][t]
+        assert roth["k401"][t] == pytest.approx(k) and roth["k401_roth"][t] == pytest.approx(k)
+        assert pre["k401_roth"][t] == 0.0
+        assert roth["wages_taxable"][t] == pytest.approx(pre["wages_taxable"][t] + k)  # no deferral
+        assert roth["wage_tax"][t] > pre["wage_tax"][t]
+        assert roth["roth_extra_tax"][t] == pytest.approx(roth["wage_tax"][t] - pre["wage_tax"][t])
+    assert roth["roth"][0] > pre["roth"][0] + 20_000 and roth["pretax"][0] < pre["pretax"][0] - 20_000
+
+
+def test_a_roth_401k_keeps_consumption_where_it_was_by_saving_less():
+    pre = detail(menu_policy("90|none|off|off|off|pretax")).log
+    roth = detail(menu_policy("90|none|off|off|off|roth")).log
+    for t in range(24):
+        spent_pre = pre["wages"][t] - pre["wage_tax"][t] - pre["k401"][t] - pre["brokerage_saving"][t]
+        spent_roth = roth["wages"][t] - roth["wage_tax"][t] - roth["k401"][t] - roth["brokerage_saving"][t]
+        assert spent_roth == pytest.approx(spent_pre, abs=1e-6)  # the same left over for living
+        assert roth["brokerage_saving"][t] == pytest.approx(
+            max(0.0, pre["brokerage_saving"][t] - roth["roth_extra_tax"][t]), abs=1e-6
+        )
+
+
+def test_401k_contributions_keep_the_same_limits_whatever_the_type():
+    inp = deterministic()
+    assert np.all(inp.k401[0, :24] <= 2 * P.LIMIT_401K_EMPLOYEE) and np.all(inp.k401[0, 24:] == 0.0)
+    assert np.all(inp.k401[0, :24] <= 0.20 * inp.wages[0, :24] + 1e-9)
+
+
+def test_roth_in_low_income_years_only_switches_with_the_year():
+    inp = deterministic()
+    inp.wages[0, 5] *= 0.4  # a bad year: well under 80% of the expected wages
+    inp.k401[0, 5] = min(P.LIMIT_401K_EMPLOYEE * 2, 0.20 * inp.wages[0, 5])  # the wage-tax table must follow
+    tax = np.zeros((1, inp.n_years, 2))
+    with sim._KERNEL_LOCK:
+        sim._wage_tax_table(np.ascontiguousarray(inp.wages), np.ascontiguousarray(inp.k401), inp.tv, tax)
+    inp.wage_tax = tax
+    log = run_detail(inp, menu_policy("90|none|off|off|off|roth_low")).log
+    assert log["k401_roth"][5] == pytest.approx(inp.k401[0, 5]) and inp.k401[0, 5] > 0
+    others = [t for t in range(24) if t != 5]
+    assert np.all(log["k401_roth"][others] == 0.0)  # pre-tax in every normal year
+
+
+def test_the_401k_gate_removes_the_roth_choice_for_one_year():
+    inp = deterministic()
+    gates = np.ones((1, inp.n_years, sim.NGATE))
+    gates[0, 3, sim.G_K401] = 0.0
+    log = run_detail(inp, menu_policy("90|none|off|off|off|roth"), gates[0]).log
+    assert log["k401_roth"][3] == 0.0 and log["k401_roth"][2] > 0 and log["k401_roth"][4] > 0
+
+
+def test_policy_401k_options_map_to_the_policy_column():
+    for option, code in (("pretax", sim.K401_PRETAX), ("roth", sim.K401_ROTH), ("roth_low", sim.K401_ROTH_LOW)):
+        assert Policy(k401=option).row(38)[sim.SP_K401] == code
+    assert menu_policy("90|none|off|off|off|roth").k401 == "roth"
+
+
 def test_roth_conversion_tax_is_paid_from_the_taxable_account():
     log = detail(menu_policy("90|fill22_low|off|off|off")).log
     t = 24
@@ -639,7 +705,13 @@ def test_portfolio_tax_is_total_minus_tax_on_wages_alone():
 
 def test_assets_are_conserved_with_zero_returns():
     """Every dollar of change is a contribution, goal, spending, tax or fee."""
-    for policy in (RIA_BASELINE, menu_policy("80|fill22_every|on|on|on"), menu_policy("100|none|off|off|off")):
+    for policy in (
+        RIA_BASELINE,
+        menu_policy("80|fill22_every|on|on|on"),
+        menu_policy("100|none|off|off|off"),
+        menu_policy("60|fill24_every|15|off|on|roth"),
+        menu_policy("70|none|5|on|off|roth_low"),
+    ):
         res = detail(policy, zero_returns=True)
         log = res.log
         total = log["pretax"] + log["roth"] + log["brokerage"] + log["bucket"]
@@ -647,7 +719,7 @@ def test_assets_are_conserved_with_zero_returns():
         previous = household.liquid_wealth
         for t in range(len(total)):
             flows = (
-                log["k401"][t] + sim.BROKERAGE_SAVINGS_SHARE * log["wages"][t]
+                log["k401"][t] + log["brokerage_saving"][t] - log["roth_gap"][t]
                 - log["goal_paid"][t] - log["spend_need"][t] - log["fee"][t]
                 - (log["portfolio_tax"][t] - log["conv_cash"][t])  # conversion tax paid from wages leaves no hole
             )
@@ -764,8 +836,7 @@ def test_market_shock_whatif_lowers_wealth():
 def test_search_scale_batch_is_fast_and_finite():
     import time
 
-    policies = [s.policy() for s in menu()]
-    assert len(policies) == 672
+    policies = [s.policy() for s in menu()][:672]
     inp = build_inputs(make_demo_household(), 400, seed=1)
     run_batch(inp, policies[:2])  # make sure the kernel is compiled
     start = time.perf_counter()
@@ -801,11 +872,11 @@ def test_extreme_households_stay_finite():
 def menu_policy(key: str) -> Policy:
     from app.planner.strategies import Strategy
 
-    stock, conversion, pc, di, gb = key.split("|")
+    stock, conversion, pc, di, gb, *rest = key.split("|")
     pc = {"on": "10", "off": "0"}.get(pc, pc)  # keys may say on/off for the 10% sleeve
     return Strategy.from_choices({
         "stock_share": stock, "conversion": conversion, "private_credit": pc,
-        "direct_indexing": di, "goal_bonds": gb,
+        "direct_indexing": di, "goal_bonds": gb, "k401": rest[0] if rest else "pretax",
     }).policy()
 
 

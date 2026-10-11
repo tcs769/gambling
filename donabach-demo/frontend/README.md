@@ -30,7 +30,9 @@ is either in the same response (`plan.adaptive`, when the API already has it: th
 or a background job (`plan.adaptive_job`) that the app polls every 700 ms (`GET /plan/adaptive/{id}`). The state
 lives in `src/lib/state.tsx`: each plan keeps its own year-by-year state (`ready`, `refining` with the job's
 progress, `failed` with the API's error text), so a newer plan never shows an older plan's year-by-year part, and
-polling a job stops as soon as the plan it belongs to is replaced (a new what-if, a reset, new answers).
+polling a job stops as soon as the plan it belongs to is replaced (a new what-if, a reset, new answers). The app then
+tells the API it no longer wants the job (`DELETE /plan/adaptive/{id}`, once per abandoned job, never for the job it
+is following); the API stops a job when nobody is watching it any more, so a newer what-if does not queue behind it.
 
 While a job runs the Plan and Comparison screens show the fixed plan and say "Refining plan…" (a pill beside the
 title; on Comparison also a placeholder panel that holds the room of the panels that will replace it). The Plan
@@ -41,3 +43,15 @@ panel against the plan it started from. `src/lib/adaptive.ts` holds the words an
 
 The fourth chart colour (the adaptive planner, drawn dotted) and how it was chosen are documented next to the
 series tokens in `src/app/globals.css`; `npm run check:colors` covers all four.
+
+## Known limits
+
+* A failed year-by-year job is reported with the API's error text and the fixed plan stays fully usable, but there is
+  no retry button (a new what-if, a reset or new answers start a new job).
+* The year-by-year plan's decisions carry no dollar value of their own (the fixed plan's year detail does): the
+  drawer says "not valued one by one". Its re-test scores are quoted only when a change was kept, and the "market fell
+  this year" note exists only for the plan path's years (`facts.market_return`).
+* The job's progress is one fraction; the API does not say whether it is still queued or has started.
+* The Plan table and the chart's table twin scroll sideways inside their panels when the window is narrow (below
+  about 700px for the table, about 960px of panel room for the twin); no heading word is cut off. The step
+  navigation overflows the page below about 720px wide.

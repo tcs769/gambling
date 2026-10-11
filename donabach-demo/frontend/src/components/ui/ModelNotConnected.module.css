@@ -1,0 +1,32 @@
+.box {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 18px 20px;
+  border: 1.5px dashed var(--muted);
+  border-radius: var(--radius);
+  background: var(--cream);
+}
+
+.icon {
+  color: var(--muted-text);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.title {
+  font-weight: 650;
+  color: var(--brown);
+}
+
+.text {
+  color: var(--muted-text);
+  margin-top: 2px;
+}
+
+.reason {
+  margin-top: 6px;
+  font-size: 0.875rem;
+  color: var(--muted-text);
+  word-break: break-all;
+}

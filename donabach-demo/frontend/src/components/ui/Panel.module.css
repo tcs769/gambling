@@ -1,0 +1,25 @@
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.plain {
+  background: var(--cream);
+  box-shadow: none;
+}
+
+.title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.aside {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}

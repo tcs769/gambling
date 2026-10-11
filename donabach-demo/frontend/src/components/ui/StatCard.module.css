@@ -1,0 +1,35 @@
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card[data-tone="accent"] {
+  border-color: var(--gold);
+  background: linear-gradient(0deg, var(--gold-wash), var(--gold-wash)), var(--panel);
+}
+
+.label {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+
+/* Proportional figures: tabular digits look loose at display sizes. */
+.value {
+  font-family: var(--font-sans);
+  font-size: 2.25rem;
+  font-weight: 650;
+  color: var(--espresso);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.note {
+  font-size: 0.9375rem;
+  color: var(--muted-text);
+}

@@ -1,0 +1,60 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: 999px;
+  border: 1.5px solid transparent;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 150ms ease, border-color 150ms ease, transform 100ms ease;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.button:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.primary {
+  background: var(--brown);
+  color: var(--cream);
+}
+.primary:not(:disabled):hover {
+  background: #473617;
+}
+
+.secondary {
+  background: transparent;
+  color: var(--brown);
+  border-color: var(--muted);
+}
+.secondary:not(:disabled):hover {
+  background: var(--panel);
+  border-color: var(--brown);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--brown);
+  padding-inline: 12px;
+}
+.ghost:not(:disabled):hover {
+  background: var(--panel);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 700ms linear infinite;
+}

@@ -24,3 +24,4 @@ frontend/tsconfig.tsbuildinfo
 
 # Screenshots from local verification
 .screenshots/
+frontend/public/pdf.worker.min.mjs

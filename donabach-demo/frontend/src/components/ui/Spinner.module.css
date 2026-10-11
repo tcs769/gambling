@@ -1,0 +1,13 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted-text);
+}
+
+.spinner {
+  border-radius: 50%;
+  border: 2.5px solid var(--gold);
+  border-right-color: transparent;
+  animation: spin 800ms linear infinite;
+}

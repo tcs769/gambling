@@ -1,0 +1,150 @@
+/* Design tokens from the investor deck. Text on the muted token fails AA below large sizes, so small
+   secondary copy uses --muted-text (5.8:1 on cream, 5.1:1 on panels); --muted is for lines and icons. */
+:root {
+  --cream: #fbf7ee;
+  --panel: #f1e8d4;
+  --espresso: #2b2418;
+  --brown: #5a4521;
+  --gold: #b8892b;
+  --muted: #8c7b63;
+  --line: #e3d7bd;
+
+  --muted-text: #6f5f49;
+  --panel-deep: #e9ddc2;
+  --gold-wash: rgba(184, 137, 43, 0.14);
+
+  /* Status colors always travel with an icon and a word (never color alone). */
+  --good: #2e7048;
+  --warn: #9a5200;
+  --bad: #ae3a2e;
+  --good-wash: rgba(46, 112, 72, 0.12);
+  --warn-wash: rgba(154, 82, 0, 0.12);
+  --bad-wash: rgba(174, 58, 46, 0.1);
+
+  /* Chart series (validated for color-blind separation and >= 3:1 against the panel). */
+  --series-donabach: #a87a1f;
+  --series-ria: #3570b5;
+
+  --font-serif: Cambria, Georgia, "Times New Roman", serif;
+  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow: 0 1px 2px rgba(90, 69, 33, 0.06), 0 6px 18px rgba(90, 69, 33, 0.05);
+  --content-width: 1280px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--cream);
+  color: var(--espresso);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-serif);
+  color: var(--brown);
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+  letter-spacing: -0.005em;
+}
+h1 {
+  font-size: 2rem;
+}
+h2 {
+  font-size: 1.4rem;
+}
+h3 {
+  font-size: 1.15rem;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--brown);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Columns of numbers align; big standalone figures do not use tabular digits. */
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--muted-text);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

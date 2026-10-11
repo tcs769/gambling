@@ -407,3 +407,128 @@ def test_pretax_projection_drops_with_conversions(det):
     none = explain.pretax_projection(det, Strategy(0.9, "none", 0.0, False, False).policy())
     conv = explain.pretax_projection(det, Strategy(0.9, "fill22_low", 0.0, False, False).policy())
     assert conv.balance < none.balance
+
+
+# --- The two advisors (spec A9) -------------------------------------------------------------
+
+
+def test_the_typical_advisor_is_defined_as_the_spec_says():
+    from app.planner.baseline import BASELINES, GOOD_RIA, TYPICAL, TYPICAL_ADVISOR
+
+    p = TYPICAL_ADVISOR
+    assert p.flat_fee == 0.010 and not p.breakpoint_fees  # a flat 1.0% fee at every balance
+    assert not p.tax_loss_harvesting  # no tax-loss harvesting
+    assert not p.donabach_location  # the same mix in every account
+    assert (p.stock_share, p.glide_start_age, p.glide_drop) == (0.80, None, pytest.approx(0.30))  # 80% to 50%
+    assert p.conversion_top == 0.0 and not p.bracket_withdrawals  # no conversions, proportional withdrawals
+    assert not p.goal_bonds and p.private_credit == 0.0 and p.goal_funding == "sell" and p.k401 == "pretax"
+    assert [b.key for b in BASELINES] == ["good_ria", "typical_advisor"] and BASELINES[0] is GOOD_RIA
+    for baseline in BASELINES:
+        assert baseline.definition.endswith(".") and baseline.label in ("Good RIA", "Typical advisor")
+    assert "1.0%" in TYPICAL.definition and "no tax-loss harvesting" in TYPICAL.definition
+
+
+def test_the_typical_advisor_never_harvests_but_the_good_ria_does_after_a_crash():
+    from app.planner.baseline import TYPICAL_ADVISOR
+    from app.sim import markets
+
+    household = make_demo_household()
+    rets = np.zeros((1, household.horizon_years, 3))
+    rets[0, 5, markets.EQUITY] = -0.30  # a bad year: fund-level harvesting needs a fall of more than 10%
+    inp = build_inputs(household, deterministic=True)
+    inp.rets = np.ascontiguousarray(rets)
+    typical = run_detail(inp, TYPICAL_ADVISOR).log
+    ria = run_detail(inp, RIA_BASELINE).log
+    assert np.all(typical["harvest"] == 0.0)
+    assert ria["harvest"][5] > 0  # the good RIA harvests at fund level after a 30% fall
+
+
+def test_the_typical_advisor_pays_a_flat_one_percent_and_the_good_ria_less():
+    from app.planner.baseline import TYPICAL_ADVISOR
+
+    inp = build_inputs(make_demo_household(), deterministic=True)
+    typical = run_detail(inp, TYPICAL_ADVISOR).log
+    ria = run_detail(inp, RIA_BASELINE).log
+    # The fee comes off the assets before the year's contributions go in, so compare it with the
+    # balance it was charged on: once retired (no contributions) that is exactly 1.0% every year.
+    after = typical["pretax"] + typical["roth"] + typical["brokerage"] + typical["bucket"]
+    ratio = typical["fee"] / (after + typical["fee"])
+    assert np.all(np.abs(ratio[24:] - 0.010) < 1e-9)
+    assert np.all((0.0085 < ratio[:24]) & (ratio[:24] <= 0.010))  # a little under while contributions arrive
+    # identical at first (the good RIA also charges 1.0% on the first $1M), then it pulls ahead on the breakpoints
+    assert typical["fee"][0] == pytest.approx(ria["fee"][0])
+    assert np.all(typical["fee"][8:] > ria["fee"][8:])
+
+
+def test_the_typical_advisor_does_no_conversions_and_takes_withdrawals_pro_rata():
+    from app.planner.baseline import TYPICAL_ADVISOR
+
+    inp = build_inputs(make_demo_household(), deterministic=True)
+    log = run_detail(inp, TYPICAL_ADVISOR).log
+    assert np.all(log["conv"] == 0.0)
+    assert log["equity_share"][0] == pytest.approx(0.80, abs=0.02) and log["stock_target"][32] == pytest.approx(0.50)
+
+
+def test_the_typical_advisor_does_worse_than_the_good_ria_for_the_demo_household(futures):
+    from app.planner.baseline import TYPICAL_ADVISOR
+
+    wealth = run_batch(futures, [RIA_BASELINE, TYPICAL_ADVISOR]).wealth
+    assert np.median(wealth[1]) < np.median(wealth[0])  # the same mechanics but a higher fee and no harvesting
+
+
+# --- Measuring the advantage (spec A7) -------------------------------------------------------
+
+
+def test_annualized_advantage_is_the_growth_rate_difference():
+    from app.study.metrics import annualized
+
+    assert annualized(2_000_000.0, 1_000_000.0, 10) == pytest.approx(2 ** 0.1 - 1)
+    assert annualized(1_000_000.0, 1_000_000.0, 42) == 0.0
+    assert annualized(1_000_000.0, 2_000_000.0, 10) < 0.0  # behind the baseline
+    assert annualized(0.0, 1_000_000.0, 10) == 0.0 and annualized(1.0, 1.0, 0) == 0.0  # degenerate inputs
+    # compounding the advantage over the horizon reproduces the ratio
+    assert (1 + annualized(3_000_000.0, 2_000_000.0, 42)) ** 42 == pytest.approx(1.5)
+
+
+def test_both_measures_use_the_right_statistic():
+    from app.study.metrics import compare
+
+    plan = np.array([1_000_000.0, 2_000_000.0, 3_000_000.0, 4_000_000.0, 100_000.0])
+    base = np.array([900_000.0, 1_500_000.0, 2_000_000.0, 2_500_000.0, 100_000.0])
+    adv = compare(plan, base, 20)
+    assert adv.plan_median == 2_000_000.0 and adv.baseline_median == 1_500_000.0  # medians
+    assert adv.median == pytest.approx((2_000_000 / 1_500_000) ** (1 / 20) - 1)
+    assert adv.plan_ce == pytest.approx(certainty_equivalent(plan)) and adv.baseline_ce == pytest.approx(certainty_equivalent(base))
+    assert adv.risk_adjusted == pytest.approx((adv.plan_ce / adv.baseline_ce) ** (1 / 20) - 1)
+    assert adv.median_dollars == 500_000.0 and adv.risk_adjusted_dollars == pytest.approx(adv.plan_ce - adv.baseline_ce)
+    # a riskier plan with the same median and a worse bad case has a smaller risk-adjusted advantage
+    riskier = np.array([300_000.0, 2_000_000.0, 3_000_000.0, 4_000_000.0, 100_000.0])
+    assert compare(riskier, base, 20).risk_adjusted < adv.risk_adjusted
+    assert compare(riskier, base, 20).median == pytest.approx(adv.median)  # same median
+
+
+def test_the_resampling_range_brackets_the_point_estimate_and_narrows_with_more_futures():
+    from app.study.metrics import compare
+
+    rng = np.random.default_rng(5)
+    widths = []
+    for n in (100, 1_600):
+        base = rng.lognormal(14.5, 0.7, n)
+        plan = base * np.exp(rng.normal(0.25, 0.15, n))
+        adv = compare(plan, base, 30, with_range=True)
+        lo, hi = adv.median_range
+        assert lo < adv.median < hi and adv.risk_adjusted_range[0] < adv.risk_adjusted < adv.risk_adjusted_range[1]
+        widths.append(hi - lo)
+    assert widths[1] < widths[0]
+    assert compare(plan, base, 30).median_range == (0.0, 0.0)  # off unless asked for
+
+
+def test_the_risk_adjusted_measure_follows_the_risk_aversion():
+    from app.study.metrics import compare
+
+    rng = np.random.default_rng(1)
+    base = rng.lognormal(14.5, 0.9, 500)
+    safer = np.sort(base)[::-1] * 0 + np.exp(np.mean(np.log(base))) * 0.9  # sure thing below the median
+    low, high = compare(safer, base, 30, risk_aversion=1.5), compare(safer, base, 30, risk_aversion=6.0)
+    assert high.risk_adjusted > low.risk_adjusted  # the more risk-averse the household, the more the sure thing is worth
+    assert high.median == pytest.approx(low.median)  # the median measure ignores risk aversion

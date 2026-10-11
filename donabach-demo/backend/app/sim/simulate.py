@@ -76,8 +76,9 @@ NTV = 12
     SP_FEE_FLAT,
     SP_K401,
     SP_BORROW,
-) = range(15)
-NSP = 15
+    SP_TLH,
+) = range(16)
+NSP = 16
 
 # 401(k) contribution type (SP_K401).
 K401_PRETAX, K401_ROTH, K401_ROTH_LOW = 0.0, 1.0, 2.0
@@ -500,7 +501,7 @@ def _policy_action(row, gates_row, tv, t, w, act):
     act[A_BORROW] = 1.0 if (row[SP_BORROW] > 0.5 and gates_row[G_BORROW] > 0.5) else 0.0
     act[A_REALIZE] = 0.0
     harvest = 0.0
-    if gates_row[G_HARVEST] > 0.5:
+    if gates_row[G_HARVEST] > 0.5 and row[SP_TLH] > 0.5:
         harvest = 2.0 if row[SP_DI] > 0.5 else 1.0
     act[A_HARVEST] = harvest
     act[A_BUCKET] = 1.0 if (row[SP_BUCKET] > 0.5 and gates_row[G_BUCKET] > 0.5) else 0.0
@@ -980,6 +981,7 @@ class Policy:
     flat_fee: float = DONABACH_FLAT_FEE
     k401: str = "pretax"  # 401(k) contributions: "pretax", "roth", or "roth_low" (Roth in low-income years only)
     goal_funding: str = "sell"  # "sell" assets for a goal, or "borrow" against the taxable account (box spread)
+    tax_loss_harvesting: bool = True  # False: never harvest losses (the typical advisor)
 
     def row(self, current_age: float) -> np.ndarray:
         r = np.zeros(NSP)
@@ -998,6 +1000,7 @@ class Policy:
         r[SP_FEE_FLAT] = self.flat_fee
         r[SP_K401] = {"pretax": K401_PRETAX, "roth": K401_ROTH, "roth_low": K401_ROTH_LOW}[self.k401]
         r[SP_BORROW] = {"sell": 0.0, "borrow": 1.0}[self.goal_funding]
+        r[SP_TLH] = float(self.tax_loss_harvesting)
         return r
 
     def replace(self, **changes) -> Policy:

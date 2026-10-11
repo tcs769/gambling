@@ -136,10 +136,14 @@ class ForecastResponse(BaseModel):
 
 class PlanRequest(BaseModel):
     household: Household
-    n_paths: int = Field(400, ge=50, le=5_000)
+    n_paths: int = Field(400, ge=50, le=5_000, description="Futures the strategy search runs on")
+    n_eval_paths: int = Field(
+        200, ge=50, le=5_000, description="Fresh futures (never seen by the search) every result is measured on"
+    )
     demo_mode: bool = True
     seed: int | None = None
     shock: MarketShock | None = None
+    risk_aversion: float = Field(3.0, ge=0.5, le=10.0, description="CRRA coefficient behind the score")
 
 
 class OutcomeView(BaseModel):
@@ -198,16 +202,6 @@ class RecommenderPanel(BaseModel):
     candidates: list[RankedRow] = Field(default_factory=list)
 
 
-class StatCards(BaseModel):
-    typical_outcome: OutcomeView
-    ria_typical_outcome: OutcomeView
-    advantage_per_year: float  # typical outcome minus the RIA's typical outcome, over the plan years
-    advantage_total: float
-    lifetime_taxes: float  # income taxes paid plus tax still owed on pre-tax accounts (median)
-    ria_lifetime_taxes: float
-    years: int
-
-
 class FanSeries(BaseModel):
     ages: list[int]
     p10: list[float]
@@ -217,9 +211,55 @@ class FanSeries(BaseModel):
     p90: list[float]
 
 
+class AdvantageView(BaseModel):
+    """The plan's advantage over one baseline, measured two ways (spec A7), both annualized.
+
+    Each is the yearly growth-rate difference `(plan / baseline)^(1/years) - 1` that would open the
+    observed gap over the horizon: median uses median after-tax wealth, risk-adjusted uses
+    certainty-equivalent wealth (the planner's own objective). The `*_low` / `*_high` pair is the
+    5th to 95th percentile when the evaluation futures are resampled.
+    """
+
+    median: float
+    risk_adjusted: float
+    median_dollars: float  # plan median minus baseline median at the horizon
+    risk_adjusted_dollars: float  # plan certainty equivalent minus baseline's
+    median_low: float
+    median_high: float
+    risk_adjusted_low: float
+    risk_adjusted_high: float
+
+
+class BaselineView(BaseModel):
+    """One advisor the plan is compared with, measured on the same evaluation futures."""
+
+    key: Literal["good_ria", "typical_advisor"]
+    label: str
+    definition: str
+    outcome: OutcomeView
+    lifetime_taxes: float  # median income tax paid plus tax still owed on pre-tax accounts
+    shortfall_chance: float  # share of futures in which spending or a goal could not be funded
+    advantage: AdvantageView  # the plan's advantage over this baseline
+    fan: FanSeries
+
+
+class StatCards(BaseModel):
+    typical_outcome: OutcomeView
+    ria_typical_outcome: OutcomeView
+    advantage_per_year: float  # typical outcome minus the RIA's typical outcome, over the plan years
+    advantage_total: float
+    lifetime_taxes: float  # income taxes paid plus tax still owed on pre-tax accounts (median)
+    ria_lifetime_taxes: float
+    years: int
+    shortfall_chance: float  # share of futures in which the plan could not fund spending or a goal
+    advantage: AdvantageView  # over the good RIA
+
+
 class PlanSettings(BaseModel):
-    n_paths: int
+    n_paths: int  # futures the strategy search ran on
+    n_eval_paths: int  # fresh futures every outcome, fan chart and advantage is measured on
     seed: int
+    eval_seed: int
     demo_mode: bool
     elapsed_seconds: float
     current_age: int
@@ -240,6 +280,7 @@ class PlanResponse(BaseModel):
     stats: StatCards
     fan: FanSeries
     ria_fan: FanSeries
+    baselines: list[BaselineView]  # good RIA, then typical advisor
     advantage: list[AdvantageStep]
     searched: list[RankedRow]
     settings: PlanSettings
@@ -282,8 +323,10 @@ class WhatIfRequest(BaseModel):
     presets: list[Preset] = Field(default_factory=list)
     edits: HouseholdEdits = Field(default_factory=HouseholdEdits)
     n_paths: int = Field(400, ge=50, le=5_000)
+    n_eval_paths: int = Field(200, ge=50, le=5_000)
     demo_mode: bool = True
     seed: int | None = None
+    risk_aversion: float = Field(3.0, ge=0.5, le=10.0)
     shock: MarketShock | None = None  # an existing shock to keep (from a previous what-if)
 
 

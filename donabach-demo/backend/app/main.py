@@ -144,7 +144,10 @@ def income_forecast(request: ForecastRequest) -> ForecastResponse:
 
 @app.post("/plan", response_model=PlanResponse)
 def make_plan(request: PlanRequest) -> PlanResponse:
-    return plan.build_plan(request.household, request.n_paths, request.demo_mode, request.seed, request.shock)
+    return plan.build_plan(
+        request.household, request.n_paths, request.demo_mode, request.seed, request.shock,
+        request.n_eval_paths, request.risk_aversion,
+    )
 
 
 @app.post("/plan/year-detail", response_model=explain.YearDetail)
@@ -167,5 +170,7 @@ def plan_whatif(request: WhatIfRequest) -> WhatIfResponse:
         )
     except whatif.WhatIfError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    result = plan.build_plan(household, request.n_paths, request.demo_mode, request.seed, shock)
+    result = plan.build_plan(
+        household, request.n_paths, request.demo_mode, request.seed, shock, request.n_eval_paths, request.risk_aversion
+    )
     return WhatIfResponse(changes=changes, household=household, shock=shock, plan=result)

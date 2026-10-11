@@ -45,6 +45,17 @@ def git_revision() -> str:
         return "unknown"
 
 
+def default_baselines() -> dict:
+    """The good RIA, and the typical advisor where the engine has one (it was added in step A9)."""
+    baselines = {"good_ria": RIA_BASELINE}
+    try:
+        from app.planner.baseline import TYPICAL_ADVISOR
+    except ImportError:  # an older revision being re-measured
+        return baselines
+    baselines["typical_advisor"] = TYPICAL_ADVISOR
+    return baselines
+
+
 def sample_household() -> Household:
     """The demo household (the spec's fictional household), identical to what the app builds."""
     from tests.conftest import make_demo_household
@@ -53,7 +64,7 @@ def sample_household() -> Household:
 
 
 def _summary(adv: Advantage) -> dict[str, float]:
-    return {k: float(v) for k, v in asdict(adv).items()}
+    return {k: [float(x) for x in v] if isinstance(v, tuple) else float(v) for k, v in asdict(adv).items()}
 
 
 def measure(
@@ -65,23 +76,26 @@ def measure(
     baselines: dict | None = None,
 ) -> dict:
     """Search on `n_search` futures, then score the winner on held-out futures."""
-    baselines = baselines if baselines is not None else {"good_ria": RIA_BASELINE}
+    baselines = baselines if baselines is not None else default_baselines()
     years = household.horizon_years
     started = time.perf_counter()
     futures = build_inputs(household, n_paths=n_search, seed=seed)
-    result = search(futures)
+    result = search(futures, risk_aversion=risk_aversion) if risk_aversion != RISK_AVERSION else search(futures)
     chosen = result.best.strategy
     policies = [chosen.policy(), *baselines.values()]
 
-    in_sample = run_batch(futures, policies).wealth
+    in_batch = run_batch(futures, policies)
+    in_sample = in_batch.wealth
     held = build_inputs(household, n_paths=n_eval, seed=seed + EVAL_SEED_OFFSET)
-    held_wealth = run_batch(held, policies).wealth
+    held_batch = run_batch(held, policies)
+    held_wealth = held_batch.wealth
 
     out = {
         "seed": seed,
         "years": years,
         "strategy": chosen.choices(),
         "strategy_label": chosen.short_label(),
+        "risk_aversion": risk_aversion,
         "n_search": n_search,
         "n_eval": n_eval,
         "elapsed_seconds": time.perf_counter() - started,
@@ -90,7 +104,12 @@ def measure(
     for i, name in enumerate(baselines, start=1):
         out["baselines"][name] = {
             "in_sample": _summary(compare(in_sample[0], in_sample[i], years, risk_aversion)),
-            "held_out": _summary(compare(held_wealth[0], held_wealth[i], years, risk_aversion)),
+            "held_out": _summary(compare(held_wealth[0], held_wealth[i], years, risk_aversion, with_range=True)),
+            # share of futures in which the plan / the baseline could not fund spending or a goal
+            "shortfall": {
+                "plan": float(np.mean(held_batch.unfunded[0] > 0)),
+                "baseline": float(np.mean(held_batch.unfunded[i] > 0)),
+            },
         }
     return out
 
@@ -107,6 +126,9 @@ def measure_seeds(household: Household, seeds=DEFAULT_SEEDS, **kwargs) -> dict:
                 for key in ("median", "risk_adjusted")
             }
             for kind in ("in_sample", "held_out")
+        }
+        summary["mean"][name]["shortfall"] = {
+            who: float(np.mean([r["baselines"][name]["shortfall"][who] for r in runs])) for who in ("plan", "baseline")
         }
     summary["choices_by_seed"] = [(r["seed"], r["strategy_label"]) for r in runs]
     return summary

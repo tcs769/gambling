@@ -50,8 +50,8 @@ def render(reports: Path = REPORTS) -> str:
         lines += [
             f"## Against the {titles.get(baseline, baseline)}",
             "",
-            "| Step | Years | Recommendation (seed 2026) | Median adv. | Risk-adj. adv. | Mean of 5 seeds (median / risk-adj.) | In-sample (median / risk-adj.) |",
-            "|---|---|---|---|---|---|---|",
+            "| Step | Years | Recommendation (seed 2026) | Median adv. | Risk-adj. adv. | Mean of 5 seeds (median / risk-adj.) | In-sample (median / risk-adj.) | Chance of a shortfall: plan / baseline |",
+            "|---|---|---|---|---|---|---|---|",
         ]
         for run in runs:
             app = run["app_seed_run"]
@@ -60,10 +60,12 @@ def render(reports: Path = REPORTS) -> str:
             held = app["baselines"][baseline]["held_out"]
             ins = app["baselines"][baseline]["in_sample"]
             mean = run["mean"][baseline]["held_out"]
+            short = app["baselines"][baseline].get("shortfall")
+            short_text = f"{short['plan'] * 100:.1f}% / {short['baseline'] * 100:.1f}%" if short else "not recorded"
             lines.append(
                 f"| {run['label']} | {app['years']} | {app['strategy_label']} | {_pct(held['median'])} | "
                 f"{_pct(held['risk_adjusted'])} | {_pct(mean['median'])} / {_pct(mean['risk_adjusted'])} | "
-                f"{_pct(ins['median'])} / {_pct(ins['risk_adjusted'])} |"
+                f"{_pct(ins['median'])} / {_pct(ins['risk_adjusted'])} | {short_text} |"
             )
         lines.append("")
     return "\n".join(lines) + "\n"

@@ -469,3 +469,66 @@ def test_starting_the_app_warms_the_simulation_kernels(monkeypatch):
     with TestClient(app) as started:
         assert started.get("/health").json() == {"status": "ok"}
     assert calls == [1]
+
+
+# --- Both advisors and both measures (spec A7, A9) ------------------------------------------
+
+
+def test_the_plan_is_measured_against_both_advisors_with_their_definitions(plan):
+    baselines = plan["baselines"]
+    assert [b["key"] for b in baselines] == ["good_ria", "typical_advisor"]
+    assert [b["label"] for b in baselines] == ["Good RIA", "Typical advisor"]
+    assert "breakpoint fees" in baselines[0]["definition"]
+    assert "flat 1.0% fee" in baselines[1]["definition"] and "no tax-loss harvesting" in baselines[1]["definition"]
+    for b in baselines:
+        assert b["fan"]["ages"][0] == 38 and b["fan"]["ages"][-1] == HORIZON_AGE
+        assert b["fan"]["p50"][-1] == pytest.approx(b["outcome"]["median"])
+        assert 0.0 <= b["shortfall_chance"] <= 1.0 and b["lifetime_taxes"] > 0
+    assert plan["ria_fan"] == baselines[0]["fan"] and plan["ria"]["outcome"] == baselines[0]["outcome"]
+    # the typical advisor is the weaker baseline: more fee, no harvesting
+    assert baselines[1]["outcome"]["median"] < baselines[0]["outcome"]["median"]
+    assert baselines[1]["advantage"]["median"] > baselines[0]["advantage"]["median"]
+
+
+def test_each_advantage_is_reported_two_ways_and_annualized_consistently(plan):
+    years = plan["stats"]["years"]
+    plan_outcome = plan["strategy"]["outcome"]
+    for b in plan["baselines"]:
+        adv = b["advantage"]
+        assert adv["median"] == pytest.approx((plan_outcome["median"] / b["outcome"]["median"]) ** (1 / years) - 1)
+        assert adv["risk_adjusted"] == pytest.approx((plan_outcome["score"] / b["outcome"]["score"]) ** (1 / years) - 1)
+        assert adv["median_dollars"] == pytest.approx(plan_outcome["median"] - b["outcome"]["median"])
+        assert adv["risk_adjusted_dollars"] == pytest.approx(plan_outcome["score"] - b["outcome"]["score"])
+        assert adv["median_low"] <= adv["median"] <= adv["median_high"]
+        assert adv["risk_adjusted_low"] <= adv["risk_adjusted"] <= adv["risk_adjusted_high"]
+    assert plan["stats"]["advantage"] == plan["baselines"][0]["advantage"]  # the stat cards use the good RIA
+
+
+def test_results_are_measured_on_futures_the_search_never_saw(plan):
+    s = plan["settings"]
+    assert s["eval_seed"] != s["seed"] and s["n_eval_paths"] == 200 and s["n_paths"] == 400
+    chosen_in_search = next(r for r in plan["searched"] if r["is_chosen"])
+    # the search table is scored on the search futures, the outcome cards on the held-out ones
+    assert chosen_in_search["median"] != plan["strategy"]["outcome"]["median"]
+    assert chosen_in_search["median"] == pytest.approx(plan["strategy"]["outcome"]["median"], rel=0.35)
+
+
+def test_risk_aversion_is_a_request_parameter(household_json):
+    def run(ra):
+        r = client.post("/plan", json={"household": household_json, "risk_aversion": ra})
+        assert r.status_code == 200, r.text
+        return r.json()
+
+    low, high = run(1.5), run(8.0)
+    assert low["settings"]["risk_aversion"] == 1.5 and high["settings"]["risk_aversion"] == 8.0
+    assert low["strategy"]["outcome"]["score"] != high["strategy"]["outcome"]["score"]
+    # a more risk-averse household is steered to a safer portfolio
+    assert int(high["strategy"]["choices"]["stock_share"]) <= int(low["strategy"]["choices"]["stock_share"])
+    assert client.post("/plan", json={"household": household_json, "risk_aversion": 0.0}).status_code == 422
+
+
+def test_demo_mode_results_are_identical_across_runs(household_json):
+    a = client.post("/plan", json={"household": household_json}).json()
+    b = client.post("/plan", json={"household": household_json}).json()
+    a["settings"].pop("elapsed_seconds"), b["settings"].pop("elapsed_seconds")
+    assert a == b

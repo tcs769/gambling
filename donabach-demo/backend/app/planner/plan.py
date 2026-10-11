@@ -14,6 +14,8 @@ import time
 import numpy as np
 
 from app.api_models import (
+    AdvantageView,
+    BaselineView,
     FanSeries,
     OutcomeView,
     PlanResponse,
@@ -28,21 +30,19 @@ from app.api_models import ModelStatus as ModelStatusView
 from app.ml import adapters
 from app.ml.adapters import ModelContractError, NotConnected
 from app.planner import explain, guided
-from app.planner.baseline import RIA_BASELINE
+from app.planner.baseline import BASELINES, GOOD_RIA, GOOD_RIA_SENTENCE
 from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, Outcome, RankedStrategy, SearchResult, search
 from app.planner.strategies import Strategy
 from app.schemas import HORIZON_AGE, Household, MarketShock
 from app.sim import markets
-from app.sim.simulate import BatchResult, SimInputs, build_inputs, initial_after_tax_wealth, run_batch, run_detail
+from app.sim.simulate import SimInputs, build_inputs, initial_after_tax_wealth, run_batch, run_detail
+from app.study import metrics
 
 DEMO_SEED = markets.DEFAULT_SEED
+EVAL_SEED_OFFSET = 1_000_003  # the evaluation futures use the search seed plus this
 SEARCH_LABEL = "Search planner (model not connected)"
 GUIDED_LABEL = "Model-guided planner (model recommended, engine verified)"
-RIA_SENTENCE = (
-    "A good traditional advisor: an age-based glide path from 80% to 50% stocks, the same mix in every "
-    "account, breakpoint fees of 1.0% falling to 0.5%, fund-level loss harvesting in years stocks fall more "
-    "than 10%, goals paid from the brokerage account, no Roth conversions and pro rata withdrawals."
-)
+RIA_SENTENCE = GOOD_RIA_SENTENCE
 
 
 def resolve_seed(demo_mode: bool, seed: int | None) -> int:
@@ -163,43 +163,86 @@ def _recommender_panel(
     return RecommenderPanel(status=status), None, None
 
 
+def advantage_view(adv: metrics.Advantage) -> AdvantageView:
+    return AdvantageView(
+        median=adv.median,
+        risk_adjusted=adv.risk_adjusted,
+        median_dollars=adv.median_dollars,
+        risk_adjusted_dollars=adv.risk_adjusted_dollars,
+        median_low=adv.median_range[0],
+        median_high=adv.median_range[1],
+        risk_adjusted_low=adv.risk_adjusted_range[0],
+        risk_adjusted_high=adv.risk_adjusted_range[1],
+    )
+
+
 def build_plan(
     household: Household,
     n_paths: int = 400,
     demo_mode: bool = True,
     seed: int | None = None,
     shock: MarketShock | None = None,
+    n_eval_paths: int = 200,
+    risk_aversion: float = RISK_AVERSION,
 ) -> PlanResponse:
     started = time.perf_counter()
     seed = resolve_seed(demo_mode, seed)
+    eval_seed = seed + EVAL_SEED_OFFSET
     futures = build_inputs(household, n_paths=n_paths, seed=seed, shock=shock)
+    evaluation = build_inputs(household, n_paths=n_eval_paths, seed=eval_seed, shock=shock)
     det = build_inputs(household, deterministic=True, shock=shock)
 
     panel, guided_result, model_pick = _recommender_panel(household, futures)
     if guided_result is not None:
         result, label = guided_result, GUIDED_LABEL
     else:
-        result, label = search(futures), SEARCH_LABEL
+        result, label = search(futures, risk_aversion=risk_aversion), SEARCH_LABEL
     chosen = result.best.strategy
 
-    # The chosen strategy and the baseline, with the full wealth path for the fan chart.
-    pair: BatchResult = run_batch(futures, [chosen.policy(), RIA_BASELINE], record_paths=True)
-    plan_wealth, ria_wealth = pair.wealth[0], pair.wealth[1]
-    plan_outcome, ria_outcome = Outcome.of(plan_wealth), Outcome.of(ria_wealth)
-
+    # The chosen strategy and both advisors on futures the search never saw, with the full wealth
+    # path for the fan charts. Choosing the best of thousands of strategies on the futures they are
+    # then scored on would flatter the winner.
+    policies = [chosen.policy(), *(b.policy for b in BASELINES)]
+    batch = run_batch(evaluation, policies, record_paths=True)
+    plan_wealth = batch.wealth[0]
+    plan_outcome = Outcome.of(plan_wealth, risk_aversion)
     years = household.horizon_years
+    start_wealth = initial_after_tax_wealth(household)
+    age = household.primary_age
+
+    baselines = []
+    for i, baseline in enumerate(BASELINES, start=1):
+        outcome = Outcome.of(batch.wealth[i], risk_aversion)
+        baselines.append(
+            BaselineView(
+                key=baseline.key,
+                label=baseline.label,
+                definition=baseline.definition,
+                outcome=outcome_view(outcome),
+                lifetime_taxes=float(np.median(batch.taxes_paid[i] + batch.pretax_owed[i])),
+                shortfall_chance=float(np.mean(batch.unfunded[i] > 0)),
+                advantage=advantage_view(
+                    metrics.compare(plan_wealth, batch.wealth[i], years, risk_aversion, WEALTH_FLOOR, with_range=True)
+                ),
+                fan=fan_series(batch.path_wealth[i], start_wealth, age),
+            )
+        )
+    ria = next(b for b in baselines if b.key == GOOD_RIA.key)
+    ria_index = 1 + next(i for i, b in enumerate(BASELINES) if b.key == GOOD_RIA.key)
+
     # Difference of medians: it is the gap between the two outcome cards and the sum of the
     # attribution steps, so the Compare screen never shows two different "advantages".
-    advantage = plan_outcome.median - ria_outcome.median
-    start_wealth = initial_after_tax_wealth(household)
+    advantage = plan_outcome.median - ria.outcome.median
     stats = StatCards(
         typical_outcome=outcome_view(plan_outcome),
-        ria_typical_outcome=outcome_view(ria_outcome),
+        ria_typical_outcome=ria.outcome,
         advantage_per_year=float(advantage / years),
         advantage_total=float(advantage),
-        lifetime_taxes=float(np.median(pair.taxes_paid[0] + pair.pretax_owed[0])),
-        ria_lifetime_taxes=float(np.median(pair.taxes_paid[1] + pair.pretax_owed[1])),
+        lifetime_taxes=float(np.median(batch.taxes_paid[0] + batch.pretax_owed[0])),
+        ria_lifetime_taxes=ria.lifetime_taxes,
         years=years,
+        shortfall_chance=float(np.mean(batch.unfunded[0] > 0)),
+        advantage=ria.advantage,
     )
 
     log = run_detail(det, chosen.policy()).log
@@ -211,24 +254,27 @@ def build_plan(
         ria=StrategyView(
             choices={},
             label="Good RIA baseline",
-            sentence=RIA_SENTENCE,
-            outcome=outcome_view(ria_outcome),
+            sentence=GOOD_RIA.definition,
+            outcome=ria.outcome,
         ),
         rows=plan_rows(log, household),
         stats=stats,
-        fan=fan_series(pair.path_wealth[0], start_wealth, household.primary_age),
-        ria_fan=fan_series(pair.path_wealth[1], start_wealth, household.primary_age),
-        advantage=explain.advantage_steps(futures, chosen),
+        fan=fan_series(batch.path_wealth[0], start_wealth, age),
+        ria_fan=baselines[ria_index - 1].fan,
+        baselines=baselines,
+        advantage=explain.advantage_steps(evaluation, chosen),
         searched=ranked_rows(result.ranked, chosen, model_pick),
         settings=PlanSettings(
             n_paths=n_paths,
+            n_eval_paths=n_eval_paths,
             seed=seed,
+            eval_seed=eval_seed,
             demo_mode=demo_mode,
             elapsed_seconds=time.perf_counter() - started,
             current_age=household.primary_age,
             horizon_age=HORIZON_AGE,
             strategies_searched=result.n_considered or len(result.ranked),
-            risk_aversion=RISK_AVERSION,
+            risk_aversion=risk_aversion,
             wealth_floor=WEALTH_FLOOR,
             market_shock=shock,
         ),

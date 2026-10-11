@@ -45,6 +45,9 @@ class Advantage:
     plan_ce: float
     baseline_ce: float
     years: int
+    # 90% range of the two annualized measures when the futures are resampled (paired bootstrap)
+    median_range: tuple[float, float] = (0.0, 0.0)
+    risk_adjusted_range: tuple[float, float] = (0.0, 0.0)
 
 
 def compare(
@@ -53,12 +56,14 @@ def compare(
     years: int,
     risk_aversion: float = RISK_AVERSION,
     floor: float = WEALTH_FLOOR,
+    with_range: bool = False,
 ) -> Advantage:
     """Both advantage measures for `plan_wealth` against `baseline_wealth` (same futures, same order)."""
     plan_median = float(np.median(plan_wealth))
     base_median = float(np.median(baseline_wealth))
     plan_ce = float(certainty_equivalent(plan_wealth, risk_aversion, floor))
     base_ce = float(certainty_equivalent(baseline_wealth, risk_aversion, floor))
+    ranges = bootstrap_range(plan_wealth, baseline_wealth, years, risk_aversion, floor) if with_range else ((0.0, 0.0), (0.0, 0.0))
     return Advantage(
         median=annualized(plan_median, base_median, years),
         risk_adjusted=annualized(plan_ce, base_ce, years),
@@ -69,4 +74,33 @@ def compare(
         plan_ce=plan_ce,
         baseline_ce=base_ce,
         years=years,
+        median_range=ranges[0],
+        risk_adjusted_range=ranges[1],
     )
+
+
+def bootstrap_range(
+    plan_wealth: np.ndarray,
+    baseline_wealth: np.ndarray,
+    years: int,
+    risk_aversion: float = RISK_AVERSION,
+    floor: float = WEALTH_FLOOR,
+    n_boot: int = 300,
+    seed: int = 0,
+) -> tuple[tuple[float, float], tuple[float, float]]:
+    """5th-95th percentile of both annualized advantages over resamples of the futures.
+
+    The same resampled futures are used for the plan and the baseline (they were simulated on common
+    random numbers), so this is the uncertainty in the difference, not in either wealth alone.
+    """
+    n = len(plan_wealth)
+    idx = np.random.default_rng(seed).integers(0, n, size=(n_boot, n))
+    plan, base = plan_wealth[idx], baseline_wealth[idx]
+    med_p, med_b = np.median(plan, axis=1), np.median(base, axis=1)
+    ce_p = certainty_equivalent(plan, risk_aversion, floor)
+    ce_b = certainty_equivalent(base, risk_aversion, floor)
+    medians = np.array([annualized(a, b, years) for a, b in zip(med_p, med_b, strict=True)])
+    ces = np.array([annualized(a, b, years) for a, b in zip(ce_p, ce_b, strict=True)])
+    m_lo, m_hi = np.percentile(medians, [5, 95])
+    c_lo, c_hi = np.percentile(ces, [5, 95])
+    return (float(m_lo), float(m_hi)), (float(c_lo), float(c_hi))

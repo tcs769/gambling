@@ -1,6 +1,7 @@
 "use client";
 
 import { FlowNav } from "@/components/showcase/FlowNav";
+import styles from "@/components/showcase/Showcase.module.css";
 import { HouseholdCardView } from "@/components/showcase/HouseholdCardView";
 import { ShowcasePending } from "@/components/showcase/ShowcasePending";
 import { PageHeader, ResultsFooter } from "@/components/ui";
@@ -21,9 +22,16 @@ export default function ShowcaseHouseholdPage() {
 
   return (
     <>
-      <PageHeader eyebrow={data.type_label} title={data.name} subtitle={data.tagline} />
+      <PageHeader
+        eyebrow={data.type_label}
+        title={data.name}
+        subtitle={<span className={styles.tagline}>{data.tagline}</span>}
+      />
       <HouseholdCardView card={data.card} horizonAge={analysis.horizon_age} />
-      <FlowNav back={{ href: "/", label: "Back to the demo home" }} next={{ href: "/showcase/strategies", label: "See the strategies" }} />
+      <FlowNav
+        back={{ href: "/", label: "Back to the demo home" }}
+        next={{ href: "/showcase/strategies", label: "See the strategies" }}
+      />
       <ResultsFooter />
     </>
   );

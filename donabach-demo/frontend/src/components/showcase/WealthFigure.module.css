@@ -1,0 +1,34 @@
+.legendStack {
+  display: grid;
+  gap: 8px;
+  /* Narrower than the toolbar, so the "View as table" button stays beside it; on a phone it wraps below. */
+  max-width: 640px;
+}
+
+/* Two columns, Donabach's lines on the first row and the advisor's on the second. */
+.legendStack ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  gap: 8px 32px;
+}
+@media (max-width: 700px) {
+  .legendStack ul {
+    grid-template-columns: minmax(0, max-content);
+  }
+}
+
+.legendNote {
+  max-width: 64ch;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+
+/* The chart holds its previous lines, quieter, while new ones are worked out. */
+.chartBox {
+  width: 100%;
+  height: 100%;
+  transition: opacity 220ms ease;
+}
+.chartBox[data-stale="true"] {
+  opacity: 0.5;
+}

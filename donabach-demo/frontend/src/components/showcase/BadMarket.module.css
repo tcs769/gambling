@@ -1,0 +1,79 @@
+.frame {
+  container-type: inline-size;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  transition: opacity 220ms ease;
+}
+.grid[data-stale="true"] .values {
+  opacity: 0.5;
+}
+
+.card {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 20px 22px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.title {
+  font-size: 1.15rem;
+}
+
+.note {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin: 10px 0 0;
+  transition: opacity 220ms ease;
+}
+
+.value dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+
+.value dd {
+  margin: 2px 0 0;
+  font-size: 1.875rem;
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--espresso);
+}
+
+/* A short stroke in the entity's colour: the same key the chart's legend uses for a solid line. */
+.key {
+  flex-shrink: 0;
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+}
+.value[data-entity="plan"] .key {
+  background: var(--series-donabach);
+}
+.value[data-entity="advisor"] .key {
+  background: var(--series-ria);
+}
+
+@container (max-width: 760px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

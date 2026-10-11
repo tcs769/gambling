@@ -75,7 +75,13 @@ export function errorMessage(error: unknown): string {
 const ShowcaseContext = createContext<ShowcaseValue | null>(null);
 
 export function ShowcaseProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<ShowcaseState>({ data: null, loadError: null, enabled: [], shown: null, changeError: null });
+  const [state, setState] = useState<ShowcaseState>({
+    data: null,
+    loadError: null,
+    enabled: [],
+    shown: null,
+    changeError: null,
+  });
   const [attempt, setAttempt] = useState(0);
 
   // Everything the API has answered, by the set it is for.

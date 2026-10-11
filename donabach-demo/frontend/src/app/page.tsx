@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Panel, PanelTitle } from "@/components/ui";
+import { ShowcaseEntry } from "@/components/showcase/ShowcaseEntry";
 import { DocumentList } from "@/components/upload/DocumentList";
 import { DropZone } from "@/components/upload/DropZone";
 import { preloadPdfjs } from "@/components/review/pdfjs";
@@ -53,6 +54,8 @@ export default function UploadPage() {
 
   return (
     <div className={styles.page}>
+      <ShowcaseEntry />
+
       <DropZone
         hasDocs={docs.length > 0}
         loadingSamples={state.loading.docs && docs.length === 0}

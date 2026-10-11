@@ -1,0 +1,52 @@
+.tip {
+  min-width: 260px;
+  padding: 12px 14px;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--tooltip-shadow);
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.age {
+  margin-bottom: 8px;
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--brown);
+}
+
+.rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.key {
+  display: block;
+  margin-top: 9px;
+  overflow: visible;
+}
+
+.value {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.name {
+  margin-left: 8px;
+  color: var(--muted-text);
+}

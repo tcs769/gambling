@@ -23,6 +23,11 @@
   padding-block: 8px;
 }
 
+.allOn {
+  padding: 6px 14px;
+  font-size: 0.9375rem;
+}
+
 .recomputing {
   display: inline-flex;
   align-items: center;

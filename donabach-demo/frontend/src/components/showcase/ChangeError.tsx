@@ -15,7 +15,8 @@ export function ChangeError() {
     <div className={styles.error} role="alert">
       <Icon name="alert" size={20} className={styles.icon} />
       <div className={styles.text}>
-        <strong>That change could not be applied.</strong> {changeError} The strategies and numbers below are as they were.
+        <strong>That change could not be applied.</strong> {changeError} The strategies and numbers below are as they
+        were.
       </div>
       <Button variant="ghost" onClick={actions.dismissError}>
         Dismiss

@@ -39,7 +39,16 @@ const ZERO: Amount = { rate: 0, dollars: 0 };
  */
 export function waterfallRows(analysis: ShowcaseAnalysis): WaterfallRow[] {
   const rows: WaterfallRow[] = [
-    { kind: "start", key: "start", label: analysis.advisor_label, detail: "", enabled: true, from: ZERO, to: ZERO, delta: ZERO },
+    {
+      kind: "start",
+      key: "start",
+      label: analysis.advisor_label,
+      detail: "",
+      enabled: true,
+      from: ZERO,
+      to: ZERO,
+      delta: ZERO,
+    },
   ];
   let before = ZERO;
   for (const bar of analysis.bars) {
@@ -57,7 +66,16 @@ export function waterfallRows(analysis: ShowcaseAnalysis): WaterfallRow[] {
     before = after;
   }
   const total: Amount = { rate: analysis.advantage.median_rate, dollars: analysis.advantage.median_dollars };
-  rows.push({ kind: "total", key: "total", label: "Donabach", detail: "", enabled: true, from: ZERO, to: total, delta: total });
+  rows.push({
+    kind: "total",
+    key: "total",
+    label: "Donabach",
+    detail: "",
+    enabled: true,
+    from: ZERO,
+    to: total,
+    delta: total,
+  });
   return rows;
 }
 
@@ -70,14 +88,15 @@ export interface Axis {
 /**
  * The axis for one unit, from zero (the advisor's result) in clean steps. It has to hold every bar of every analysis given
  * (the analysis on screen, and the one with everything on, so switching a strategy off shrinks its bar against a scale that
- * stays put), and a strategy that lowers the total reaches below zero.
+ * stays put), and a strategy that lowers the total reaches below zero. A narrow chart asks for fewer intervals, so its tick
+ * labels never touch.
  */
-export function axisFor(unit: Unit, analyses: readonly ShowcaseAnalysis[]): Axis {
+export function axisFor(unit: Unit, analyses: readonly ShowcaseAnalysis[], maxIntervals = 6): Axis {
   const values = [0, ...analyses.flatMap((a) => waterfallRows(a).flatMap((row) => [row.from[unit], row.to[unit]]))];
   const max = Math.max(...values);
   const min = Math.min(...values);
   if (max <= 0 && min >= 0) return { min: 0, max: 1, ticks: [0] };
-  const { ticks } = niceScale(Math.max(max, -min), 6);
+  const { ticks } = niceScale(Math.max(max, -min), maxIntervals);
   const step = ticks[1] - ticks[0];
   const up = max > 0 ? Math.ceil(max / step - 1e-9) : 0;
   const down = min < 0 ? Math.ceil(-min / step - 1e-9) : 0;
@@ -115,6 +134,9 @@ export function axisCaption(unit: Unit, horizon: number): string {
 /** The strategy that adds the most dollars of the ones that are on, if any adds anything. */
 export function biggestStep(analysis: ShowcaseAnalysis) {
   const on = analysis.bars.filter((bar) => bar.enabled);
-  const best = on.reduce<(typeof on)[number] | undefined>((top, bar) => (top === undefined || bar.delta_dollars > top.delta_dollars ? bar : top), undefined);
+  const best = on.reduce<(typeof on)[number] | undefined>(
+    (top, bar) => (top === undefined || bar.delta_dollars > top.delta_dollars ? bar : top),
+    undefined,
+  );
   return best && best.delta_dollars > 0 ? best : undefined;
 }

@@ -22,12 +22,6 @@
   line-height: 1.5;
 }
 
-/* The button that puts every strategy back on, in the panel's title row. */
-.reset {
-  padding: 6px 14px;
-  font-size: 0.9375rem;
-}
-
 /* The plan in words, folded away under the waterfall. */
 .plan {
   margin-top: 18px;
@@ -41,4 +35,48 @@
   max-width: 100ch;
   padding: 0 4px 14px;
   line-height: 1.6;
+}
+
+/* The line under the title of the wealth screen: which strategies are on, and the way back to the switches. */
+.state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--cream);
+}
+.state[data-off="true"] {
+  border-color: var(--gold);
+  background: linear-gradient(0deg, var(--gold-wash), var(--gold-wash)), var(--cream);
+}
+
+.stateIcon {
+  flex-shrink: 0;
+  color: var(--brown);
+}
+
+.stateText {
+  flex: 1 1 280px;
+  min-width: 0;
+  line-height: 1.5;
+}
+.stateText strong {
+  color: var(--brown);
+}
+
+.stateBusy {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+
+.stateLink {
+  color: var(--brown);
+  font-weight: 600;
+  white-space: nowrap;
 }

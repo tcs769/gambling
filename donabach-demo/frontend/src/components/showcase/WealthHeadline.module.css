@@ -1,0 +1,97 @@
+.frame {
+  container-type: inline-size;
+}
+
+.headline {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius);
+  background: linear-gradient(0deg, var(--gold-wash), var(--gold-wash)), var(--panel);
+  box-shadow: var(--shadow);
+  transition: opacity 220ms ease;
+}
+.headline[data-stale="true"] .figures,
+.headline[data-stale="true"] .dollars {
+  opacity: 0.5;
+}
+
+.cell {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 22px 26px;
+}
+.cell + .cell {
+  border-left: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+}
+
+.label {
+  color: var(--muted-text);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* The figure the screen is about: proportional figures, not tabular ones, at this size. */
+.figures {
+  line-height: 1.1;
+  transition: opacity 220ms ease;
+}
+
+.big {
+  font-size: 2.875rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--espresso);
+}
+
+.unit {
+  color: var(--muted-text);
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.dollars {
+  color: var(--espresso);
+  font-size: 1.0625rem;
+  line-height: 1.4;
+  transition: opacity 220ms ease;
+}
+.dollars strong {
+  font-weight: 700;
+}
+
+.line {
+  margin-top: 4px;
+  max-width: 60ch;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.range {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+@container (max-width: 760px) {
+  .headline {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cell + .cell {
+    border-left: 0;
+    border-top: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  }
+}
+@container (max-width: 420px) {
+  .cell {
+    padding: 18px 18px;
+  }
+  .big {
+    font-size: 2.25rem;
+  }
+}

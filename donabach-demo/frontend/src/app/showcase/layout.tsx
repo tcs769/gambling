@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { ShowcasePage } from "@/components/showcase/ShowcasePage";
 import { ShowcaseProvider } from "@/lib/showcase";
 
 export const metadata: Metadata = {
   title: "Donabach: a household, its strategies and its wealth",
-  description: "Three screens on one fictional household: what it has, where Donabach's advantage comes from, and the wealth it builds.",
+  description:
+    "Three screens on one fictional household: what it has, where Donabach's advantage comes from, and the wealth it builds.",
 };
 
 /**
@@ -15,7 +17,9 @@ export const metadata: Metadata = {
 export default function ShowcaseLayout({ children }: { children: ReactNode }) {
   return (
     <ShowcaseProvider>
-      <div data-showcase="">{children}</div>
+      <div data-showcase="">
+        <ShowcasePage>{children}</ShowcasePage>
+      </div>
     </ShowcaseProvider>
   );
 }

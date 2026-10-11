@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef } from "react";
 import { dollars, percent } from "@/lib/format";
 import type { CardAccount } from "@/lib/types";
 import { useElementWidth } from "./useElementWidth";
@@ -15,20 +14,23 @@ const LABEL_ROOM_PX = 52;
  * The bar only shows the proportions; every number is also written in the legend, so the bar is hidden from screen readers.
  */
 export function SavingsBar({ accounts, total }: { accounts: readonly CardAccount[]; total: number }) {
-  const bar = useRef<HTMLDivElement>(null);
-  const width = useElementWidth(bar);
+  const [measure, width] = useElementWidth<HTMLDivElement>();
   const taxable = accounts.find((a) => a.key === "taxable");
   const gain = taxable?.unrealized_gain;
   return (
     <div className={styles.wrap}>
-      <div className={styles.bar} ref={bar} aria-hidden="true">
+      <div className={styles.bar} ref={measure} aria-hidden="true">
         <div className={styles.labels}>
           {accounts.map((account, i) => {
             const before = accounts.slice(0, i).reduce((sum, a) => sum + a.share, 0);
             const fits = account.share * width >= LABEL_ROOM_PX;
             return (
               fits && (
-                <span key={account.key} className={styles.share} style={{ left: `${(before + account.share / 2) * 100}%` }}>
+                <span
+                  key={account.key}
+                  className={styles.share}
+                  style={{ left: `${(before + account.share / 2) * 100}%` }}
+                >
                   {percent(account.share)}
                 </span>
               )

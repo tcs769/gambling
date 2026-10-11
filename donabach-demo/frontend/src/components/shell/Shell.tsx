@@ -32,8 +32,10 @@ export function Shell({ children }: { children: ReactNode }) {
           )}
         </div>
       </header>
-      {/* Keyed by route so each step eases in; the shell itself never re-renders its chrome. */}
-      <main key={pathname} className={styles.main}>
+      {/* Keyed by route so each step eases in; the shell itself never re-renders its chrome. The showcase flow is one
+          key: its layout holds the flow's state (what is switched on), which a new key would throw away at every step
+          (its pages ease in by themselves, see ShowcasePage). */}
+      <main key={showcase ? "showcase" : pathname} className={styles.main}>
         {children}
       </main>
     </div>

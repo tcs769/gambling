@@ -44,7 +44,7 @@ const END_LABEL_GAP = 22;
 const hasBand = (line: FanLineSpec) => (line.bandOpacity ?? OUTER_BAND_OPACITY) > 0;
 
 /** Spread label positions so none sit closer than `gap`, moving each as little as possible. */
-function spreadLabels(ys: readonly number[], gap: number): number[] {
+export function spreadLabels(ys: readonly number[], gap: number): number[] {
   const out = [...ys];
   const order = ys.map((_, i) => i).sort((a, b) => ys[a] - ys[b]);
   for (let pass = 0; pass < 8; pass++) {

@@ -10,12 +10,6 @@ import { useShowcase } from "@/lib/showcase";
 export function ShowcasePending({ blocks, label }: { blocks: number[]; label: string }) {
   const { status, loadError, actions } = useShowcase();
   return (
-    <Pending
-      status={status}
-      error={loadError ?? undefined}
-      retry={actions.reload}
-      label={label}
-      blocks={blocks}
-    />
+    <Pending status={status} error={loadError ?? undefined} retry={actions.reload} label={label} blocks={blocks} />
   );
 }

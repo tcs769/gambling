@@ -11,7 +11,15 @@ const isDated = (goal: CardGoal): goal is DatedGoal => typeof goal.years_from_no
  * happen, so the text columns never cross; a narrow card drops the line and stacks the goals down a rail instead.
  * The line only shows when each goal falls; everything it says is written in the list, so it is hidden from screen readers.
  */
-export function GoalsTimeline({ goals, startAge, endAge }: { goals: readonly CardGoal[]; startAge: number | undefined; endAge: number }) {
+export function GoalsTimeline({
+  goals,
+  startAge,
+  endAge,
+}: {
+  goals: readonly CardGoal[];
+  startAge: number | undefined;
+  endAge: number;
+}) {
   const dated = goals.filter(isDated).sort((a, b) => a.years_from_now - b.years_from_now);
   const undated = goals.filter((goal) => !isDated(goal));
   const span = startAge === undefined ? 0 : Math.max(1, endAge - startAge);
@@ -59,7 +67,8 @@ export function GoalsTimeline({ goals, startAge, endAge }: { goals: readonly Car
         <ul className={styles.undated} aria-label="Goals without a date">
           {undated.map((goal) => (
             <li key={goal.key}>
-              <strong className={styles.title}>{goal.label}</strong> <span className={styles.detail}>{goal.detail}</span>
+              <strong className={styles.title}>{goal.label}</strong>{" "}
+              <span className={styles.detail}>{goal.detail}</span>
             </li>
           ))}
         </ul>

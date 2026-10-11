@@ -1,0 +1,31 @@
+.entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 24px;
+  padding: 16px 22px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius);
+  background: linear-gradient(0deg, var(--gold-wash), var(--gold-wash)), var(--cream);
+}
+
+.text {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+
+.title {
+  color: var(--brown);
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.lede {
+  margin-top: 2px;
+  color: var(--muted-text);
+  max-width: 70ch;
+  line-height: 1.5;
+}

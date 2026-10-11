@@ -1,12 +1,13 @@
 "use client";
 
-import { useId, useMemo, useRef, useState, type FocusEvent, type PointerEvent } from "react";
+import { useCallback, useId, useMemo, useRef, useState, type FocusEvent, type PointerEvent } from "react";
 import { ChartFrame } from "@/components/charts/ChartFrame";
 import { Button, DataTable, Icon, Spinner, type DataColumn } from "@/components/ui";
 import { money, signedMoney } from "@/lib/format";
 import type { ShowcaseAnalysis } from "@/lib/types";
 import { Segmented } from "./Segmented";
 import { StrategySwitch } from "./StrategySwitch";
+import { useElementWidth } from "./useElementWidth";
 import {
   axisCaption,
   axisFor,
@@ -42,6 +43,8 @@ interface WaterfallProps {
   /** A new analysis is on its way: the bars and numbers are dimmed until it arrives. */
   computing: boolean;
   onToggle: (key: string, on: boolean) => void;
+  /** Put every strategy back on. */
+  onAllOn: () => void;
 }
 
 /**
@@ -51,16 +54,28 @@ interface WaterfallProps {
  * that is off is an empty dashed bar of zero. What a bar's length means is a choice (dollars at the horizon or a yearly
  * rate), and both numbers are written on every row whichever is chosen. The same numbers are one toggle away as a table.
  */
-export function Waterfall({ analysis, full, enabled, computing, onToggle }: WaterfallProps) {
+export function Waterfall({ analysis, full, enabled, computing, onToggle, onAllOn }: WaterfallProps) {
   const [unit, setUnit] = useState<Unit>("dollars");
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   const [hover, setHover] = useState<Hover | null>(null);
-  const chart = useRef<HTMLDivElement>(null);
+  const chart = useRef<HTMLDivElement | null>(null);
+  const [measure, width] = useElementWidth<HTMLDivElement>();
+  const setChart = useCallback(
+    (node: HTMLDivElement | null) => {
+      chart.current = node;
+      measure(node);
+    },
+    [measure],
+  );
   const ids = useId();
 
   const horizon = analysis.horizon_age;
   const rows = useMemo(() => waterfallRows(analysis), [analysis]);
-  const axis = useMemo(() => axisFor(unit, [analysis, full]), [unit, analysis, full]);
+  // Seven tick labels do not fit a phone's width: a narrow chart gets half as many.
+  const axis = useMemo(
+    () => axisFor(unit, [analysis, full], width > 0 && width < 560 ? 3 : 6),
+    [unit, analysis, full, width],
+  );
   const strategyRows = rows.filter((row) => row.kind === "strategy");
   const allOpen = strategyRows.length > 0 && strategyRows.every((row) => open.has(row.key));
 
@@ -103,12 +118,14 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle }: Wate
         <>Donabach&apos;s plan is the advisor&apos;s own, so the advantage is zero.</>
       ) : (
         <>
-          Donabach ends {dollarsText(total.median_dollars, horizon)} ahead of the {analysis.advisor_label.toLowerCase()} ({rateText(total.median_rate)}
+          Donabach ends {dollarsText(total.median_dollars, horizon)} ahead of the {analysis.advisor_label.toLowerCase()}{" "}
+          ({rateText(total.median_rate)}
           ).
           {biggest && (
             <>
               {" "}
-              The biggest step is {biggest.label}: {dollarsText(biggest.delta_dollars, horizon)} ({rateText(biggest.delta_rate)}).
+              The biggest step is {biggest.label}: {dollarsText(biggest.delta_dollars, horizon)} (
+              {rateText(biggest.delta_rate)}).
             </>
           )}
         </>
@@ -139,6 +156,11 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle }: Wate
         <Icon name="info" size={18} />
         {allOpen ? "Hide the explanations" : "Explain each strategy"}
       </Button>
+      {enabled.length < analysis.bars.length && (
+        <Button variant="secondary" className={styles.allOn} onClick={onAllOn}>
+          Switch every strategy on
+        </Button>
+      )}
       {computing && (
         <span className={styles.recomputing} aria-hidden="true">
           <Spinner size={14} />
@@ -156,8 +178,11 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle }: Wate
       legend={controls}
       summary={summary}
       chart={
-        <div ref={chart} className={styles.chart} data-stale={computing} aria-busy={computing}>
-          <ol className={styles.rows} aria-label={`What each strategy adds, from the ${analysis.advisor_label.toLowerCase()}'s result to Donabach's`}>
+        <div ref={setChart} className={styles.chart} data-stale={computing} aria-busy={computing}>
+          <ol
+            className={styles.rows}
+            aria-label={`What each strategy adds, from the ${analysis.advisor_label.toLowerCase()}'s result to Donabach's`}
+          >
             {rows.map((row, i) => (
               <RowView
                 key={row.key}
@@ -185,7 +210,12 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle }: Wate
               {axis.ticks.map((tick) => {
                 const at = place(axis, tick);
                 return (
-                  <span key={tick} className={styles.tick} data-edge={at < 1 ? "start" : at > 99 ? "end" : undefined} style={{ left: `${at}%` }}>
+                  <span
+                    key={tick}
+                    className={styles.tick}
+                    data-edge={at < 1 ? "start" : at > 99 ? "end" : undefined}
+                    style={{ left: `${at}%` }}
+                  >
                     {tickText(unit, tick)}
                   </span>
                 );
@@ -194,7 +224,12 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle }: Wate
           </div>
           <p className={styles.caption}>{axisCaption(unit, horizon)}</p>
           {hover && tipRow && (
-            <div className={styles.tooltip} role="tooltip" data-flip={hover.x > hover.width - 290} style={{ left: hover.x, top: hover.y }}>
+            <div
+              className={styles.tooltip}
+              role="tooltip"
+              data-flip={hover.x > hover.width - 290}
+              style={{ left: hover.x, top: hover.y }}
+            >
               <Tip row={tipRow} unit={unit} horizon={horizon} analysis={analysis} />
             </div>
           )}
@@ -206,7 +241,17 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle }: Wate
 }
 
 /** What the tooltip says about a row: the change in both units, and the running total after it. */
-function Tip({ row, unit, horizon, analysis }: { row: WaterfallRow; unit: Unit; horizon: number; analysis: ShowcaseAnalysis }) {
+function Tip({
+  row,
+  unit,
+  horizon,
+  analysis,
+}: {
+  row: WaterfallRow;
+  unit: Unit;
+  horizon: number;
+  analysis: ShowcaseAnalysis;
+}) {
   if (row.kind === "start") {
     return (
       <>
@@ -255,7 +300,24 @@ interface RowProps {
   onBlur: (event: FocusEvent<HTMLElement>) => void;
 }
 
-function RowView({ row, index, last, unit, axis, horizon, analysis, checked, open, detailId, onToggle, onOpen, onTrack, onLeave, onFocus, onBlur }: RowProps) {
+function RowView({
+  row,
+  index,
+  last,
+  unit,
+  axis,
+  horizon,
+  analysis,
+  checked,
+  open,
+  detailId,
+  onToggle,
+  onOpen,
+  onTrack,
+  onLeave,
+  onFocus,
+  onBlur,
+}: RowProps) {
   const off = row.kind === "strategy" && !row.enabled;
   const a = row.from[unit];
   const b = row.to[unit];
@@ -263,15 +325,25 @@ function RowView({ row, index, last, unit, axis, horizon, analysis, checked, ope
   const hi = place(axis, Math.max(a, b));
   const negative = b < a;
   // A strategy that is off adds nothing: an empty dashed bar centred on where the running total stands.
-  const bar = off ? { left: `calc(${place(axis, b)}% - 14px)`, width: "28px" } : { left: `${lo}%`, width: `${hi - lo}%` };
+  const bar = off
+    ? { left: `calc(${place(axis, b)}% - 14px)`, width: "28px" }
+    : { left: `${lo}%`, width: `${hi - lo}%` };
   // The line that joins this bar to the one above it starts where the running total stood before the row (for the total, where the last strategy ended).
   const joinAbove = index === 0 ? null : place(axis, (row.kind === "total" ? row.to : row.from)[unit]);
   const joinBelow = last ? null : place(axis, b);
 
   const primary =
-    row.kind === "start" ? "Starting point" : unit === "dollars" ? dollarsText(row.delta.dollars, horizon) : rateText(row.delta.rate);
+    row.kind === "start"
+      ? "Starting point"
+      : unit === "dollars"
+        ? dollarsText(row.delta.dollars, horizon)
+        : rateText(row.delta.rate);
   const secondary =
-    row.kind === "start" ? "0 = the advisor's result" : unit === "dollars" ? rateText(row.delta.rate) : dollarsText(row.delta.dollars, horizon);
+    row.kind === "start"
+      ? "0 = the advisor's result"
+      : unit === "dollars"
+        ? rateText(row.delta.rate)
+        : dollarsText(row.delta.dollars, horizon);
   const median =
     row.kind === "start"
       ? analysis.advantage.advisor_median_at_horizon
@@ -292,7 +364,12 @@ function RowView({ row, index, last, unit, axis, horizon, analysis, checked, ope
         {row.kind === "strategy" ? (
           <>
             <div className={styles.nameLine}>
-              <StrategySwitch label={row.label} checked={checked} onChange={(on) => onToggle(row.key, on)} describedBy={detailId} />
+              <StrategySwitch
+                label={row.label}
+                checked={checked}
+                onChange={(on) => onToggle(row.key, on)}
+                describedBy={detailId}
+              />
               <button
                 type="button"
                 className={styles.info}
@@ -322,7 +399,12 @@ function RowView({ row, index, last, unit, axis, horizon, analysis, checked, ope
         )}
       </div>
 
-      <div className={styles.track} data-track="" onPointerMove={(event) => onTrack(event, row.key)} onPointerLeave={onLeave}>
+      <div
+        className={styles.track}
+        data-track=""
+        onPointerMove={(event) => onTrack(event, row.key)}
+        onPointerLeave={onLeave}
+      >
         {axis.ticks.map((tick) => (
           <span key={tick} className={styles.grid} data-zero={tick === 0} style={{ left: `${place(axis, tick)}%` }} />
         ))}
@@ -350,7 +432,15 @@ function RowView({ row, index, last, unit, axis, horizon, analysis, checked, ope
 }
 
 /** The table twin: every number the chart draws or writes, row by row. */
-function WaterfallTable({ rows, horizon, analysis }: { rows: readonly WaterfallRow[]; horizon: number; analysis: ShowcaseAnalysis }) {
+function WaterfallTable({
+  rows,
+  horizon,
+  analysis,
+}: {
+  rows: readonly WaterfallRow[];
+  horizon: number;
+  analysis: ShowcaseAnalysis;
+}) {
   const columns: DataColumn<WaterfallRow>[] = [
     {
       key: "name",
@@ -360,16 +450,48 @@ function WaterfallTable({ rows, horizon, analysis }: { rows: readonly WaterfallR
       cell: (row) => (
         <>
           {row.label}
-          {row.kind === "start" && <span className={styles.tableNote}>Starting point: median {money(analysis.advantage.advisor_median_at_horizon)} at {horizon}</span>}
-          {row.kind === "total" && <span className={styles.tableNote}>Median {money(analysis.advantage.plan_median_at_horizon)} at {horizon}</span>}
+          {row.kind === "start" && (
+            <span className={styles.tableNote}>
+              Starting point: median {money(analysis.advantage.advisor_median_at_horizon)} at {horizon}
+            </span>
+          )}
+          {row.kind === "total" && (
+            <span className={styles.tableNote}>
+              Median {money(analysis.advantage.plan_median_at_horizon)} at {horizon}
+            </span>
+          )}
           {row.kind === "strategy" && !row.enabled && <span className={styles.tableNote}>Switched off</span>}
         </>
       ),
     },
-    { key: "rate", header: "Change a year", align: "end", width: "16%", cell: (row) => (row.kind === "start" ? "–" : ratePercent(row.delta.rate)) },
-    { key: "dollars", header: `Change at ${horizon}`, align: "end", width: "16%", cell: (row) => (row.kind === "start" ? "–" : signedMoney(row.delta.dollars)) },
-    { key: "rate-total", header: "Running total a year", align: "end", width: "18%", cell: (row) => (row.kind === "start" ? "0.00%" : ratePercent(row.to.rate)) },
-    { key: "dollars-total", header: `Running total at ${horizon}`, align: "end", width: "16%", cell: (row) => (row.kind === "start" ? "$0" : signedMoney(row.to.dollars)) },
+    {
+      key: "rate",
+      header: "Change a year",
+      align: "end",
+      width: "16%",
+      cell: (row) => (row.kind === "start" ? "–" : ratePercent(row.delta.rate)),
+    },
+    {
+      key: "dollars",
+      header: `Change at ${horizon}`,
+      align: "end",
+      width: "16%",
+      cell: (row) => (row.kind === "start" ? "–" : signedMoney(row.delta.dollars)),
+    },
+    {
+      key: "rate-total",
+      header: "Running total a year",
+      align: "end",
+      width: "18%",
+      cell: (row) => (row.kind === "start" ? "0.00%" : ratePercent(row.to.rate)),
+    },
+    {
+      key: "dollars-total",
+      header: `Running total at ${horizon}`,
+      align: "end",
+      width: "16%",
+      cell: (row) => (row.kind === "start" ? "$0" : signedMoney(row.to.dollars)),
+    },
   ];
   return (
     <DataTable

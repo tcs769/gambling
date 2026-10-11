@@ -1087,6 +1087,14 @@ class SimInputs:
     wages: np.ndarray  # (paths, years) gross household wages
     k401: np.ndarray  # (paths, years)
     wage_tax: np.ndarray  # (paths, years, 2) tax on wages alone: [..., 0] pre-tax 401(k), [..., 1] Roth 401(k)
+    # What the adaptive planner needs to imagine other futures from any year (see app.sim.adaptive):
+    logperm: np.ndarray | None = None  # (paths, years, 2) each earner's log permanent wage component
+    inc_base: np.ndarray | None = None  # (2,) each earner's wages in the first year
+    inc_growth: np.ndarray | None = None  # (2, years) real wage growth by the earner's own age each year
+    inc_working: np.ndarray | None = None  # (years,) 1.0 while the household still works
+    n_earners: int = 1
+    market: markets.Assumptions | None = None  # the return assumptions the futures were drawn from
+    seed: int = 0  # the seed the futures were drawn with (rollouts use a stream disjoint from it)
 
     @property
     def ages(self) -> np.ndarray:
@@ -1164,14 +1172,16 @@ def build_inputs(
     retire = household.goals.retirement_age
     n_earners = len(household.people)
 
-    expected = income.household_wages(base, ages, retire, income.no_shocks(n_years, n_earners))[0]
+    expected, expected_lp = income.household_wage_state(base, ages, retire, income.no_shocks(n_years, n_earners))
+    expected = expected[0]
     if deterministic:
         rets = markets.expected_returns(n_years, options.market)
         wages = expected[None, :].copy()
+        logperm = expected_lp.copy()
     else:
         rets = markets.draw_returns(n_paths, n_years, seed, options.market)
         shocks = income.draw_income_shocks(n_paths, n_years, n_earners, seed)
-        wages = income.household_wages(base, ages, retire, shocks)
+        wages, logperm = income.household_wage_state(base, ages, retire, shocks)
     if shock is not None:
         rets = markets.with_equity_shock(rets, shock.year, shock.equity_return)
 
@@ -1196,6 +1206,16 @@ def build_inputs(
         wages=np.ascontiguousarray(wages, dtype=np.float64),
         k401=np.ascontiguousarray(k401, dtype=np.float64),
         wage_tax=wage_tax,
+        logperm=np.ascontiguousarray(logperm, dtype=np.float64),
+        inc_base=np.array([*base, 0.0][:2], dtype=np.float64) if n_earners < 2 else np.array(base[:2], dtype=np.float64),
+        inc_growth=np.array(
+            [income.growth_table(a, n_years) for a in ages] + ([np.zeros(n_years)] if n_earners < 2 else []),
+            dtype=np.float64,
+        ),
+        inc_working=income.working_flags(ages[0], retire, n_years),
+        n_earners=n_earners,
+        market=options.market,
+        seed=seed,
     )
 
 

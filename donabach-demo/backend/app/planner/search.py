@@ -107,6 +107,7 @@ def subset_inputs(inputs: SimInputs, n_paths: int) -> SimInputs:
         wages=inputs.wages[:n_paths],
         k401=inputs.k401[:n_paths],
         wage_tax=inputs.wage_tax[:n_paths],
+        logperm=None if inputs.logperm is None else inputs.logperm[:n_paths],
     )
 
 

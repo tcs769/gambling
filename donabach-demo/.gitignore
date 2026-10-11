@@ -1,0 +1,26 @@
+# Python
+backend/.venv/
+backend/.numba_cache/
+backend/.pytest_cache/
+__pycache__/
+*.py[cod]
+
+# Generated sample documents (regenerate with `make docs`)
+backend/data/
+
+# Model files dropped in by the ML teammates (pickles can run code; don't commit by accident)
+backend/models/*.pkl
+backend/models/*.joblib
+
+# Exported training data
+*.parquet
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/next-env.d.ts
+frontend/tsconfig.tsbuildinfo
+
+# Screenshots from local verification
+.screenshots/

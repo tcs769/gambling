@@ -213,6 +213,24 @@ def run(
     return Evaluation(household, strategy, main, n_paths, steps, decomposition, by_rollouts, by_futures, per_100)
 
 
+def allocation_sentence(steps: list[tuple]) -> str:
+    """What the allocation step of the attribution did, in words that follow from its numbers (it was written once for a plan
+    that held less equity than the advisor; a plan that holds more does the opposite)."""
+    before, after = steps[3], steps[4]  # the step before the allocation (direct indexing) and the allocation step itself
+    d_median, d_adjusted = after[3] - before[3], after[4] - before[4]
+    verb = lambda x: "adds" if x >= 0 else "costs"  # noqa: E731
+    why = (
+        "the plan holds less equity than the advisor, which lowers the middle of the distribution and, above all, the chance of running out of money"
+        if d_median < 0
+        else "the plan holds more equity than the advisor, which raises the middle of the distribution"
+    )
+    return (
+        f"The allocation step ({after[0].lower()}) {verb(d_median)} {abs(d_median) * 100:.2f} points a year of median advantage and "
+        f"{verb(d_adjusted)} {abs(d_adjusted) * 100:.2f} points of risk-adjusted advantage: {why} "
+        "(certainty-equivalent wealth is dominated by the futures in which money runs out)."
+    )
+
+
 def report(ev: Evaluation) -> str:
     fw = ev.main
     j = fw.judgment
@@ -240,8 +258,7 @@ def report(ev: Evaluation) -> str:
         "|---|---|---|---|---|",
         *[f"| {label} | {_money(median)} | {_pct(adv_m)} | {_money(ce)} | {_pct(adv_ce)} |" for label, median, ce, adv_m, adv_ce in ev.steps],
         "",
-        "The lower-risk allocation and private credit step is where the risk-adjusted advantage is made, and it *costs* median wealth: the plan holds the lowest stock share on the menu "
-        "and a private-credit sleeve, which lowers the middle of the distribution and, above all, the chance of running out of money (certainty-equivalent wealth is dominated by that tail).",
+        allocation_sentence(ev.steps),
         "",
         "## What judgment over time adds",
         "",

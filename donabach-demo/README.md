@@ -81,7 +81,7 @@ All dollars are **real 2026 dollars**; tax brackets are held constant in 2026 do
 | Documents | `backend/app/docs/`, `fixtures/` | `fixtures/demo_household.json` is the single source of truth for three generated PDFs (a 2026 1040 projection, a brokerage statement, a 401(k) statement). A pdfplumber parser reads them back with value, page, bounding box and rule-based confidence, plus cross-checks. |
 | Markets and income | `backend/app/sim/markets.py`, `income.py` | Correlated normal real returns (equity 5.5%/16%, bonds 1.5%/5%, private credit 3.5%/8%) from a fixed seed, shared by every strategy. Income is a **placeholder** life-cycle process until the ML forecaster plugs in. |
 | Simulator | `backend/app/sim/simulate.py` | The 11-step yearly household loop (returns, harvesting, goals, spending, conversion, goal bucket, location and rebalancing, tax, fees, contributions) as one numba kernel run over every (strategy, future). |
-| Planner | `backend/app/planner/` | Searches all **4,032** strategies (stock share x Roth conversions x private credit sleeve x direct indexing x goal bonds x 401(k) type x goal funding) on the same 400 futures, scoring each by certainty-equivalent after-tax wealth at 80 (CRRA, risk aversion 3, $50,000 floor). The search is staged: every strategy is scored on 100 of the futures and the best 150 go on to all 400 (about 1 s; `exhaustive=True` scores everything on everything, and a test checks both pick the same winner). |
+| Planner | `backend/app/planner/` | Searches the strategies of a planning style on the same 400 futures, scoring each by certainty-equivalent after-tax wealth at 80 (CRRA, risk aversion 3, $50,000 floor). **Equity first** (the default): a spending reserve of 2, 4 or 6 years of expenses in bonds and private credit with everything else in stocks, crossed with Roth conversions x private credit sleeve x direct indexing x 401(k) type x goal funding (**1,008** strategies). **Balanced** (`planning_style: "balanced"`, the earlier default): a stock share with a glide path x the same choices x goal bonds (**4,032**). The search is staged: every strategy is scored on 100 of the futures and the best 150 go on to all 400 (about 1 s; `exhaustive=True` scores everything on everything, and a test checks both pick the same winner). |
 | Baselines | `planner/baseline.py` | A **good RIA** (age-based 80% to 50% glide path, same mix in every account, breakpoint fees falling from 1.0% to 0.5%, fund-level harvesting, goals from brokerage, no conversions, pro rata withdrawals) and a **typical advisor** (flat 1.0% fee, no harvesting, accounts managed separately, 80% to 50% glide, no conversions, proportional withdrawals). Each is shown with its definition. |
 | Year-by-year planner | `backend/app/sim/adaptive.py`, `planner/adaptive_plan.py`, `adaptive_service.py` | Each year, after that year's returns, scores candidate actions by rollouts and takes the best (below). |
 | Explanations | `planner/explain.py` | The five-step "where the advantage comes from" (switch decisions on one at a time from the baseline, same futures) and, per year, the value of each decision found by re-running the plan with only that decision removed for that year. |
@@ -142,7 +142,7 @@ Typed with Pydantic (`backend/app/api_models.py`); try it at http://localhost:80
 | `GET /documents/{id}/file` | serve the PDF to the viewer |
 | `POST /household` | build the household from confirmed fields plus answers (422 lists anything unreadable) |
 | `POST /forecast` | the forecast, or `connected: false` plus the labelled placeholder |
-| `POST /plan` | planner and recommender; everything the Plan and Compare screens need. Returns the fixed plan at once, with the year-by-year plan attached if it is already known (the demo household's is precomputed at startup) or a job id otherwise |
+| `POST /plan` | planner and recommender; everything the Plan and Compare screens need. `planning_style` is `equity_first` (the default) or `balanced`. Returns the fixed plan at once, with the year-by-year plan attached if it is already known (the demo household's is precomputed at startup) or a job id otherwise |
 | `GET /plan/adaptive/{id}` | the year-by-year plan's job: status, progress, and the finished plan |
 | `DELETE /plan/adaptive/{id}` | the viewer walked away from the plan: drop one watcher; when none is left the job stops (204, or 404 for an unknown id) |
 | `POST /plan/year-detail` | decisions, tax return and value of each decision for one year of the fixed plan |
@@ -213,13 +213,23 @@ credits. Beyond that, choices made where the spec was silent, so they are not a 
   taxpayer with narrower brackets, and heirs pay tax on inherited pre-tax accounts. Both generally favor Roth
   conversions, so conversion strategies are, if anything, understated. The app footer says so too.
 * **Private credit.** The sleeve is 0, 5, 10 or 15% of long-term money; the stock share is applied to the
-  rest. It goes in the pre-tax account first, overflows to the Roth, then to the taxable account, where its
+  rest (with a spending reserve the sleeve counts toward the reserve). It goes in the pre-tax account first, overflows to the Roth, then to the taxable account, where its
   income is taxed each year as ordinary interest (5.5%: its 3.5% real return plus the 2% of inflation the bond
   assumptions imply). The bond / private-credit correlation (0.1) is assumed; the spec gives only the equity pairs.
 * **Asset location.** Private credit, then bonds, fill the pre-tax account first; the Roth holds stocks (after
   any private credit); the brokerage account takes the remainder (including overflow bonds).
 * **Cash and goals.** Cash joins brokerage bonds. The goal bucket holds the next four years of goals, funded and
   released each year; without it goals are paid from brokerage pro rata.
+* **Spending reserve** (the equity-first planning style, the default). Bonds and private credit hold the next 2, 4 or 6
+  years of retirement spending net of Social Security (the private credit sleeve counts toward it); the goals of those
+  years sit in the taxable goal bucket (pre-tax money would cost a 10% penalty before 59 1/2); every other dollar is in
+  stocks, with no glide. Expenses, taxes and required distributions are paid from bonds and private credit before stocks
+  inside each account, and in a year stocks fell nothing is sold to build or refill the reserve or the bucket. The account
+  order and the asset location are unchanged, so the reserve's bonds sit in the pre-tax account first, where retirement
+  withdrawals draw first. A strategy with no reserve gives exactly the results it gave before the reserve existed (pinned in
+  `tests/test_reserve.py`). Returns in the model do not mean-revert, so *when* the reserve is refilled moves the median
+  advantage by only 0.00 to 0.06 points; what the reserve does is let the plan keep 85 to 100% of the portfolio in stocks
+  through retirement without selling them to pay expenses.
 * **Fees** are taken pro rata from every account; gains realized to pay tax or fees are reported the next year.
 * **Borrowing for goals** (a box-spread loan against the taxable account). Real rate 2.82%: the 1-year Treasury
   yield (4.52%, FRED week ending 2026-10-02) plus 0.30%, less the 2% of inflation the market assumptions imply

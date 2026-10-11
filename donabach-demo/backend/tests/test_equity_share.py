@@ -102,7 +102,7 @@ def test_a_small_study_finds_more_median_wealth_in_more_equity_and_prints_what_i
     text = es.render(study)
     for needle in ("## 1. The stock share", "## 2. What Donabach's tools are worth", "## 3. What each objective picks", "## 4. The best raw advantage"):
         assert needle in text
-    assert "(the recommendation)" in text
+    assert "(the balanced recommendation)" in text and "## 7. The spending-reserve plans" in text
 
 
 def test_the_equity_assumption_scenarios_redraw_the_futures_under_each_mean():
@@ -156,8 +156,9 @@ def test_the_equity_return_needed_for_a_target_is_solved_and_unreachable_targets
 
 def test_the_reach_study_measures_each_lever_and_says_what_it_found():
     reach = rc.run_reach(n_design=150, n_eval=150, strategies=small_menu())
-    skill, recommendation, growth, ceiling = reach.plans
-    assert ceiling.raw.median >= growth.raw.median - 0.01 and growth.raw.median >= recommendation.raw.median - 0.01
+    skill, balanced, app, growth, ceiling = reach.plans
+    assert ceiling.raw.median >= growth.raw.median - 0.01 and growth.raw.median >= balanced.raw.median - 0.01
+    assert reach.recommendation.reserve_years in (2, 4, 6) and reach.balanced.reserve_years == 0 and app.exposure[0] > 0.6
     assert skill.exposure[0] == pytest.approx(0.80)
     fees = [raw for _, raw, _ in reach.fees]
     assert [fee for fee, _, _ in reach.fees] == list(rc.FEES) and fees == sorted(fees)  # a lower fee only helps
@@ -236,3 +237,20 @@ def test_the_household_study_can_run_each_plans_tools_at_the_advisors_allocation
     text = summarize(frame, 60, 3.0)
     assert "## How much of the advantage is the tools, and how much is a different amount of equity" in text and "**All 6 households**" in text
     assert "Tools only" in text
+
+
+def test_the_four_way_report_describes_the_allocation_step_from_its_numbers():
+    from app.study.adaptive_evaluation import allocation_sentence
+
+    steps = [
+        ("RIA baseline", 100.0, 100.0, 0.0, 0.0),
+        ("Lower fee", 120.0, 130.0, 0.005, 0.008),
+        ("Asset location", 125.0, 133.0, 0.006, 0.009),
+        ("Direct indexing", 125.0, 133.0, 0.006, 0.009),
+        ("Goal bonds, allocation and private credit", 110.0, 300.0, 0.0003, 0.025),
+        ("Roth timing and withdrawal order", 125.0, 310.0, 0.0027, 0.0254),
+    ]
+    less = allocation_sentence(steps)
+    assert "costs 0.57 points a year of median advantage and adds 1.60 points of risk-adjusted advantage" in less and "holds less equity" in less
+    more = allocation_sentence([*steps[:4], ("Goal bonds, allocation and private credit", 160.0, 120.0, 0.0128, -0.0006), steps[5]])
+    assert "adds 0.68 points a year of median advantage and costs 0.96 points of risk-adjusted advantage" in more and "holds more equity" in more

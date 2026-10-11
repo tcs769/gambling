@@ -143,17 +143,18 @@ def solve_equity_return(
 
 @dataclass
 class Reach:
-    recommendation: Strategy  # what the app recommends today
-    ceiling: Strategy  # the highest median on the menu
+    recommendation: Strategy  # what the app plans with today: the best equity-first (spending reserve) plan at risk aversion 3
+    balanced: Strategy  # what the balanced planning style (the app's earlier default) picks at risk aversion 3
+    ceiling: Strategy  # the highest median of any plan, balanced or equity first
     growth: Strategy  # what the planner picks at risk aversion 1
     advisor: Result  # the good advisor on the held-out futures
     spread_rate: float  # the specified tax rate on the advisor's pre-tax balance at 80 (median over futures)
-    plans: list[Result]  # tools at the advisor's allocation, the recommendation, the growth pick, the ceiling (against the good advisor)
+    plans: list[Result]  # tools at the advisor's allocation, the balanced pick, the app today, the growth pick, the ceiling (against the good advisor)
     typical: dict[str, float]  # raw advantage of each plan over the typical advisor
-    fees: list[tuple[float, float, float]]  # fee, raw advantage of the ceiling plan, of the recommendation
-    advisor_equity: list[tuple[tuple[float, float], float, float, float]]  # glide, ceiling raw, recommendation raw, ceiling risk-adjusted
-    equity_returns: list[tuple[float, float, float, float]]  # mean, ceiling raw, recommendation raw, ceiling shortfall
-    heirs: list[tuple[float | None, float, float]]  # rate, ceiling raw, recommendation raw
+    fees: list[tuple[float, float, float]]  # fee, raw advantage of the ceiling plan, of the app today
+    advisor_equity: list[tuple[tuple[float, float], float, float, float]]  # glide, ceiling raw, app raw, ceiling risk-adjusted
+    equity_returns: list[tuple[float, float, float, float]]  # mean, ceiling raw, app raw, ceiling shortfall
+    heirs: list[tuple[float | None, float, float]]  # rate, ceiling raw, app raw
     break_even: dict[str, list[tuple[float, float | None]]]  # scenario -> [(target, equity return needed)]
     seconds: float
 
@@ -168,28 +169,34 @@ def run_reach(
     started = time.perf_counter()
     say = progress or (lambda message: None)
     household = sample_household()
-    strategies = strategies if strategies is not None else menu()
+    # The pool the ceiling and the risk-aversion-1 pick come from: every strategy there is, unless a smaller one is given.
+    strategies = strategies if strategies is not None else [*menu(), *menu(style="equity_first")]
 
-    recommendation = search(build_inputs(household, n_paths=400, seed=seed), strategies=strategies).best.strategy
+    futures = build_inputs(household, n_paths=400, seed=seed)
+    recommendation = search(futures, strategies=menu(style="equity_first")).best.strategy
+    balanced = search(futures, strategies=menu()).best.strategy
     design = build_inputs(household, n_paths=n_design, seed=seed + DESIGN_SEED_OFFSET)
     held = build_inputs(household, n_paths=n_eval, seed=seed + EVAL_SEED_OFFSET)
+    det = build_inputs(household, deterministic=True)
     scores = score_menu(design, strategies, gammas=(RISK_AVERSION, GROWTH_RISK_AVERSION))
     growth = scores.strategies[pick(scores.ce[GROWTH_RISK_AVERSION])]
     ceiling = scores.strategies[pick(scores.median)]
-    say(f"recommendation: {recommendation.short_label()}; growth: {growth.short_label()}; ceiling: {ceiling.short_label()}")
+    say(f"app: {recommendation.short_label()}; balanced: {balanced.short_label()}; growth: {growth.short_label()}; ceiling: {ceiling.short_label()}")
 
     skill_label, skill_policy = advisor_allocation_chain(ceiling)[-1]
     plans = evaluate(
         held,
         [
             ("Donabach's tools at the advisor's own allocation (no extra equity)", skill_policy, None),
-            ("The app's recommendation (risk aversion 3)", recommendation.policy(), RISK_AVERSION),
-            ("What the planner picks at risk aversion 1", growth.policy(), GROWTH_RISK_AVERSION),
-            ("The ceiling: the most median wealth on the menu", ceiling.policy(), None),
+            ("The balanced plan (the app's earlier default; risk aversion 3)", balanced.policy(), RISK_AVERSION),
+            ("The app today: equity first (risk aversion 3)", recommendation.policy(), RISK_AVERSION),
+            ("What the planner picks at risk aversion 1 (any plan)", growth.policy(), GROWTH_RISK_AVERSION),
+            ("The ceiling: the most median wealth of any plan", ceiling.policy(), None),
         ],
-        ["", recommendation.short_label(), growth.short_label(), ceiling.short_label()],
+        ["", balanced.short_label(), recommendation.short_label(), growth.short_label(), ceiling.short_label()],
+        detail=det,
     )
-    typical_batch = run_batch(held, [TYPICAL_ADVISOR, skill_policy, recommendation.policy(), growth.policy(), ceiling.policy()])
+    typical_batch = run_batch(held, [TYPICAL_ADVISOR, skill_policy, balanced.policy(), recommendation.policy(), growth.policy(), ceiling.policy()])
     typical = {
         result.label: float(compare(typical_batch.wealth[i], typical_batch.wealth[0], held.n_years, RISK_AVERSION, WEALTH_FLOOR).median)
         for i, result in enumerate(plans, start=1)
@@ -204,24 +211,24 @@ def run_reach(
     advisor_equity = []
     for start_share, end_share in ADVISOR_GLIDES:
         advisor = RIA_BASELINE.replace(stock_share=start_share, glide_drop=start_share - end_share)
-        row = evaluate(held, [("ceiling", top, None), ("recommendation", rec, None)], baseline=advisor)
+        row = evaluate(held, [("ceiling", top, None), ("app", rec, None)], baseline=advisor)
         advisor_equity.append(((start_share, end_share), row[0].raw.median, row[1].raw.median, row[0].adjusted.risk_adjusted))
     say("advisor equity done")
 
     equity_returns = []
     for mean in EQUITY_RETURNS:
         shifted = with_equity_return(held, mean)
-        row = evaluate(shifted, [("ceiling", top, None), ("recommendation", rec, None)])
+        row = evaluate(shifted, [("ceiling", top, None), ("app", rec, None)])
         equity_returns.append((mean, row[0].raw.median, row[1].raw.median, row[0].shortfall))
     say("equity returns done")
 
     heirs = [(rate, raw_with(held, top, RIA_BASELINE, rate), raw_with(held, rec, RIA_BASELINE, rate)) for rate in HEIRS_RATES]
     say("heirs done")
 
-
     break_even: dict[str, list[tuple[float, float | None]]] = {}
     scenarios = {
         "the specified fee and tax rule": {},
+        "a 0.25% fee and heirs taxed at 24%": {"fee": 0.0025, "heirs": 0.24},
         "a 0.25% fee and heirs taxed at 32%": {"fee": 0.0025, "heirs": 0.32},
     }
     for name, options in scenarios.items():
@@ -234,6 +241,7 @@ def run_reach(
 
     return Reach(
         recommendation=recommendation,
+        balanced=balanced,
         ceiling=ceiling,
         growth=growth,
         advisor=baseline_result(held),
@@ -263,7 +271,7 @@ def _share(x: float) -> str:
 
 
 def render(reach: Reach) -> str:
-    skill, _recommendation, growth, top = reach.plans
+    skill, _balanced, app, growth, top = reach.plans
     extra_equity = top.raw.median - skill.raw.median
     lines = [
         "# What would have to change to reach 2 to 3% a year?",
@@ -271,17 +279,17 @@ def render(reach: Reach) -> str:
         "Generated by `python -m app.study.reach`. This is a diagnostic: it measures how far each lever goes and adopts none of them. "
         "Nothing the app does was changed, and nothing was tuned toward a result.",
         "",
-        f"**Short answer.** With the strategies on the menu and the market assumptions as specified, the most median wealth any plan produces "
-        f"is **{_pct(top.raw.median)} a year** over the good advisor (the sample household, futures the plan never saw). About "
-        f"{_pct(skill.raw.median)} of that is Donabach's tools (fee, asset location, conversions, withdrawal order, goal funding). The other "
-        f"{_pct(extra_equity)} is only that the plan holds {top.exposure[0]:.0%} stocks against the advisor's {skill.exposure[0]:.0%} today "
-        f"and {top.exposure[2]:.0%} against {skill.exposure[2]:.0%} from 70, which is more risk: it runs out of money in {top.shortfall:.1%} of "
-        f"futures against the advisor's {reach.advisor.shortfall:.1%}. At risk aversion 1 the planner itself picks a plan with {growth.exposure[0]:.0%} stocks that is "
-        f"{_pct(growth.raw.median)} ahead and runs out of money in {growth.shortfall:.1%} of futures (the advisor's rate is {reach.advisor.shortfall:.1%}), with a "
-        f"10th percentile of ${growth.p10:,.0f} against the advisor's ${reach.advisor.p10:,.0f}; its risk-adjusted advantage is {_pct(growth.adjusted.risk_adjusted)}. "
-        "No choice on the menu reaches 2%.",
+        f"**Short answer.** With the strategies on the menu (the balanced ones and the spending-reserve ones) and the market assumptions as "
+        f"specified, the most median wealth any plan produces is **{_pct(top.raw.median)} a year** over the good advisor (the sample household, futures "
+        f"the plan never saw). About {_pct(skill.raw.median)} of that is Donabach's tools (fee, asset location, conversions, withdrawal order, goal "
+        f"funding). The other {_pct(extra_equity)} is only that the plan holds {top.exposure[0]:.0%} stocks against the advisor's {skill.exposure[0]:.0%} "
+        f"today and {top.exposure[2]:.0%} against {skill.exposure[2]:.0%} from 70, which is more risk: it runs out of money in {top.shortfall:.1%} of "
+        f"futures against the advisor's {reach.advisor.shortfall:.1%}. The app's own plan (equity first, risk aversion 3) is {_pct(app.raw.median)} "
+        f"ahead, runs out of money in {app.shortfall:.1%} of futures and has a 10th percentile of ${app.p10:,.0f} against the advisor's "
+        f"${reach.advisor.p10:,.0f}; its risk-adjusted advantage is {_pct(app.adjusted.risk_adjusted)}. At risk aversion 1 the planner picks "
+        f"{_pct(growth.raw.median)} ahead with {growth.shortfall:.1%} running out. No choice on the menu reaches 2%.",
         "",
-        "## 1. The ceiling, and where it comes from",
+        "## 1. The ceiling, the app's plan, and where the advantage comes from",
         "",
         "| Plan | What it holds | Stocks today / at 58 / from 70 | Raw advantage over the good advisor | Over the typical advisor | Risk-adjusted (risk aversion 3) | 10th percentile | Chance of running out of money |",
         "|---|---|---|---|---|---|---|---|",
@@ -297,12 +305,12 @@ def render(reach: Reach) -> str:
         "",
         "## 2. One lever at a time",
         "",
-        "Each table changes one thing and measures the ceiling plan and the app's recommendation against the same good advisor, "
+        "Each table changes one thing and measures the ceiling plan and the app's own plan (equity first) against the same good advisor, "
         "on the same futures. None of these changes is in the app.",
         "",
         "**The Donabach fee** (specified: 0.35% flat; the advisor's is 1.0% falling to 0.5%)",
         "",
-        "| Fee | Ceiling plan | Recommendation |",
+        "| Fee | Ceiling plan | The app today |",
         "|---|---|---|",
     ]
     lines += [f"| {fee:.2%}{' (specified)' if i == 0 else ''} | {_pct(a)} | {_pct(b)} |" for i, (fee, a, b) in enumerate(reach.fees)]
@@ -311,7 +319,7 @@ def render(reach: Reach) -> str:
         "**How much equity the advisor holds** (specified: 80% stocks today falling to 50% from 70). The same two plans against advisors that hold "
         "more or less equity: most of the raw advantage is the difference in equity, not skill.",
         "",
-        "| Advisor's stocks today / from 70 | Ceiling plan: raw | Recommendation: raw | Ceiling plan: risk-adjusted |",
+        "| Advisor's stocks today / from 70 | Ceiling plan: raw | The app today: raw | Ceiling plan: risk-adjusted |",
         "|---|---|---|---|",
     ]
     lines += [
@@ -323,7 +331,7 @@ def render(reach: Reach) -> str:
         "**The equity return** (real, arithmetic mean; specified 5.5%, volatility 16%). The advisor is on the same futures, so a higher return lifts both; "
         "it widens the gap only because the plan holds more equity.",
         "",
-        "| Equity return | Ceiling plan: raw | Recommendation: raw | Ceiling plan: chance of running out of money |",
+        "| Equity return | Ceiling plan: raw | The app today: raw | Ceiling plan: chance of running out of money |",
         "|---|---|---|---|",
     ]
     lines += [
@@ -336,7 +344,7 @@ def render(reach: Reach) -> str:
         f"which is a rate of about {reach.spread_rate:.0%} for the advisor's balance; a non-spouse heir must empty an inherited account within ten years and "
         "may be in the 24% or 32% bracket). Not modelled: a survivor's single-filer brackets, which favor conversions in the same way.",
         "",
-        "| Tax on pre-tax money at 80 | Ceiling plan: raw | Recommendation: raw |",
+        "| Tax on pre-tax money at 80 | Ceiling plan: raw | The app today: raw |",
         "|---|---|---|",
     ]
     lines += [

@@ -27,7 +27,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import numpy as np
@@ -36,7 +36,7 @@ from app.planner.baseline import RIA_BASELINE
 from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, certainty_equivalent, search
 from app.planner.strategies import STOCK_SHARES, Strategy, menu
 from app.sim import markets
-from app.sim.simulate import DONABACH_FLAT_FEE, GLIDE_END_AGE, ModelOptions, Policy, SimInputs, build_inputs, run_batch
+from app.sim.simulate import DONABACH_FLAT_FEE, GLIDE_END_AGE, ModelOptions, Policy, SimInputs, build_inputs, run_batch, run_detail
 from app.study.measure import EVAL_SEED_OFFSET, sample_household
 from app.study.metrics import Advantage, compare
 
@@ -58,6 +58,22 @@ def equity_exposure(policy: Policy, age: float, current_age: float) -> float:
     else:
         share = policy.stock_share - policy.glide_drop * min(1.0, (age - glide_start) / (GLIDE_END_AGE - glide_start))
     return share * (1.0 - policy.private_credit) if policy.donabach_location else share
+
+
+def exposure_of(policy: Policy, inputs: SimInputs, detail: SimInputs | None = None) -> tuple[float, ...]:
+    """Stocks as a share of the portfolio today, at 58 and from 70. A fixed share and glide have a formula; with a spending
+    reserve the share moves with the household's expenses, so it is read off the plan's own year log on `detail` (a
+    deterministic path)."""
+    current = inputs.current_age
+    if policy.reserve_years and detail is not None:
+        share = run_detail(detail, policy).log["equity_share"]
+        last = len(share) - 1
+
+        def at(age: float) -> int:
+            return min(max(0, int(age - current)), last)
+
+        return (float(share[0]), float(share[at(58.0)]), float(np.median(share[at(70.0):])))
+    return tuple(equity_exposure(policy, age or current, current) for age in EXPOSURE_AGES)
 
 
 def annualized(plan: np.ndarray | float, baseline: float, years: int) -> np.ndarray | float:
@@ -134,8 +150,10 @@ def evaluate(
     rows: list[tuple[str, Policy, float | None]],
     notes: list[str] | None = None,
     baseline: Policy = RIA_BASELINE,
+    detail: SimInputs | None = None,
 ) -> list[Result]:
-    """Score `rows` (label, policy, the risk aversion it was chosen at) against `baseline` (the good advisor) on `held`."""
+    """Score `rows` (label, policy, the risk aversion it was chosen at) against `baseline` (the good advisor) on `held`.
+    `detail` is a deterministic path, used to read the stock exposure of plans with a spending reserve."""
     years = held.n_years
     batch = run_batch(held, [baseline, *(policy for _, policy, _ in rows)])
     w = batch.wealth
@@ -145,7 +163,7 @@ def evaluate(
             Result(
                 label=label,
                 policy=policy,
-                exposure=tuple(equity_exposure(policy, age or held.current_age, held.current_age) for age in EXPOSURE_AGES),
+                exposure=exposure_of(policy, held, detail),
                 median=float(np.median(w[i])),
                 p10=float(np.percentile(w[i], 10)),
                 shortfall=float(np.mean(batch.unfunded[i] > 0)),
@@ -258,6 +276,7 @@ class Study:
     seconds: float
     n_design: int = 0
     n_eval: int = 0
+    reserve_frontier: list[Result] = field(default_factory=list)  # what each objective picks among the spending-reserve plans
 
 
 def run_study(
@@ -282,6 +301,7 @@ def run_study(
 
     design = build_inputs(household, n_paths=n_design, seed=seed + DESIGN_SEED_OFFSET, options=options)
     held = build_inputs(household, n_paths=n_eval, seed=seed + EVAL_SEED_OFFSET, options=options)
+    det = build_inputs(household, deterministic=True, options=options)
     scores = score_menu(design, strategies)
     say(f"scored {len(strategies)} strategies on {n_design} futures")
     ria_design = run_batch(design, [RIA_BASELINE])
@@ -294,9 +314,9 @@ def run_study(
     for sleeve in sorted({0.0, chosen.private_credit}):
         for share in STOCK_SHARES:
             strategy = replace(chosen, stock_share=share, private_credit=sleeve)
-            mark = " (the recommendation)" if strategy == chosen else ""
+            mark = " (the balanced recommendation)" if strategy == chosen else ""
             sweep_rows.append((f"{round(share * 100)}% stocks, {round(sleeve * 100)}% private credit{mark}", strategy.policy(), None))
-    sweep = evaluate(held, sweep_rows)
+    sweep = evaluate(held, sweep_rows, detail=det)
 
     # 2. Donabach's tools at the advisor's own allocation.
     chain_steps = advisor_allocation_chain(chosen)
@@ -309,7 +329,18 @@ def run_study(
         index = pick(values)
         frontier_rows.append((label, scores.strategies[index].policy(), gamma))
         notes.append(scores.strategies[index].short_label())
-    frontier = evaluate(held, frontier_rows, notes)
+    frontier = evaluate(held, frontier_rows, notes, detail=det)
+
+    # 3b. The same objectives among the spending-reserve plans (the app's default planning style).
+    reserve_menu = menu(style="equity_first")
+    reserve_scores = score_menu(design, reserve_menu)
+    reserve_rows: list[tuple[str, Policy, float | None]] = []
+    reserve_notes: list[str] = []
+    for label, values, gamma in objectives(reserve_scores):
+        index = pick(values)
+        reserve_rows.append((label, reserve_menu[index].policy(), gamma))
+        reserve_notes.append(reserve_menu[index].short_label())
+    reserve_frontier = evaluate(held, reserve_rows, reserve_notes, detail=det)
 
     # 4a. The best raw advantage among plans at least as good as the advisor risk-adjusted by a given amount.
     ra_design = annualized(scores.ce[RISK_AVERSION], ria_ce3, years)
@@ -362,6 +393,7 @@ def run_study(
         seconds=time.perf_counter() - started,
         n_design=n_design,
         n_eval=n_eval,
+        reserve_frontier=reserve_frontier,
     )
 
 
@@ -457,7 +489,8 @@ def render(study: Study, sensitivity: list[tuple[str, list[Result]]] | None = No
         "",
         "* Household: the demo household (two earners aged 38 and 37; a home purchase in 3 years, college in 10, retirement at 62). Horizon: age 80.",
         f"* Plans are chosen on {study.n_design:,} futures and scored on {study.n_eval:,} other futures they never saw; the good advisor is on the same futures as every plan.",
-        f"* The app's recommendation (risk aversion 3, 400 futures, seed 2026): **{study.chosen.describe()}**",
+        f"* The balanced planning style's recommendation (the app's earlier default; risk aversion 3, 400 futures, seed 2026): **{study.chosen.describe()}**. "
+        "The app now plans in the equity-first style by default; section 7 has it.",
         "* *Raw advantage*: the growth-rate difference between median after-tax wealth at 80 and the advisor's, annualized over the 42 years. "
         "*Risk-adjusted advantage*: the same on certainty-equivalent wealth at risk aversion 3 with a $50,000 floor. 'Stocks' is the share of the "
         "whole portfolio, so a 50% stock share with a 15% private credit sleeve holds 42.5% in stocks.",
@@ -478,9 +511,9 @@ def render(study: Study, sensitivity: list[tuple[str, list[Result]]] | None = No
         "",
         *_table(study.chain),
         "",
-        "## 3. What each objective picks",
+        "## 3. What each objective picks (the balanced menu)",
         "",
-        "Each row chooses the best strategy on the whole 4,032-strategy menu by that objective (on the choice futures) and is scored on the held-out futures. "
+        "Each row chooses the best strategy on the whole 4,032-strategy balanced menu by that objective (on the choice futures) and is scored on the held-out futures. "
         "The last two columns before the tail figures show the risk-adjusted advantage at risk aversion 3 for comparison and at the row's own risk aversion, "
         "which is what the app would print if that were its setting.",
         "",
@@ -526,6 +559,17 @@ def render(study: Study, sensitivity: list[tuple[str, list[Result]]] | None = No
         ]
         for name, results in sensitivity:
             lines += [f"**{name}**", "", *_table(results, plan_column=True), ""]
+    if study.reserve_frontier:
+        lines += [
+            "## 7. The spending-reserve plans (the app's default planning style)",
+            "",
+            "A reserve of 2, 4 or 6 years of expenses in bonds and private credit, everything else in stocks, expenses paid from bonds and private "
+            "credit first, no refill after a year stocks fell. Each row chooses the best of the 1,008 reserve strategies by that objective on the "
+            "choice futures. The stock exposure is read off each plan's own year log: it moves with the household's expenses.",
+            "",
+            *_table(study.reserve_frontier, own_gamma=True, plan_column=True),
+            "",
+        ]
     lines += [f"_Computed in {study.seconds:.0f} seconds._", ""]
     return "\n".join(lines)
 

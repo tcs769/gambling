@@ -176,6 +176,7 @@ const CHOICE_LABELS = {
   goal_bonds: "Goal-matched bonds",
   k401: "401(k) contributions",
   goal_funding: "Paying for goals",
+  reserve: "Spending reserve",
 };
 // How an alternative's score reads against the chosen action's (ce_gap = the chosen action's score minus its own).
 const gapWords = (gap) =>
@@ -520,6 +521,11 @@ check(
   `plan: the 401(k) type, how goals are funded and the private credit percent (${choices.private_credit}%) are shown in words`,
 );
 check(!chips.some((c) => /\b(pretax|roth_low|borrow|sell)\b/.test(c)), "plan: no raw API codes show in the choice chips");
+check(
+  chips.some((c) => (choices.reserve === "off" ? /^Spending reserve Off$/ : new RegExp(`^Spending reserve ${choices.reserve} years$`)).test(c)) &&
+    (choices.reserve === "off" || chips.some((c) => c === "Stock share Everything outside the reserve")),
+  `plan: the spending reserve (${choices.reserve === "off" ? "off" : `${choices.reserve} years`}) is shown in words, and with one the stock share reads "Everything outside the reserve"`,
+);
 await audit("6-plan");
 
 // The year-by-year plan arrives after the fixed plan (a background job), unless the API already had it.

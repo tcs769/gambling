@@ -5,7 +5,7 @@ backend/.pytest_cache/
 __pycache__/
 *.py[cod]
 
-# Generated sample documents (regenerate with `make docs`)
+# Documents uploaded while the app runs (the sample PDFs are committed in fixtures/sample_docs/)
 backend/data/
 
 # Model files dropped in by the ML teammates (pickles can run code; don't commit by accident)

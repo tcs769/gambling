@@ -1,0 +1,318 @@
+%PDF-1.3
+%“Œ‹ž ReportLab Generated PDF document (opensource)
+1 0 obj
+<<
+/F1 2 0 R /F2 3 0 R
+>>
+endobj
+2 0 obj
+<<
+/BaseFont /Helvetica /Encoding /WinAnsiEncoding /Name /F1 /Subtype /Type1 /Type /Font
+>>
+endobj
+3 0 obj
+<<
+/BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding /Name /F2 /Subtype /Type1 /Type /Font
+>>
+endobj
+4 0 obj
+<<
+/Contents 8 0 R /MediaBox [ 0 0 612 792 ] /Parent 7 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
+>>
+endobj
+5 0 obj
+<<
+/PageMode /UseNone /Pages 7 0 R /Type /Catalog
+>>
+endobj
+6 0 obj
+<<
+/Author (Donabach demo \(fictional sample\)) /CreationDate (D:20000101000000+00'00') /Creator (anonymous) /Keywords () /ModDate (D:20000101000000+00'00') /Producer (ReportLab PDF Library - \(opensource\)) 
+  /Subject (Fictional sample document for the Donabach demo) /Title (Form 1040 \(2026 projection\), simplified) /Trapped /False
+>>
+endobj
+7 0 obj
+<<
+/Count 1 /Kids [ 4 0 R ] /Type /Pages
+>>
+endobj
+8 0 obj
+<<
+/Length 6007
+>>
+stream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+BT /F2 17 Tf 20.4 TL ET
+0 g
+BT 1 0 0 1 48 738 Tm (Form 1040 \(2026 projection\), simplified) Tj T* ET
+BT /F1 8.5 Tf 10.2 TL ET
+.4 g
+BT 1 0 0 1 48 722 Tm (U.S. Individual Income Tax Return  |  Tax year 2026 projection  |  For illustration only) Tj T* ET
+.2 G
+1.2 w
+n 48 714 m 564 714 l S
+BT /F1 8.5 Tf 10.2 TL ET
+.4 g
+BT 1 0 0 1 48 692 Tm (Taxpayer) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 130 692 Tm (Alex Sample      SSN 000-00-0000) Tj T* ET
+BT /F1 8.5 Tf 10.2 TL ET
+.4 g
+BT 1 0 0 1 48 678 Tm (Spouse) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 130 678 Tm (Jordan Sample      SSN 000-00-0000) Tj T* ET
+BT /F1 8.5 Tf 10.2 TL ET
+.4 g
+BT 1 0 0 1 48 664 Tm (Address) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 130 664 Tm (123 Sample Lane, Anytown, IL 00000 \(fictional\)) Tj T* ET
+BT /F2 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 48 642 Tm (Filing status) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 130 642 Tm (Married filing jointly) Tj T* ET
+.55 G
+.8 w
+n 48 540 516 80 re S
+BT /F2 10 Tf 12 TL ET
+0 g
+BT 1 0 0 1 56 605 Tm (Household) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 587 Tm (Taxpayer age) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 545.436 587 Tm (38) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 573 Tm (Spouse age) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 545.436 573 Tm (37) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 559 Tm (Qualifying children under 17) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 550.718 559 Tm (1) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 545 Tm (Child 1 age) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 550.718 545 Tm (8) Tj T* ET
+.55 G
+.8 w
+n 48 472 516 52 re S
+BT /F2 10 Tf 12 TL ET
+0 g
+BT 1 0 0 1 56 509 Tm (Wages by W-2 \(box 1, after 401\(k\) deferrals\)) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 491 Tm (W-2 wages, taxpayer \(Alex Sample\)) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 516.385 491 Tm ($115,500) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 477 Tm (W-2 wages, spouse \(Jordan Sample\)) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 521.667 477 Tm ($85,500) Tj T* ET
+.92 g
+n 48 442 516 19 re f*
+BT /F2 8.5 Tf 10.2 TL ET
+0 g
+BT 1 0 0 1 56 448 Tm (Line) Tj T* ET
+BT /F2 8.5 Tf 10.2 TL ET
+0 g
+BT 1 0 0 1 92 448 Tm (Description) Tj T* ET
+BT /F2 8.5 Tf 10.2 TL ET
+0 g
+BT 1 0 0 1 523.8955 448 Tm (Amount) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 428 Tm (1a) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 92 428 Tm (Wages from Form\(s\) W-2, box 1) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 516.385 428 Tm ($201,000) Tj T* ET
+.85 G
+.5 w
+n 48 422 m 564 422 l S
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 408 Tm (2b) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 92 408 Tm (Taxable interest) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 534.872 408 Tm ($800) Tj T* ET
+.85 G
+.5 w
+n 48 402 m 564 402 l S
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 388 Tm (3a) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 92 388 Tm (Qualified dividends) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 526.949 388 Tm ($2,700) Tj T* ET
+.85 G
+.5 w
+n 48 382 m 564 382 l S
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 368 Tm (3b) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 92 368 Tm (Ordinary dividends \(includes qualified dividends\)) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 526.949 368 Tm ($3,000) Tj T* ET
+.85 G
+.5 w
+n 48 362 m 564 362 l S
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 348 Tm (7) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 92 348 Tm (Capital gain or \(loss\)) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 526.949 348 Tm ($1,500) Tj T* ET
+.85 G
+.5 w
+n 48 342 m 564 342 l S
+BT /F2 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 328 Tm (9) Tj T* ET
+BT /F2 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 92 328 Tm (Total income \(add lines 1a, 2b, 3b and 7\)) Tj T* ET
+BT /F2 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 516.385 328 Tm ($206,300) Tj T* ET
+.85 G
+.5 w
+n 48 322 m 564 322 l S
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 308 Tm (10) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 92 308 Tm (Adjustments to income) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 545.436 308 Tm ($0) Tj T* ET
+.85 G
+.5 w
+n 48 302 m 564 302 l S
+BT /F2 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 288 Tm (11) Tj T* ET
+BT /F2 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 92 288 Tm (Adjusted gross income \(subtract line 10 from line 9\)) Tj T* ET
+BT /F2 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 516.385 288 Tm ($206,300) Tj T* ET
+.85 G
+.5 w
+n 48 282 m 564 282 l S
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 268 Tm (12) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 92 268 Tm (Standard deduction) Tj T* ET
+BT /F1 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 521.667 268 Tm ($32,200) Tj T* ET
+.85 G
+.5 w
+n 48 262 m 564 262 l S
+BT /F2 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 248 Tm (15) Tj T* ET
+BT /F2 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 92 248 Tm (Taxable income \(subtract line 12 from line 11\)) Tj T* ET
+BT /F2 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 516.385 248 Tm ($174,100) Tj T* ET
+.85 G
+.5 w
+n 48 242 m 564 242 l S
+BT /F2 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 56 228 Tm (24) Tj T* ET
+BT /F2 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 92 228 Tm (Total tax) Tj T* ET
+BT /F2 9.5 Tf 11.4 TL ET
+0 g
+BT 1 0 0 1 521.667 228 Tm ($25,232) Tj T* ET
+.85 G
+.5 w
+n 48 222 m 564 222 l S
+BT /F1 7.5 Tf 9 TL ET
+.4 g
+BT 1 0 0 1 48 198 Tm (Simplified layout: only the lines used by this demo are shown. Federal income tax only) Tj T* ET
+BT /F1 7.5 Tf 9 TL ET
+.4 g
+BT 1 0 0 1 48 188 Tm (\(no payroll taxes, itemized deductions or AMT\), computed from the 2026 parameters) Tj T* ET
+BT /F1 7.5 Tf 9 TL ET
+.4 g
+BT 1 0 0 1 48 178 Tm (\(IRS Rev. Proc. 2025-32\). Total tax \(line 24\) is after the child tax credit.) Tj T* ET
+.75 G
+.5 w
+n 48 47 m 564 47 l S
+BT /F1 7 Tf 8.4 TL ET
+.45 g
+BT 1 0 0 1 165.741 36 Tm (Fictional document created for the Donabach demo. Not a real form, statement or account.) Tj T* ET
+BT /F2 7.5 Tf 9 TL ET
+.35 g
+BT 1 0 0 1 266.205 25 Tm (SAMPLE \226 FICTIONAL) Tj T* ET
+ 
+endstream
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000061 00000 n 
+0000000102 00000 n 
+0000000209 00000 n 
+0000000321 00000 n 
+0000000514 00000 n 
+0000000582 00000 n 
+0000000937 00000 n 
+0000000996 00000 n 
+trailer
+<<
+/ID 
+[<447fde79aafa7f5424882f8c5f9b84f9><447fde79aafa7f5424882f8c5f9b84f9>]
+% ReportLab generated PDF document -- digest (opensource)
+
+/Info 6 0 R
+/Root 5 0 R
+/Size 9
+>>
+startxref
+7054
+%%EOF

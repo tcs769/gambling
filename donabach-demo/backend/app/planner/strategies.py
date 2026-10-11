@@ -109,6 +109,22 @@ class Strategy:
             flat_fee=DONABACH_FLAT_FEE,
         )
 
+    def short_label(self) -> str:
+        """A compact label for tables, e.g. "90% stocks, fill 22% bracket (low income), private credit"."""
+        if self.conversion_bracket is None:
+            conversions = "no conversions"
+        else:
+            when = "every year" if self.conversion_every_year else "low-income years"
+            conversions = f"fill {self.conversion_bracket}% bracket ({when})"
+        parts = [f"{round(self.stock_share * 100)}% stocks", conversions]
+        if self.private_credit:
+            parts.append("private credit")
+        if self.direct_indexing:
+            parts.append("direct indexing")
+        if self.goal_bonds:
+            parts.append("goal bonds")
+        return ", ".join(parts)
+
     def describe(self) -> str:
         """The strategy in one plain-language sentence."""
         parts = [

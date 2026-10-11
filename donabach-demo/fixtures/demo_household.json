@@ -1,0 +1,85 @@
+{
+  "_comment": "FICTIONAL demo household. Single source of truth for the three sample PDFs (backend/app/docs/generate.py). Whole US dollars, 2026 dollars. Names, SSNs, addresses and accounts are invented. Keys starting with an underscore are comments.",
+  "tax_year": 2026,
+  "filing_status": "married_filing_jointly",
+  "state": "IL",
+  "address": "123 Sample Lane, Anytown, IL 00000",
+  "taxpayer": {
+    "name": "Alex Sample",
+    "ssn": "000-00-0000",
+    "age": 38,
+    "wages": 140000,
+    "pretax_401k": 24500
+  },
+  "spouse": {
+    "name": "Jordan Sample",
+    "ssn": "000-00-0000",
+    "age": 37,
+    "wages": 110000,
+    "pretax_401k": 24500
+  },
+  "_wages_note": "wages are gross pay before the pre-tax 401(k) deferral; W-2 box 1 = wages - pretax_401k (115,500 and 85,500).",
+  "children": [
+    { "name": "Casey Sample", "age": 8 }
+  ],
+  "income": {
+    "_comment": "ordinary_dividends is Form 1040 line 3b and INCLUDES the qualified dividends (line 3a).",
+    "taxable_interest": 800,
+    "qualified_dividends": 2700,
+    "ordinary_dividends": 3000,
+    "net_long_term_capital_gain": 1500
+  },
+  "brokerage": {
+    "custodian": "Harborview Sample Brokerage, Inc.",
+    "account_number": "XXXX-1234",
+    "account_type": "Joint taxable brokerage account",
+    "statement_period": "September 1 to September 30, 2026",
+    "total_value": 150000,
+    "cost_basis": 110000,
+    "holdings": [
+      { "name": "Sample US Total Market Index Fund", "ticker": "SUTM", "asset_class": "equity", "value": 42380, "basis": 29640 },
+      { "name": "Sample US Large Cap Index Fund", "ticker": "SULC", "asset_class": "equity", "value": 31260, "basis": 23115 },
+      { "name": "Sample US Small Cap Index Fund", "ticker": "SUSC", "asset_class": "equity", "value": 14720, "basis": 11830 },
+      { "name": "Sample Developed International Index Fund", "ticker": "SDIN", "asset_class": "equity", "value": 27940, "basis": 22375 },
+      { "name": "Sample Emerging Markets Index Fund", "ticker": "SEME", "asset_class": "equity", "value": 11350, "basis": 9880 },
+      { "name": "Sample US Mid Cap Index Fund", "ticker": "SUMC", "asset_class": "equity", "value": 22350, "basis": 13160 }
+    ]
+  },
+  "retirement_401k": {
+    "_comment": "Contributions printed on the statement are each person's pretax_401k above, so they are not repeated here.",
+    "plan_name": "Acme Sample Corp. 401(k) Savings Plan",
+    "recordkeeper": "Keystone Sample Retirement Services",
+    "plan_year": 2026,
+    "balances_as_of": "September 30, 2026",
+    "participants": {
+      "taxpayer": { "account": "XXXX-2201", "balance": 250000 },
+      "spouse": { "account": "XXXX-2202", "balance": 150000 }
+    },
+    "total_balance": 400000,
+    "allocation": [
+      { "name": "Sample US Stock Index Fund", "asset_class": "equity", "value": 180000 },
+      { "name": "Sample International Stock Index Fund", "asset_class": "equity", "value": 80000 },
+      { "name": "Sample Small-Cap Stock Index Fund", "asset_class": "equity", "value": 40000 },
+      { "name": "Sample Total Bond Index Fund", "asset_class": "bond", "value": 100000 }
+    ]
+  },
+  "not_in_documents": {
+    "_comment": "Not on any generated document: the UI asks for these or estimates them. Ages are the taxpayer's (the brief gives a single household age).",
+    "roth_ira": 30000,
+    "cash": 40000,
+    "goals": {
+      "home_purchase": { "years_from_now": 3, "down_payment": 120000 },
+      "college": { "starts_in_years": 10, "annual_cost": 35000, "years": 4 },
+      "retirement": { "age": 62, "annual_spending": 110000 }
+    },
+    "social_security": { "household_annual_benefit": 50000, "start_age": 67 }
+  },
+  "intentional_discrepancy": {
+    "document": "brokerage_statement",
+    "holding_ticker": "SDIN",
+    "printed_value_delta": -1,
+    "flagged_field": "brokerage_total_value",
+    "expected_confidence": "medium",
+    "description": "The brokerage statement prints one holding (SDIN) $1 lower than its true value, a rounding difference. The six printed holdings add up to $149,999 while the stated total value stays $150,000, so the parser flags brokerage_total_value (medium confidence) and every other field in all three documents passes its cross-checks."
+  }
+}

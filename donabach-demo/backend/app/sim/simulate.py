@@ -170,6 +170,7 @@ LOG_COLUMNS = (
     "forced_sale",
     "loan_repaid_saving",
     "loan_repaid_gain",
+    "gain_harvest",
 )
 NLOG = len(LOG_COLUMNS)
 (
@@ -224,6 +225,7 @@ NLOG = len(LOG_COLUMNS)
     L_FORCED,
     L_REPAID_SAVING,
     L_REPAID_GAIN,
+    L_GAINHARVEST,
 ) = range(NLOG)
 
 # --------------------------------------------------------------------------------------------
@@ -469,8 +471,8 @@ def _rebalance(st, equity, private_credit, uniform):
 # One household, one future: the year, in two halves
 # --------------------------------------------------------------------------------------------
 #
-# (The three year functions are inlined into the path loop: as separate calls each argument array is
-# reference-counted on entry and exit, which made the kernel about 40% slower.)
+# (The three year functions are inlined into `_run_years`, the one place that runs them: as separate calls
+# each argument array is reference-counted on entry and exit, which made the kernel about 40% slower.)
 #
 # A year is simulated by `_year_begin` (returns and loss harvesting: what the household sees
 # before it decides anything) and `_year_rest` (everything it then does, given an action). A fixed
@@ -716,6 +718,17 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         if conv > 0.0:
             _convert_to_roth(st, conv / pre)
 
+    # 5b. Realize gains up to the top of the 0% capital-gain bracket (an action only the adaptive planner
+    # takes): sell and immediately rebuy the equity, so nothing moves but the basis, which steps up.
+    gain_harvest = 0.0
+    if act[A_REALIZE] > 0.5:
+        unrealized = st[S_BE] - st[S_BBASIS]
+        if unrealized > 0.0:
+            room = _zero_gain_room(wages_taxable, interest, dividends, taxable_ss, ret_dist, conv, realized, cf_in, std)
+            gain_harvest = min(room, unrealized)
+            realized += gain_harvest
+            st[S_BBASIS] += gain_harvest
+
     # 6. Fund or release the goal bucket (bonds held in the taxable account).
     bucket_flow = 0.0
     if act[A_BUCKET] > 0.5:
@@ -895,7 +908,48 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         log[t, L_FORCED] = ys[Y_FORCED]
         log[t, L_REPAID_SAVING] = repaid_saving
         log[t, L_REPAID_GAIN] = repaid_gain
+        log[t, L_GAINHARVEST] = gain_harvest
     return wealth, total_tax
+
+
+# How `_run_years` treats its first year (see there).
+RUN_FULL, RUN_BEGIN, RUN_REST = 0, 1, 2
+
+
+@jit
+def _run_years(st, ys, act, tv, hhc, row, gates, rets, wages, k401, wt, t0, t1, mode, want_last, record, path_wealth, do_log, log):
+    """Simulate years t0 .. t1-1 of one household on one future, mutating the state `st`.
+
+    `mode` says how the first year goes (every later year always goes in full):
+      RUN_FULL  the policy `row` chooses each year's action (written to `act`), then the year is run
+      RUN_BEGIN year t0 only (t1 = t0 + 1) up to the decision point: returns and harvesting are applied
+                and `act` holds what the policy would do; the caller may change it
+      RUN_REST  year t0 from the decision point on, with the action already in `act`
+    The fixed strategies use RUN_FULL over the whole horizon; the adaptive planner calls RUN_BEGIN,
+    decides, then RUN_REST, and its rollouts call RUN_REST then RUN_FULL to the horizon. All of them
+    go through this one function, so a forced action reproduces a fixed strategy exactly.
+
+    `rets` is (years, 3); `wages`, `k401` are (years,); `wt` is (years, 2) (the tax on wages alone with
+    a pre-tax and with a Roth 401(k)). Returns (after-tax wealth after the last year if `want_last`,
+    income tax paid over the years run).
+    """
+    taxes_paid = 0.0
+    wealth = 0.0
+    for t in range(t0, t1):
+        w = wages[t]
+        if not (mode == RUN_REST and t == t0):
+            _policy_action(row, gates[t], tv, t, w, act)
+            _year_begin(st, ys, tv, t, act, rets[t, 0], rets[t, 1], rets[t, 2])
+            if mode == RUN_BEGIN:
+                return 0.0, 0.0
+        want = record or do_log or (want_last and t == t1 - 1)
+        res = _year_rest(st, ys, tv, t, hhc, row, act, w, k401[t], wt[t, 0], wt[t, 1], want, do_log, log)
+        taxes_paid += res[1]
+        if want:
+            wealth = res[0]
+        if record:
+            path_wealth[t] = wealth
+    return wealth, taxes_paid
 
 
 @jit
@@ -904,21 +958,10 @@ def _simulate_path(s, p, strat, gates, tv, init, hhc, rets, wages, k401, wage_ta
     st = init.copy()
     ys = np.zeros(NY)
     act = np.zeros(NACT)
-    row = strat[s]
-    taxes_paid = 0.0
-    wealth = 0.0
-    for t in range(n_years):
-        w = wages[p, t]
-        _policy_action(row, gates[s, t], tv, t, w, act)
-        _year_begin(st, ys, tv, t, act, rets[p, t, 0], rets[p, t, 1], rets[p, t, 2])
-        want = record or do_log or t == n_years - 1
-        res = _year_rest(st, ys, tv, t, hhc, row, act, w, k401[p, t], wage_tax[p, t, 0], wage_tax[p, t, 1], want, do_log, log)
-        taxes_paid += res[1]
-        if want:
-            wealth = res[0]
-        if record:
-            path_wealth[t] = wealth
-
+    wealth, taxes_paid = _run_years(
+        st, ys, act, tv, hhc, strat[s], gates[s], rets[p], wages[p], k401[p], wage_tax[p], 0, n_years, RUN_FULL,
+        True, record, path_wealth, do_log, log,
+    )
     pretax = st[S_PE] + st[S_PB] + st[S_PP]
     owed = pretax * pretax_withdrawal_rate(pretax, hhc[HC_SS], tv[n_years - 1, TV_AGED])
     return wealth, taxes_paid, owed, st[S_UNFUNDED]
@@ -1173,6 +1216,50 @@ def run_batch(
         unfunded=out[:, :, R_UNFUNDED],
         path_wealth=path_wealth if record_paths else None,
         log={name: log[:, i].copy() for i, name in enumerate(LOG_COLUMNS)} if log_for else None,
+    )
+
+
+def run_forced(
+    inputs: SimInputs,
+    policy: Policy,
+    overrides: dict[int, dict[int, float]] | None = None,
+    path: int = 0,
+) -> BatchResult:
+    """One path under `policy` with some years' actions overridden: `overrides[t] = {A_*: value}`.
+
+    This is the adaptive planner's own mechanism (decide after the year's returns, then act) driven
+    from Python, which is how the tests force actions. The result carries the year log.
+    """
+    overrides = overrides or {}
+    n_years = inputs.n_years
+    st = inputs.init.copy()
+    ys = np.zeros(NY)
+    act = np.zeros(NACT)
+    gates = np.ones((n_years, NGATE))
+    row = policy.row(inputs.current_age)
+    log = np.zeros((n_years, NLOG))
+    scratch = np.zeros(n_years)
+    rets = np.ascontiguousarray(inputs.rets[path])
+    wages = np.ascontiguousarray(inputs.wages[path])
+    k401 = np.ascontiguousarray(inputs.k401[path])
+    wt = np.ascontiguousarray(inputs.wage_tax[path])
+    wealth = taxes = 0.0
+    for t in range(n_years):
+        common = (inputs.tv, inputs.hhc, row, gates, rets, wages, k401, wt)
+        _run_years(st, ys, act, *common, t, t + 1, RUN_BEGIN, False, False, scratch, False, log)
+        for dim, value in overrides.get(t, {}).items():
+            act[dim] = value
+        w, tax = _run_years(st, ys, act, *common, t, t + 1, RUN_REST, t == n_years - 1, False, scratch, True, log)
+        taxes += tax
+        wealth = w if t == n_years - 1 else wealth
+    pretax = st[S_PE] + st[S_PB] + st[S_PP]
+    owed = pretax * float(pretax_withdrawal_rate(pretax, float(inputs.hhc[HC_SS]), float(inputs.tv[-1, TV_AGED])))
+    return BatchResult(
+        wealth=np.array([[wealth]]),
+        taxes_paid=np.array([[taxes]]),
+        pretax_owed=np.array([[owed]]),
+        unfunded=np.array([[st[S_UNFUNDED]]]),
+        log={name: log[:, i].copy() for i, name in enumerate(LOG_COLUMNS)},
     )
 
 

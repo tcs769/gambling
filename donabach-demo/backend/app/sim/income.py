@@ -66,6 +66,42 @@ def no_shocks(n_years: int, n_earners: int) -> IncomeShocks:
     return IncomeShocks(zeros, zeros.copy(), zeros.copy())
 
 
+def growth_table(age: int, n_years: int) -> np.ndarray:
+    """Real wage growth for each simulated year, by the earner's own age that year."""
+    return np.array([real_wage_growth(age + t) for t in range(n_years)])
+
+
+def working_flags(primary_age: int, retirement_age: int, n_years: int) -> np.ndarray:
+    """1.0 in the years before the household retires."""
+    return np.array([float((primary_age + t) < retirement_age) for t in range(n_years)])
+
+
+def earner_wage_state(
+    base_wage: float,
+    age: int,
+    primary_age: int,
+    retirement_age: int,
+    shocks: IncomeShocks,
+    earner: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Gross real wages and the log permanent component, both (paths, years), for one earner.
+
+    The permanent component is the only state the income process carries from one year to the
+    next (the transitory shock and job loss are fresh each year), so it is all a rollout needs to
+    continue an earner's wages from a given year.
+    """
+    n_paths, n_years, _ = shocks.permanent.shape
+    growth = growth_table(age, n_years)
+    # Growth from year t to t+1 uses the age in year t; the permanent shock arrives with it.
+    steps = np.zeros((n_paths, n_years))
+    steps[:, 1:] = growth[None, :-1] + shocks.permanent[:, 1:, earner]
+    log_permanent = np.cumsum(steps, axis=1)
+    wages = base_wage * np.exp(log_permanent + shocks.transitory[:, :, earner])
+    wages = wages * (1.0 - JOB_LOSS_SHARE * shocks.job_loss[:, :, earner])
+    working = working_flags(primary_age, retirement_age, n_years)
+    return wages * working[None, :], log_permanent
+
+
 def earner_wages(
     base_wage: float,
     age: int,
@@ -75,16 +111,25 @@ def earner_wages(
     earner: int,
 ) -> np.ndarray:
     """Gross real wages (paths, years) for one earner. Wages stop at the household retirement age."""
-    n_paths, n_years, _ = shocks.permanent.shape
-    growth = np.array([real_wage_growth(age + t) for t in range(n_years)])
-    # Growth from year t to t+1 uses the age in year t; the permanent shock arrives with it.
-    steps = np.zeros((n_paths, n_years))
-    steps[:, 1:] = growth[None, :-1] + shocks.permanent[:, 1:, earner]
-    log_permanent = np.cumsum(steps, axis=1)
-    wages = base_wage * np.exp(log_permanent + shocks.transitory[:, :, earner])
-    wages = wages * (1.0 - JOB_LOSS_SHARE * shocks.job_loss[:, :, earner])
-    working = np.array([(primary_age + t) < retirement_age for t in range(n_years)])
-    return wages * working[None, :]
+    return earner_wage_state(base_wage, age, primary_age, retirement_age, shocks, earner)[0]
+
+
+def household_wage_state(
+    base_wages: list[float],
+    ages: list[int],
+    retirement_age: int,
+    shocks: IncomeShocks,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Total gross household wages (paths, years) and each earner's log permanent component
+    (paths, years, 2; the second column is zero for a one-earner household)."""
+    n_paths, n_years = shocks.permanent.shape[:2]
+    total = np.zeros((n_paths, n_years))
+    log_permanent = np.zeros((n_paths, n_years, 2))
+    for i, (wage, age) in enumerate(zip(base_wages, ages, strict=True)):
+        wages, lp = earner_wage_state(wage, age, ages[0], retirement_age, shocks, i)
+        total += wages
+        log_permanent[:, :, i] = lp
+    return total, log_permanent
 
 
 def household_wages(
@@ -94,7 +139,4 @@ def household_wages(
     shocks: IncomeShocks,
 ) -> np.ndarray:
     """Total gross household wages (paths, years). `ages[0]` is the primary earner's age."""
-    total = np.zeros(shocks.permanent.shape[:2])
-    for i, (wage, age) in enumerate(zip(base_wages, ages, strict=True)):
-        total += earner_wages(wage, age, ages[0], retirement_age, shocks, i)
-    return total
+    return household_wage_state(base_wages, ages, retirement_age, shocks)[0]

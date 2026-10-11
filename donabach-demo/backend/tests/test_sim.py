@@ -129,7 +129,7 @@ def test_log_constants_match_column_names():
         "free_cash": sim.L_FREECASH, "conv_cash": sim.L_CONVCASH, "k401_roth": sim.L_K401ROTH,
         "roth_extra_tax": sim.L_ROTHTAX, "brokerage_saving": sim.L_SAVING, "roth_gap": sim.L_ROTHGAP,
         "loan": sim.L_LOAN, "borrowed": sim.L_BORROWED, "loan_interest": sim.L_LOANINT, "forced_sale": sim.L_FORCED,
-        "loan_repaid_saving": sim.L_REPAID_SAVING, "loan_repaid_gain": sim.L_REPAID_GAIN,
+        "loan_repaid_saving": sim.L_REPAID_SAVING, "loan_repaid_gain": sim.L_REPAID_GAIN, "gain_harvest": sim.L_GAINHARVEST,
     }
     assert set(expected) == set(sim.LOG_COLUMNS)
     for name, index in expected.items():
@@ -668,6 +668,75 @@ def test_a_market_crash_after_borrowing_forces_a_sale():
     assert log["borrowed"][3] > 0
     assert log["forced_sale"][4] > 0  # loan > 40% of the shrunken account
     assert log["loan"][4] <= 0.40 * log["brokerage"][4] + 1.0
+
+
+# --- Deciding each year after seeing it: forced actions and the realize-gains action ----------
+
+
+def test_running_a_year_in_two_halves_reproduces_the_fixed_strategy_exactly():
+    for policy in (RIA_BASELINE, menu_policy("70|fill22_every|10|on|on|roth_low|borrow"), menu_policy("100|none|0|off|off")):
+        for household in (make_demo_household(), older_household()):
+            inp = deterministic(household)
+            whole = run_detail(inp, policy)
+            halves = sim.run_forced(inp, policy)  # begin the year, (change nothing), finish the year
+            assert halves.wealth[0, 0] == whole.wealth[0, 0] and halves.taxes_paid[0, 0] == whole.taxes_paid[0, 0]
+            assert halves.unfunded[0, 0] == whole.unfunded[0, 0]
+            for column in whole.log:
+                assert np.array_equal(halves.log[column], whole.log[column]), column
+
+
+def test_forcing_the_action_the_policy_would_take_changes_nothing():
+    policy = menu_policy("90|fill22_every|10|on|on")
+    inp = deterministic()
+    whole = run_detail(inp, policy)
+    same = {t: {sim.A_STOCK: whole.log["stock_target"][t], sim.A_PC: 0.10} for t in range(inp.n_years)}
+    forced = sim.run_forced(inp, policy, same)
+    assert forced.wealth[0, 0] == whole.wealth[0, 0]
+    assert np.array_equal(forced.log["wealth"], whole.log["wealth"])
+
+
+def test_a_forced_action_changes_only_the_years_it_touches_and_after():
+    inp = deterministic()
+    whole = run_detail(inp, RIA_BASELINE)
+    forced = sim.run_forced(inp, RIA_BASELINE, {10: {sim.A_STOCK: 1.0}})
+    assert np.array_equal(forced.log["wealth"][:10], whole.log["wealth"][:10])  # nothing before the decision changes
+    assert forced.log["stock_target"][10] == 1.0 and whole.log["stock_target"][10] < 1.0
+    assert forced.log["wealth"][10] != whole.log["wealth"][10] and forced.log["wealth"][11] != whole.log["wealth"][11]
+
+
+def test_the_planner_can_force_a_conversion_the_policy_would_not_make():
+    inp = deterministic()
+    whole = run_detail(inp, RIA_BASELINE)
+    assert np.all(whole.log["conv"] == 0.0)
+    forced = sim.run_forced(inp, RIA_BASELINE, {30: {sim.A_CONV_TOP: P.TOP_OF_12}})
+    assert forced.log["conv"][30] > 0 and np.all(np.delete(forced.log["conv"], 30) == 0.0)
+
+
+def test_realizing_gains_steps_up_the_basis_inside_the_zero_percent_bracket():
+    hh = no_wage_household(400_000.0, 200_000.0, age=60, retirement_age=61)
+    inp = deterministic(hh, zero_returns=True)
+    inp.init[sim.S_BBASIS] = 100_000.0  # 300,000 of unrealized gain
+    policy = Policy(flat_fee=0.0, bracket_withdrawals=False, donabach_location=False, stock_share=1.0, glide_drop=0.0)
+    base = sim.run_forced(inp, policy)
+    forced = sim.run_forced(inp, policy, {0: {sim.A_REALIZE: 1.0}})
+    harvested = forced.log["gain_harvest"][0]
+    assert base.log["gain_harvest"][0] == 0.0
+    # the gain fills what is left of the 0% bracket (income so far is only dividends): well under the 300,000 available
+    taxable_before = base.log["taxable_income"][0]
+    assert harvested == pytest.approx(P.CG_ZERO_TOP - taxable_before, abs=1.0) and 0 < harvested < 300_000
+    assert forced.log["net_gain"][0] == pytest.approx(base.log["net_gain"][0] + harvested)
+    assert forced.log["fed_tax"][0] == pytest.approx(base.log["fed_tax"][0], abs=1.0)  # federal rate on it is 0%
+    # Illinois has no zero bracket, so it does tax the realized gain
+    assert forced.log["il_tax"][0] - base.log["il_tax"][0] == pytest.approx(P.IL_RATE * harvested, rel=0.02)
+    assert forced.log["unrealized_gain"][0] < base.log["unrealized_gain"][0] - 0.9 * harvested  # the basis stepped up
+
+
+def test_realizing_gains_does_nothing_in_a_high_income_year():
+    inp = deterministic()
+    forced = sim.run_forced(inp, RIA_BASELINE, {5: {sim.A_REALIZE: 1.0}})
+    assert forced.log["gain_harvest"][5] == 0.0  # $250,000 of wages leave no 0% bracket
+    whole = run_detail(inp, RIA_BASELINE)
+    assert np.array_equal(forced.log["wealth"], whole.log["wealth"])
 
 
 def test_roth_conversion_tax_is_paid_from_the_taxable_account():

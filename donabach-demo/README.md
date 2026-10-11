@@ -137,9 +137,9 @@ sessions in demo mode. It writes screenshots to `.screenshots/`. Install a brows
 * Tax engine: bracket math, Illinois, Roth conversions, capital-gain stacking, NIIT, child-credit phase-out and
   capital-loss carryforward, in both compiled and plain-Python modes.
 * Optional cross-check against PolicyEngine-US (`pip install policyengine-us`, then
-  `pytest tests/test_policyengine_compare.py`): six households match to the cent. The one documented gap is
-  filers 65 and over, for whom PolicyEngine adds the age-65 and senior deductions that this project's spec
-  leaves out.
+  `pytest tests/test_policyengine_compare.py`): twelve households match to the cent, including four filers 65
+  and over (additional standard deduction and Illinois exemption). PolicyEngine's 2025-2028 senior deduction is
+  switched off in the comparison (see above); a test documents what it would add.
 * Simulator: each mechanism against hand calculations, a zero-return conservation identity (every dollar of
   change is a contribution, goal, spending, tax or fee), and a per-year recomputation of the simulator's taxes
   through the public tax engine.
@@ -155,8 +155,20 @@ credits. Beyond that, choices made where the spec was silent, so they are not a 
 
 * **Age basis.** The household's age is the primary earner's; both spouses retire in the same year; the spouse's
   age only drives their wage growth. The 10% early-withdrawal penalty applies before age 59 1/2 on that basis.
-* **65 and over.** The plain $32,200 standard deduction is used at every age, so tax is slightly overstated in
-  the last years of the horizon for every strategy alike (see the PolicyEngine note above).
+* **Horizon.** Plans run to age 80 (42 years for the demo household) and are scored on after-tax wealth at 80
+  with the same valuation as before: pre-tax balances taxed as if withdrawn evenly over 20 years beside Social
+  Security, unrealized gains at 15%. A 20-year spread is long for an 80-year-old, so pre-tax balances are, if
+  anything, valued a little too generously.
+* **Required minimum distributions** start at 75 for anyone born in 1960 or later (73 for 1951 to 1959),
+  computed on the household's combined pre-tax balance from the prior year-end with the IRS Uniform Lifetime
+  Table (`tax/params_2026.py`, source in the comment) and the primary earner's age. An RMD is spent first on
+  goals and spending; the rest is reinvested in the taxable account.
+* **65 and over.** Each spouse aged 65+ adds the $1,650 additional standard deduction (IRS Rev. Proc. 2025-32)
+  and Illinois' additional $1,000 exemption. The separate $6,000 senior deduction of the 2025 budget law is left
+  out on purpose: it expires after 2028, long before this household reaches 65.
+* **Not modeled: survivor years and heirs' taxes.** After the first spouse dies the survivor files as a single
+  taxpayer with narrower brackets, and heirs pay tax on inherited pre-tax accounts. Both generally favor Roth
+  conversions, so conversion strategies are, if anything, understated. The app footer says so too.
 * **Private credit.** The sleeve is 10% of long-term money, held only in the pre-tax account; the stock share is
   applied to the remaining 90%. The bond / private-credit correlation (0.1) is assumed; the spec gives only the
   equity pairs.

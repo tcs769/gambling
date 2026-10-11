@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field, model_validator
 
-HORIZON_AGE = 70  # the simulation runs until the primary earner reaches this age
+HORIZON_AGE = 80  # the simulation runs until the primary earner reaches this age
 
 
 class Person(BaseModel):

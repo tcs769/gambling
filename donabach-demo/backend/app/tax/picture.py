@@ -14,6 +14,11 @@ def children_under_17(household: Household) -> int:
     return sum(1 for age in household.children_ages if 0 <= age <= P.CTC_MAX_CHILD_AGE)
 
 
+def aged_spouses(household: Household) -> int:
+    """People in the household aged 65 or older today (each adds the additional standard deduction)."""
+    return sum(1 for person in household.people if person.age >= P.AGED_AGE)
+
+
 def dependents(household: Household) -> int:
     return sum(1 for age in household.children_ages if age <= CHILD_DEPENDENT_UNTIL_AGE)
 
@@ -45,5 +50,6 @@ def current_tax_return(household: Household) -> TaxReturn:
             net_capital_gain=gain,
             children_under_17=children_under_17(household),
             dependents=dependents(household),
+            aged_spouses=aged_spouses(household),
         )
     )

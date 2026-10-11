@@ -3,14 +3,15 @@
     pip install policyengine-us        # large; kept out of requirements.txt on purpose
     python -m pytest tests/test_policyengine_compare.py -s
 
-Results when this was written (policyengine-us 2.38.13, tax year 2026, Illinois): every
-household below matches to the cent on AGI, taxable income, tax before credits, child tax
-credit, NIIT, federal income tax and Illinois tax, except the one documented difference:
+Every household below matches PolicyEngine-US (2.38.13, tax year 2026, Illinois) to the cent on AGI,
+taxable income, tax before credits, child tax credit, NIIT, federal income tax and Illinois tax,
+including filers 65 and over (the additional standard deduction of $1,650 per spouse and Illinois'
+additional $1,000 exemption per spouse).
 
-  * Age 65+ households. PolicyEngine adds the age-65 standard deduction increment ($1,650 per
-    spouse) and the 2025-2028 "senior deduction" ($6,000 per spouse). The project spec uses the
-    plain $32,200 standard deduction only, so this engine over-states tax for filers 65+ by the
-    tax on $15,300 of income. The planner applies this equally to every strategy.
+One deliberate difference: PolicyEngine also applies the 2025-2028 "senior deduction" of $6,000 per
+spouse (One Big Beautiful Bill Act), which expires long before the households this app plans for
+reach 65. The project spec leaves it out, so every comparison here switches it off in PolicyEngine
+with a reform. `test_default_policyengine_adds_the_senior_deduction` documents what it would add.
 """
 
 from __future__ import annotations
@@ -26,8 +27,8 @@ from policyengine_us import Simulation  # noqa: E402
 
 warnings.filterwarnings("ignore")
 YEAR = "2026"
-# Age 65+ additional standard deduction (2 x 1,650) + OBBBA senior deduction (2 x 6,000).
-SENIOR_EXTRA_DEDUCTION = 3_300.0 + 12_000.0
+SENIOR_DEDUCTION_PER_SPOUSE = 6_000.0  # OBBBA senior deduction, switched off below
+NO_SENIOR_DEDUCTION = {"gov.irs.deductions.senior_deduction.amount": {"2026-01-01.2026-12-31": 0}}
 
 
 def _situation(ages, children, person_income):
@@ -120,6 +121,45 @@ HOUSEHOLDS = {
         dict(employment_income=100_000, long_term_capital_gains=-10_000),
         dict(wages=100_000, net_capital_gain=-10_000),
     ),
+    "65+: both spouses aged (additional standard deduction and Illinois exemption)": (
+        [66, 67],
+        [],
+        dict(
+            employment_income=40_000,
+            taxable_interest_income=2_000,
+            taxable_ira_distributions=70_000,
+            qualified_dividend_income=3_000,
+            long_term_capital_gains=8_000,
+        ),
+        dict(
+            wages=40_000,
+            interest=2_000,
+            retirement_distributions=70_000,
+            qualified_dividends=3_000,
+            ordinary_dividends=3_000,
+            net_capital_gain=8_000,
+            aged_spouses=2,
+        ),
+    ),
+    "65+: only one spouse aged": (
+        [66, 60],
+        [],
+        dict(employment_income=30_000, taxable_ira_distributions=50_000, long_term_capital_gains=12_000),
+        dict(wages=30_000, retirement_distributions=50_000, net_capital_gain=12_000, aged_spouses=1),
+    ),
+    "65+: Social Security at 85%, an RMD-sized withdrawal and a Roth conversion": (
+        [75, 74],
+        [],
+        dict(taxable_ira_distributions=40_000, taxable_roth_conversions=60_000, social_security=50_000),
+        dict(retirement_distributions=40_000, roth_conversions=60_000, social_security=50_000, aged_spouses=2),
+    ),
+    "65+: Illinois base income with no retirement subtractions": (
+        [69, 69],
+        [],
+        dict(taxable_interest_income=30_000, non_qualified_dividend_income=15_000, qualified_dividend_income=15_000,
+             long_term_capital_gains=40_000),
+        dict(interest=30_000, qualified_dividends=15_000, ordinary_dividends=30_000, net_capital_gain=40_000, aged_spouses=2),
+    ),
 }
 
 
@@ -127,10 +167,15 @@ def _pe(sim, variable):
     return float(sim.calculate(variable, YEAR)[0])
 
 
-def _compare(ages, children, pe_income, ours):
-    sim = Simulation(situation=_situation(ages, children, pe_income))
-    r = compute_return(TaxInputs(**ours))
-    return sim, r
+def _simulation(ages, children, pe_income, senior_deduction=False):
+    situation = _situation(ages, children, pe_income)
+    if senior_deduction:
+        return Simulation(situation=situation)
+    return Simulation(situation=situation, reform=NO_SENIOR_DEDUCTION)
+
+
+def _compare(ages, children, pe_income, ours, senior_deduction=False):
+    return _simulation(ages, children, pe_income, senior_deduction), compute_return(TaxInputs(**ours))
 
 
 @pytest.mark.parametrize("name", list(HOUSEHOLDS))
@@ -143,14 +188,30 @@ def test_matches_policyengine(name):
     assert r.child_tax_credit == pytest.approx(_pe(sim, "ctc"), abs=0.01)
     assert r.niit == pytest.approx(_pe(sim, "net_investment_income_tax"), abs=0.01)
     assert r.federal_total == pytest.approx(_pe(sim, "income_tax"), abs=0.01)
+    assert r.il_exemptions == pytest.approx(_pe(sim, "il_total_exemptions"), abs=0.01)
     assert r.illinois_tax == pytest.approx(_pe(sim, "il_income_tax"), abs=0.01)
 
 
-def test_documented_difference_for_filers_over_65():
-    """The spec's plain standard deduction ignores the age-65 and senior deductions."""
-    ages, children, pe_income, ours = HOUSEHOLDS["early retirees: Social Security at 85% taxable"]
-    sim, r = _compare([68, 67], children, pe_income, ours)
-    assert r.agi == pytest.approx(_pe(sim, "adjusted_gross_income"), abs=0.01)
-    assert r.taxable_income - _pe(sim, "taxable_income") == pytest.approx(SENIOR_EXTRA_DEDUCTION, abs=0.01)
-    assert r.federal_total > _pe(sim, "income_tax")  # we are slightly conservative
-    assert r.illinois_tax == pytest.approx(_pe(sim, "il_income_tax"), abs=0.01)
+def test_aged_households_are_in_the_comparison():
+    """The 65+ cases exercise both the federal and the Illinois age provisions (not vacuously)."""
+    aged = [n for n, (_, _, _, ours) in HOUSEHOLDS.items() if ours.get("aged_spouses")]
+    assert len(aged) >= 4
+    for name in aged:
+        _, _, _, ours = HOUSEHOLDS[name]
+        r = compute_return(TaxInputs(**ours))
+        assert r.standard_deduction == 32_200 + 1_650 * ours["aged_spouses"]
+    # the Illinois additional exemption changes real tax in the case with Illinois base income
+    ages, children, pe_income, ours = HOUSEHOLDS["65+: Illinois base income with no retirement subtractions"]
+    r = compute_return(TaxInputs(**ours))
+    assert r.il_taxable_income > 0
+    assert r.il_exemptions == 2 * 2_925 + 2 * 1_000
+
+
+def test_default_policyengine_adds_the_senior_deduction():
+    """What the OBBBA senior deduction would change (it is off in every comparison above)."""
+    ages, children, pe_income, ours = HOUSEHOLDS["65+: both spouses aged (additional standard deduction and Illinois exemption)"]
+    with_senior, r = _compare(ages, children, pe_income, ours, senior_deduction=True)
+    assert r.agi == pytest.approx(_pe(with_senior, "adjusted_gross_income"), abs=0.01)
+    assert r.taxable_income - _pe(with_senior, "taxable_income") == pytest.approx(2 * SENIOR_DEDUCTION_PER_SPOUSE, abs=0.01)
+    assert r.federal_total > _pe(with_senior, "income_tax")  # this engine is slightly higher
+    assert r.illinois_tax == pytest.approx(_pe(with_senior, "il_income_tax"), abs=0.01)

@@ -5,10 +5,11 @@ every (policy, path) pair in parallel. A policy is a row of floats (`Policy.row`
 Donabach strategies and the RIA baseline share a single code path.
 
 Each year, in order (spec section 5.3):
-  1 apply returns            2 harvest losses          3 pay goals due
+  1 apply returns            2 harvest losses          3 required minimum distribution, goals due
   4 withdraw spending        5 Roth conversion         6 fund/release the goal bucket
   7 rebalance + locate       8 compute taxes           9 pay portfolio-caused tax
  10 charge fees             11 add contributions
+The simulation runs until the primary earner reaches `HORIZON_AGE` (80).
 
 After-tax wealth = brokerage + goal bucket - 15% of unrealized gains + Roth
                    + pre-tax x (1 - effective federal rate on a 20-year evenly spread withdrawal
@@ -22,6 +23,11 @@ Simplifications worth knowing (all applied identically to every policy):
 * Private credit is only ever held in the pre-tax account; yields there are untaxed until
   withdrawal. Roth conversions are in kind.
 * All dollar amounts, limits and brackets are constant in real terms.
+* Required minimum distributions use the primary earner's age and the Uniform Lifetime Table on
+  the household's combined pre-tax balance.
+* Not modelled: the years after the first spouse dies (single-filer brackets) and taxes paid by
+  heirs. Both generally favor Roth conversions, so the advantage of conversion strategies is
+  understated.
 """
 
 from __future__ import annotations
@@ -32,7 +38,7 @@ from dataclasses import dataclass, replace
 import numpy as np
 
 from app.jit import jit, prange
-from app.schemas import HORIZON_AGE, Household, MarketShock
+from app.schemas import Household, MarketShock
 from app.sim import income, markets
 from app.tax import params_2026 as P
 from app.tax.engine import marginal_rate, pretax_withdrawal_rate, tax_core
@@ -48,8 +54,8 @@ NSTATE = 13
 N_BALANCES = 9
 
 # Time-varying inputs, one row per simulated year.
-(TV_AGE, TV_RETIRED, TV_SS, TV_NEED, TV_GOAL, TV_BUCKET, TV_EXPWAGE, TV_KIDS, TV_DEPS, TV_NEARN) = range(10)
-NTV = 10
+(TV_AGE, TV_RETIRED, TV_SS, TV_NEED, TV_GOAL, TV_BUCKET, TV_EXPWAGE, TV_KIDS, TV_DEPS, TV_NEARN, TV_AGED) = range(11)
+NTV = 11
 
 # Policy columns.
 (
@@ -91,12 +97,13 @@ GATE_NAMES = ("conversion", "harvest", "bucket", "location", "withdraw")
 NACT = 10
 
 # Scratch carried from the start of a year to its end (what the household saw, then did).
-(Y_REALIZED, Y_RETDIST, Y_EARLYBASE, Y_CFIN, Y_DIVIDENDS, Y_INTEREST, Y_HARVEST) = range(7)
-NY = 7
+(Y_REALIZED, Y_RETDIST, Y_EARLYBASE, Y_CFIN, Y_DIVIDENDS, Y_INTEREST, Y_HARVEST, Y_PRETAX_OPEN) = range(8)
+NY = 8
 
 # Household constants.
 HC_SS = 0
-NHC = 1
+HC_RMD_START = 1  # age at which required minimum distributions begin
+NHC = 2
 
 # Kernel result columns.
 R_WEALTH, R_TAXES, R_PRETAX_OWED, R_UNFUNDED = range(4)
@@ -140,6 +147,8 @@ LOG_COLUMNS = (
     "brokerage",
     "wealth",
     "unrealized_gain",
+    "aged",
+    "rmd",
 )
 NLOG = len(LOG_COLUMNS)
 (
@@ -179,6 +188,8 @@ NLOG = len(LOG_COLUMNS)
     L_BROKERAGE,
     L_WEALTH,
     L_UNREALIZED,
+    L_AGED,
+    L_RMD,
 ) = range(NLOG)
 
 # --------------------------------------------------------------------------------------------
@@ -193,14 +204,13 @@ HARVEST_DECLINE_SHARE = 0.85  # direct indexing harvests 85% of an equity declin
 HARVEST_DISPERSION = 0.03  # ... plus 3% "dispersion" harvest scaled by basis ratio
 HARVEST_CAP_OF_VALUE = 0.35  # ... capped at 35% of value (and at basis)
 FUND_HARVEST_TRIGGER = -0.10  # fund-level harvesting only when equities fall more than 10%
-GLIDE_END_AGE = float(HORIZON_AGE)
+GLIDE_END_AGE = 70.0  # glide paths end here, as before the horizon moved from 70 to 80
 
 # Breakpoint advisory fee schedule used by the RIA baseline: (upper bound, marginal fee rate).
 FEE_TOPS = np.array([1_000_000.0, 3_000_000.0, 5_000_000.0, np.inf])
 FEE_RATES = np.array([0.010, 0.008, 0.006, 0.005])
 DONABACH_FLAT_FEE = 0.0035
 
-_STD = P.STANDARD_DEDUCTION_MFJ
 _EARLY_AGE = P.EARLY_WITHDRAWAL_AGE
 _LTCG_RATE = P.UNREALIZED_GAIN_TAX_RATE
 
@@ -266,8 +276,15 @@ def _ordinary_income(wages_taxable, interest, taxable_ss, ret_dist, conv, realiz
 
 
 @jit
+def _ult_period(age):
+    """Uniform Lifetime Table distribution period for the age reached this year."""
+    i = int(min(max(age, P.ULT_FIRST_AGE), P.ULT_LAST_AGE)) - P.ULT_FIRST_AGE
+    return P.ULT_PERIODS[i]
+
+
+@jit
 def _stock_share(age, stock, glide_start, glide_drop):
-    """Stock share of long-term money: flat, then gliding down linearly to age 70."""
+    """Stock share of long-term money: flat, then gliding down linearly to GLIDE_END_AGE."""
     if age <= glide_start:
         return stock
     frac = min(1.0, (age - glide_start) / (GLIDE_END_AGE - glide_start))
@@ -382,6 +399,7 @@ def _year_begin(st, ys, tv, t, act, r_e, r_b, r_c):
     st[S_DDIST] = 0.0
     ys[Y_EARLYBASE] = ret_dist if early else 0.0
     ys[Y_CFIN] = st[S_CF]
+    ys[Y_PRETAX_OPEN] = st[S_PE] + st[S_PB] + st[S_PP]  # last December 31 balance: the RMD base
 
     # Opening balances drive this year's dividends and interest.
     dividends = markets.DIVIDEND_YIELD * st[S_BE]
@@ -432,6 +450,8 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
     wages_taxable = w - k
     early = age < _EARLY_AGE
     ss_annual = hhc[HC_SS]
+    aged = tv[t, TV_AGED]
+    std = P.STANDARD_DEDUCTION_MFJ + P.STANDARD_DEDUCTION_AGED_PER_SPOUSE * aged
 
     realized = ys[Y_REALIZED]
     ret_dist = ys[Y_RETDIST]
@@ -444,10 +464,22 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
     wd_top = row[SP_WD_TOP]
     conv_top = act[A_CONV_TOP]
 
-    # 3. Pay goals that are due: bucket first, then brokerage pro rata, then Roth, then pre-tax.
+    # 3a. Required minimum distribution: the prior year-end pre-tax balance over the Uniform
+    # Lifetime Table period, withdrawn from pre-tax (taxable income) and spent first on goals
+    # and spending; whatever is not needed goes to the brokerage account.
+    rmd = 0.0
+    if age >= hhc[HC_RMD_START]:
+        rmd = _sell_pretax(st, ys[Y_PRETAX_OPEN] / _ult_period(age))
+        ret_dist += rmd
+    rmd_cash = rmd
+
+    # 3b. Pay goals that are due: RMD cash, bucket, then brokerage pro rata, then Roth, then pre-tax.
     goal = tv[t, TV_GOAL]
     if goal > 0.0:
         due = goal
+        from_rmd = min(rmd_cash, due)
+        rmd_cash -= from_rmd
+        due -= from_rmd
         from_bucket = min(st[S_GB], due)
         st[S_GB] -= from_bucket
         due -= from_bucket
@@ -468,8 +500,12 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
     # 4. Withdraw retirement spending (net of Social Security).
     need = tv[t, TV_NEED]
     if need > 0.0:
-        remaining = need
-        if early:
+        from_rmd = min(rmd_cash, need)
+        rmd_cash -= from_rmd
+        remaining = need - from_rmd
+        if remaining <= 0.0:
+            pass
+        elif early:
             # Before 59 1/2: taxable account, then Roth, then pre-tax with the 10% penalty.
             sold, gain = _sell_brokerage(st, remaining)
             realized += gain
@@ -484,7 +520,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
         elif wd_bracket:
             # Pre-tax up to the bracket target, then brokerage, then Roth.
             ordinary = _ordinary_income(wages_taxable, interest, taxable_ss, ret_dist, 0.0, realized, cf_in)
-            room = max(0.0, wd_top + _STD - ordinary)
+            room = max(0.0, wd_top + std - ordinary)
             taken = _sell_pretax(st, min(remaining, room))
             ret_dist += taken
             remaining -= taken
@@ -513,12 +549,14 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
                 got = _sell_roth(st, f * ros)
                 remaining -= taken + sold + got
         st[S_UNFUNDED] += _shortfall(remaining)
+    if rmd_cash > 0.0:
+        st[S_BB] += rmd_cash  # an RMD that exceeds spending is reinvested in the taxable account
 
     # 5. Roth conversion: fill the chosen bracket, if the action asks for it.
     conv = 0.0
     if conv_top > 0.0:
         ordinary = _ordinary_income(wages_taxable, interest, taxable_ss, ret_dist, 0.0, realized, cf_in)
-        room = max(0.0, conv_top + _STD - ordinary)
+        room = max(0.0, conv_top + std - ordinary)
         pre = st[S_PE] + st[S_PB] + st[S_PP]
         # The tax is paid from the taxable account, never out of the converted dollars.
         affordable = (st[S_BE] + st[S_BB]) / marginal_rate(conv_top - 1.0)
@@ -555,7 +593,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
         realized += _rebalance(st, share, 0.0, True)
 
     # 8. Taxes.
-    r = tax_core(wages_taxable, interest, dividends, dividends, realized, ret_dist, conv, ss, early_base, kids, deps, cf_in)
+    r = tax_core(wages_taxable, interest, dividends, dividends, realized, ret_dist, conv, ss, early_base, kids, deps, cf_in, aged)
     total_tax = r.total_tax
     portfolio_tax = total_tax - wage_tax_t
     st[S_CF] = r.cap_loss_carryforward_out
@@ -612,7 +650,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
     pretax = 0.0
     if want_wealth or do_log:
         pretax = st[S_PE] + st[S_PB] + st[S_PP]
-        owed = pretax * pretax_withdrawal_rate(pretax, ss_annual)
+        owed = pretax * pretax_withdrawal_rate(pretax, ss_annual, aged)
         unrealized = max(0.0, st[S_BE] - st[S_BBASIS])
         wealth = (
             st[S_BE]
@@ -667,6 +705,8 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
         log[t, L_BROKERAGE] = st[S_BE] + st[S_BB]
         log[t, L_WEALTH] = wealth
         log[t, L_UNREALIZED] = st[S_BE] - st[S_BBASIS]
+        log[t, L_AGED] = aged
+        log[t, L_RMD] = rmd
     return wealth, total_tax
 
 
@@ -692,7 +732,7 @@ def _simulate_path(s, p, strat, gates, tv, init, hhc, rets, wages, k401, wage_ta
             path_wealth[t] = wealth
 
     pretax = st[S_PE] + st[S_PB] + st[S_PP]
-    owed = pretax * pretax_withdrawal_rate(pretax, hhc[HC_SS])
+    owed = pretax * pretax_withdrawal_rate(pretax, hhc[HC_SS], tv[n_years - 1, TV_AGED])
     return wealth, taxes_paid, owed, st[S_UNFUNDED]
 
 
@@ -717,7 +757,7 @@ def _wage_tax_table(wages, k401, tv, out):
     n_years = wages.shape[1]
     for p in prange(n_paths):
         for t in range(n_years):
-            r = tax_core(wages[p, t] - k401[p, t], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, tv[t, TV_KIDS], tv[t, TV_DEPS], 0.0)
+            r = tax_core(wages[p, t] - k401[p, t], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, tv[t, TV_KIDS], tv[t, TV_DEPS], 0.0, tv[t, TV_AGED])
             out[p, t] = r.total_tax
 
 
@@ -825,6 +865,7 @@ def _time_table(household: Household, n_years: int, expected_wages: np.ndarray) 
         tv[t, TV_KIDS] = sum(1 for c in household.children_ages if 0 <= c + t <= P.CTC_MAX_CHILD_AGE)
         tv[t, TV_DEPS] = sum(1 for c in household.children_ages if c + t < 23)
         tv[t, TV_NEARN] = 0.0 if retired else sum(1 for person in household.people if person.wages > 0)
+        tv[t, TV_AGED] = sum(1 for person in household.people if person.age + t >= P.AGED_AGE)
     return tv
 
 
@@ -874,6 +915,7 @@ def build_inputs(
 
     hhc = np.zeros(NHC)
     hhc[HC_SS] = household.social_security.annual_benefit
+    hhc[HC_RMD_START] = P.rmd_start_age(P.TAX_YEAR - household.primary_age)
     return SimInputs(
         n_years=n_years,
         n_paths=wages.shape[0],
@@ -889,9 +931,9 @@ def build_inputs(
 
 @dataclass
 class BatchResult:
-    wealth: np.ndarray  # (policies, paths) after-tax wealth at 70
+    wealth: np.ndarray  # (policies, paths) after-tax wealth at the horizon
     taxes_paid: np.ndarray  # (policies, paths) income taxes paid over the plan
-    pretax_owed: np.ndarray  # (policies, paths) tax still owed on pre-tax balances at 70
+    pretax_owed: np.ndarray  # (policies, paths) tax still owed on pre-tax balances at the horizon
     unfunded: np.ndarray  # (policies, paths) obligations that could not be funded
     path_wealth: np.ndarray | None = None  # (policies, paths, years) when recorded
     log: dict[str, np.ndarray] | None = None  # year log of the requested (policy, path)
@@ -945,7 +987,8 @@ def initial_after_tax_wealth(household: Household) -> float:
     """After-tax wealth today, by the same formula the simulator reports each year."""
     st = _initial_state(household)
     pretax = st[S_PE] + st[S_PB] + st[S_PP]
-    owed = pretax * float(pretax_withdrawal_rate(pretax, household.social_security.annual_benefit))
+    aged = sum(1 for person in household.people if person.age >= P.AGED_AGE)
+    owed = pretax * float(pretax_withdrawal_rate(pretax, household.social_security.annual_benefit, float(aged)))
     unrealized = max(0.0, st[S_BE] - st[S_BBASIS])
     return float(
         st[S_BE] + st[S_BB] - _LTCG_RATE * unrealized + st[S_RE] + st[S_RB] + pretax - owed

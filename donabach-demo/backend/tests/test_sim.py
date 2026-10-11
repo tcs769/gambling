@@ -8,12 +8,14 @@ from tests.conftest import make_demo_household
 
 from app.planner.baseline import RIA_BASELINE
 from app.planner.strategies import menu
-from app.schemas import Accounts, Goals, MarketShock
+from app.schemas import HORIZON_AGE, Accounts, Goals, MarketShock, Person, SocialSecurity
 from app.sim import income, markets
 from app.sim import simulate as sim
 from app.sim.simulate import Policy, build_inputs, run_batch, run_detail
 from app.tax import params_2026 as P
 from app.tax.engine import TaxInputs, compute_return
+
+HORIZON_YEARS = HORIZON_AGE - 38  # the demo household is 38
 
 
 def deterministic(household=None, zero_returns=False, rets=None):
@@ -76,7 +78,7 @@ def test_wage_growth_schedule():
 
 
 def test_expected_wage_path_grows_then_stops_at_retirement():
-    shocks = income.no_shocks(32, 2)
+    shocks = income.no_shocks(HORIZON_YEARS, 2)
     wages = income.household_wages([140_000, 110_000], [38, 37], 62, shocks)[0]
     assert wages[0] == pytest.approx(250_000)
     assert wages[1] == pytest.approx(140_000 * np.exp(0.025) + 110_000 * np.exp(0.025))
@@ -123,6 +125,7 @@ def test_log_constants_match_column_names():
         "total_tax": sim.L_TOTALTAX, "wage_tax": sim.L_WAGETAX, "portfolio_tax": sim.L_PORTTAX,
         "fee": sim.L_FEE, "pretax": sim.L_PRETAX, "roth": sim.L_ROTH, "brokerage": sim.L_BROKERAGE,
         "wealth": sim.L_WEALTH, "unrealized_gain": sim.L_UNREALIZED,
+        "aged": sim.L_AGED, "rmd": sim.L_RMD,
     }
     assert set(expected) == set(sim.LOG_COLUMNS)
     for name, index in expected.items():
@@ -139,7 +142,7 @@ def test_goal_schedule_and_time_table():
     assert sim.goal_schedule(moved, moved.horizon_years)[1] == 120_000
 
     tv = deterministic(hh).tv
-    assert tv.shape == (32, sim.NTV)
+    assert tv.shape == (HORIZON_YEARS, sim.NTV)
     assert tv[0, sim.TV_AGE] == 38 and tv[31, sim.TV_AGE] == 69
     assert tv[23, sim.TV_RETIRED] == 0 and tv[24, sim.TV_RETIRED] == 1  # age 62
     assert tv[24, sim.TV_NEED] == 110_000 and tv[29, sim.TV_NEED] == 60_000  # SS from 67
@@ -403,6 +406,105 @@ def test_penalty_free_sources_come_first_before_59_and_a_half():
     assert log["ret_dist"][ages == 60][0] > 0.0  # and pre-tax is tapped once 59 1/2 has passed
 
 
+# --- Horizon 80, required minimum distributions, filers 65 and over ----------------------------
+
+
+def older_household(age=68, retirement_age=69, pretax=1_500_000.0, spending=90_000.0):
+    """A single earner a few years from retirement: born 1958, so RMDs start at 73."""
+    return make_demo_household(
+        people=[Person(name="Pat", age=age, wages=80_000)],
+        children_ages=[],
+        accounts=Accounts(
+            brokerage_value=200_000, brokerage_basis=150_000, pretax_balance=pretax, roth_balance=0, cash=20_000
+        ),
+        goals=Goals(
+            home_purchase_in_years=None, college_starts_in_years=None,
+            retirement_age=retirement_age, retirement_spending=spending,
+        ),
+        social_security=SocialSecurity(annual_benefit=40_000, start_age=68),
+        snapshot=None,
+    )
+
+
+def test_the_simulation_runs_to_age_80_and_the_glide_path_still_ends_at_70():
+    assert HORIZON_AGE == 80 and make_demo_household().horizon_years == 42
+    log = detail(RIA_BASELINE).log
+    assert log["age"][0] == 38 and log["age"][-1] == 79  # the last simulated year ends at 80
+    assert np.all(log["stock_target"][32:] == pytest.approx(0.50))  # 70 to 79: held at the glide's end
+
+
+def test_time_table_counts_spouses_aged_65_or_more():
+    tv = deterministic().tv
+    aged = tv[:, sim.TV_AGED]
+    assert aged[26] == 0 and aged[27] == 1 and aged[28] == 2 and aged[-1] == 2  # 38 -> 65 at t=27, 37 -> 65 at t=28
+    assert deterministic(older_household()).tv[0, sim.TV_AGED] == 1
+
+
+def test_rmds_start_at_75_for_someone_born_in_1960_or_later():
+    log = detail(menu_policy("90|none|off|off|off")).log
+    ages = log["age"]
+    assert np.all(log["rmd"][ages < 75] == 0.0)
+    start = int(np.flatnonzero(ages == 75)[0])
+    for t in range(start, len(ages)):
+        period = P.ULT_PERIODS[int(ages[t]) - P.ULT_FIRST_AGE]
+        assert log["rmd"][t] == pytest.approx(log["pretax"][t - 1] / period)  # last December's balance
+        assert log["ret_dist"][t] >= log["rmd"][t] - 1e-6
+    assert log["rmd"][start] > 100_000  # a multi-million pre-tax balance at 75
+
+
+def test_rmds_start_at_73_for_someone_born_between_1951_and_1959():
+    hh = older_household(age=68)  # born 1958
+    inp = deterministic(hh)
+    assert inp.hhc[sim.HC_RMD_START] == 73 and deterministic().hhc[sim.HC_RMD_START] == 75
+    log = run_detail(inp, Policy(bracket_withdrawals=False, donabach_location=False)).log
+    ages = log["age"]
+    assert np.all(log["rmd"][ages < 73] == 0.0) and np.all(log["rmd"][ages >= 73] > 0.0)
+    t = int(np.flatnonzero(ages == 73)[0])
+    assert log["rmd"][t] == pytest.approx(log["pretax"][t - 1] / 26.5)
+
+
+def test_an_rmd_beyond_spending_is_reinvested_in_the_taxable_account():
+    hh = older_household(spending=0.0)  # nothing to spend, so the whole RMD is surplus
+    policy = Policy(flat_fee=0.0, bracket_withdrawals=False, donabach_location=False)
+    log = run_detail(deterministic(hh, zero_returns=True), policy).log
+    t = int(np.flatnonzero(log["age"] == 73)[0])
+    assert log["rmd"][t] > 0
+    gain = log["brokerage"][t] - log["brokerage"][t - 1]
+    assert gain == pytest.approx(log["rmd"][t] - log["portfolio_tax"][t], abs=1e-6)  # RMD in, tax out
+
+
+def test_an_rmd_is_spent_before_other_accounts_are_touched():
+    hh = older_household(spending=100_000.0)
+    log = run_detail(deterministic(hh), Policy(bracket_withdrawals=False, donabach_location=False)).log
+    checked = 0
+    for t in range(len(log["age"])):
+        if log["rmd"][t] > 0 and log["spend_need"][t] <= log["rmd"][t]:
+            assert log["ret_dist"][t] == pytest.approx(log["rmd"][t])  # no voluntary pre-tax withdrawal on top
+            checked += 1
+    assert checked >= 3
+
+
+def test_conversions_shrink_later_rmds():
+    plain = detail(menu_policy("90|none|off|off|off")).log["rmd"]
+    converted = detail(menu_policy("90|fill24_every|off|off|off")).log["rmd"]
+    assert plain.sum() > 0 and converted.sum() < plain.sum()
+
+
+def test_the_aged_deduction_is_used_in_the_tax_and_in_the_pretax_valuation():
+    hh = older_household()
+    st0 = sim._initial_state(hh)
+    balance = st0[sim.S_PE] + st0[sim.S_PB] + st0[sim.S_PP]
+    aged = 1  # one person, 68
+    deduction = P.STANDARD_DEDUCTION_MFJ + aged * P.STANDARD_DEDUCTION_AGED_PER_SPOUSE
+    withdrawal, taxable_ss = balance / 20, 0.85 * 40_000
+    from app.tax.engine import ordinary_tax
+    rate = (ordinary_tax(withdrawal + taxable_ss - deduction) - ordinary_tax(taxable_ss - deduction)) / withdrawal
+    expected = (
+        st0[sim.S_BE] + st0[sim.S_BB] - 0.15 * (st0[sim.S_BE] - st0[sim.S_BBASIS]) + balance * (1 - rate)
+    )
+    assert sim.initial_after_tax_wealth(hh) == pytest.approx(expected)
+
+
 def test_tax_in_every_year_matches_the_engine():
     for policy in (RIA_BASELINE, menu_policy("90|fill22_every|on|on|on")):
         log = detail(policy).log
@@ -522,14 +624,16 @@ def test_same_seed_same_results_different_seed_different_results():
 def test_path_wealth_ends_at_terminal_wealth():
     inp = build_inputs(make_demo_household(), n_paths=20, seed=2)
     res = run_batch(inp, [RIA_BASELINE, menu_policy("90|none|on|on|on")], record_paths=True)
-    assert res.path_wealth.shape == (2, 20, 32)
+    assert res.path_wealth.shape == (2, 20, HORIZON_YEARS)
     assert np.array_equal(res.path_wealth[:, :, -1], res.wealth)
 
 
 def test_baseline_outcomes_are_in_a_sensible_range():
     res = run_batch(build_inputs(make_demo_household(), 400, seed=2026), [RIA_BASELINE])
     w = res.wealth[0]
-    assert np.all(np.isfinite(w)) and res.unfunded.max() == 0.0
+    assert np.all(np.isfinite(w))
+    # Over 42 years a few very bad futures (long, deep bear markets in retirement) exhaust the money.
+    assert (res.unfunded[0] > 0).mean() < 0.02
     assert 1.5e6 < np.median(w) < 6e6
     assert np.percentile(w, 10) < np.median(w) < np.percentile(w, 90)
 
@@ -603,4 +707,5 @@ def year_return(log, t):
         children_under_17=int(log["kids"][t]),
         dependents=int(log["deps"][t]),
         capital_loss_carryforward=log["cf_in"][t],
+        aged_spouses=int(log["aged"][t]),
     ))

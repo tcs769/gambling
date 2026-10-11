@@ -432,17 +432,73 @@ def test_pretax_withdrawal_rate_matches_hand_calculation():
     assert pretax_withdrawal_rate(1_000_000.0, 50_000.0) == pytest.approx((with_w - alone) / withdrawal)
 
 
+# --- Filers 65 and over, and required minimum distributions -------------------------------
+
+
+def test_each_aged_spouse_adds_1650_to_the_standard_deduction():
+    base = ret(wages=150_000)
+    one = ret(wages=150_000, aged_spouses=1)
+    two = ret(wages=150_000, aged_spouses=2)
+    assert (base.standard_deduction, one.standard_deduction, two.standard_deduction) == (32_200, 33_850, 35_500)
+    assert base.taxable_income - one.taxable_income == pytest.approx(1_650)
+    assert base.taxable_income - two.taxable_income == pytest.approx(3_300)
+    assert two.federal_total < one.federal_total < base.federal_total
+
+
+def test_aged_deduction_is_not_the_senior_deduction():
+    # The $6,000 senior deduction of the One Big Beautiful Bill Act is deliberately not modelled.
+    assert P.STANDARD_DEDUCTION_AGED_PER_SPOUSE == 1_650.0
+    assert ret(wages=150_000, aged_spouses=2).taxable_income == pytest.approx(150_000 - 35_500)
+
+
+def test_illinois_adds_a_1000_exemption_per_aged_spouse():
+    base = ret(interest=100_000)
+    aged = ret(interest=100_000, aged_spouses=2)
+    assert aged.il_exemptions - base.il_exemptions == pytest.approx(2_000)
+    assert base.illinois_tax - aged.illinois_tax == pytest.approx(0.0495 * 2_000)
+    # like every Illinois exemption, it disappears above $500,000 of AGI
+    assert ret(interest=600_000, aged_spouses=2).il_exemptions == 0.0
+
+
+def test_aged_deduction_lowers_the_rate_used_to_value_pre_tax_balances():
+    plain = pretax_withdrawal_rate(2_000_000.0, 50_000.0)
+    aged = pretax_withdrawal_rate(2_000_000.0, 50_000.0, 2.0)
+    assert 0.0 < aged < plain
+    # hand calculation: 100,000 withdrawn a year beside 42,500 of taxable Social Security
+    deduction = 32_200 + 2 * 1_650
+    expected = (ordinary_tax(100_000 + 42_500 - deduction) - ordinary_tax(42_500 - deduction)) / 100_000
+    assert aged == pytest.approx(expected)
+
+
+def test_rmd_start_age_follows_the_birth_year_under_current_law():
+    assert P.rmd_start_age(1960) == 75 and P.rmd_start_age(1988) == 75 and P.rmd_start_age(2005) == 75
+    assert P.rmd_start_age(1959) == 73 and P.rmd_start_age(1951) == 73
+    assert P.rmd_start_age(1950) == 72
+
+
+def test_uniform_lifetime_table_matches_irs_publication_590b():
+    table = dict(zip(range(P.ULT_FIRST_AGE, P.ULT_LAST_AGE + 1), P.ULT_PERIODS.tolist(), strict=True))
+    # spot values from IRS Publication 590-B, Table III (Uniform Lifetime), in effect since 2022
+    assert table[72] == 27.4 and table[73] == 26.5 and table[75] == 24.6 and table[80] == 20.2
+    assert table[85] == 16.0 and table[90] == 12.2 and table[95] == 8.9 and table[100] == 6.4
+    assert table[110] == 3.5 and table[120] == 2.0
+    assert P.ULT_LAST_AGE == 120 and len(P.ULT_PERIODS) == 49
+    # the distribution period only ever falls as the owner ages, so the withdrawal share only rises
+    assert all(a > b for a, b in zip(P.ULT_PERIODS, P.ULT_PERIODS[1:], strict=False))
+
+
 # --- Kernel parity -------------------------------------------------------------------------
 
 
 def test_compiled_kernel_matches_plain_python():
     py = getattr(tax_core, "py_func", tax_core)
     args = (201_000.0, 800.0, 2_700.0, 3_000.0, -1_500.0, 12_000.0, 30_000.0, 50_000.0, 5_000.0, 1.0, 1.0, 2_000.0)
-    fast, slow = tax_core(*args), py(*args)
-    for a, b in zip(fast, slow, strict=True):
-        assert a == pytest.approx(b, rel=1e-12, abs=1e-9)
+    for aged in (0.0, 1.0, 2.0):
+        fast, slow = tax_core(*args, aged), py(*args, aged)
+        for a, b in zip(fast, slow, strict=True):
+            assert a == pytest.approx(b, rel=1e-12, abs=1e-9)
 
 
 def test_all_outputs_are_finite_on_extreme_inputs():
-    r = tax_core(5e7, 1e6, 1e6, 1e6, 1e7, 1e6, 1e6, 1e5, 1e6, 3.0, 3.0, 0.0)
+    r = tax_core(5e7, 1e6, 1e6, 1e6, 1e7, 1e6, 1e6, 1e5, 1e6, 3.0, 3.0, 0.0, 2.0)
     assert all(math.isfinite(x) for x in r)

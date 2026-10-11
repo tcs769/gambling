@@ -13,6 +13,7 @@ from tests.conftest import make_demo_household
 from app.docs import generate
 from app.main import app
 from app.ml import adapters
+from app.schemas import HORIZON_AGE
 from app.store import SAMPLE_IDS
 
 client = TestClient(app)
@@ -257,13 +258,13 @@ def test_plan_contents_are_consistent(plan):
     s, st = plan["strategy"], plan["stats"]
     assert set(s["choices"]) == {"stock_share", "conversion", "private_credit", "direct_indexing", "goal_bonds"}
     assert s["sentence"].endswith(".") and "Hold" in s["sentence"] and plan["reason"]
-    assert st["typical_outcome"] == s["outcome"] and st["years"] == 32
+    assert st["typical_outcome"] == s["outcome"] and st["years"] == HORIZON_AGE - 38
     assert st["advantage_total"] == pytest.approx(st["typical_outcome"]["median"] - st["ria_typical_outcome"]["median"])
-    assert st["advantage_per_year"] == pytest.approx(st["advantage_total"] / 32)
+    assert st["advantage_per_year"] == pytest.approx(st["advantage_total"] / (HORIZON_AGE - 38))
     assert sum(a["delta_median"] for a in plan["advantage"]) == pytest.approx(st["advantage_total"], rel=1e-9)
     assert [a["label"] for a in plan["advantage"]][0] == "Lower fee"
     fan = plan["fan"]
-    assert fan["ages"][0] == 38 and fan["ages"][-1] == 70 and len(fan["p50"]) == 33
+    assert fan["ages"][0] == 38 and fan["ages"][-1] == HORIZON_AGE and len(fan["p50"]) == HORIZON_AGE - 38 + 1
     assert fan["p50"][-1] == pytest.approx(st["typical_outcome"]["median"])
     assert plan["ria_fan"]["p50"][-1] == pytest.approx(st["ria_typical_outcome"]["median"])
     assert fan["p50"][0] == plan["ria_fan"]["p50"][0]  # both start from today's wealth
@@ -271,7 +272,7 @@ def test_plan_contents_are_consistent(plan):
 
 def test_plan_table_has_every_year_and_ties_out(plan):
     rows = plan["rows"]
-    assert [r["age"] for r in rows] == list(range(38, 70))
+    assert [r["age"] for r in rows] == list(range(38, HORIZON_AGE))
     assert rows[0]["wages"] == 250_000 and rows[-1]["wages"] == 0
     assert rows[3]["goal_paid"] == 120_000 and sum(r["goal_paid"] for r in rows) == 260_000
     labels = {r["age"]: r["goal_label"] for r in rows if r["goal_paid"] > 0}

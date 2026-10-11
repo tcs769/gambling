@@ -41,6 +41,13 @@ TOP_OF_24 = 403_550.0
 # --- Standard deduction -------------------------------------------------------------------
 # Source: IRS Rev. Proc. 2025-32 (standard deduction, married filing jointly).
 STANDARD_DEDUCTION_MFJ = 32_200.0
+# Additional standard deduction for each spouse aged 65 or older (IRC section 63(f)), married
+# filing jointly, 2026. Source: IRS Rev. Proc. 2025-32 (additional standard deduction for the
+# aged or blind, married: $1,650 per person). The separate $6,000 "senior deduction" of the One
+# Big Beautiful Bill Act (IRC section 151(d)(5)) is deliberately NOT modelled: it expires after
+# tax year 2028, long before this household reaches 65.
+STANDARD_DEDUCTION_AGED_PER_SPOUSE = 1_650.0
+AGED_AGE = 65
 
 # --- Long-term capital gains and qualified dividends --------------------------------------
 # Source: IRS Rev. Proc. 2025-32 (maximum zero and 15% rate amounts). MFJ thresholds: 0% up to
@@ -95,8 +102,44 @@ IL_RATE = 0.0495
 # $500,000 (MFJ).
 IL_EXEMPTION_PER_PERSON = 2_925.0
 IL_EXEMPTION_AGI_LIMIT_MFJ = 500_000.0
+# Source: 35 ILCS 5/204(d): an additional $1,000 exemption for each taxpayer and spouse aged 65 or
+# older (subject to the same $500,000 AGI limit).
+IL_EXEMPTION_AGED_PER_PERSON = 1_000.0
 # Illinois base income starts at federal AGI and subtracts federally taxed retirement income:
 # IRA/401(k) distributions, Roth conversions and taxable Social Security (35 ILCS 5/203).
+
+# --- Required minimum distributions -------------------------------------------------------
+# Start age under current law (SECURE 2.0 Act of 2022, section 107; IRC section 401(a)(9)(C)):
+# 73 for anyone born 1951 through 1959, 75 for anyone born in 1960 or later. The first RMD is for
+# the calendar year in which the owner reaches that age.
+RMD_START_AGE_1951_1959 = 73
+RMD_START_AGE_1960_ON = 75
+
+
+def rmd_start_age(birth_year: int) -> int:
+    """Age at which required minimum distributions begin for someone born in `birth_year`."""
+    if birth_year >= 1960:
+        return RMD_START_AGE_1960_ON
+    if birth_year >= 1951:
+        return RMD_START_AGE_1951_1959
+    return 72  # born 1950 or earlier (SECURE Act); outside the range of households this app models
+
+
+# Uniform Lifetime Table: the distribution period by the age the owner reaches in the year.
+# Source: IRS Publication 590-B (2025), Appendix B, Table III (Uniform Lifetime), the table in
+# effect since 2022 (Treas. Reg. section 1.401(a)(9)-9(c)). The RMD for a year is the prior
+# December 31 balance divided by the period for the age reached that year. Ages 72 to 120+.
+ULT_FIRST_AGE = 72
+ULT_PERIODS = np.array(
+    [
+        27.4, 26.5, 25.5, 24.6, 23.7, 22.9, 22.0, 21.1, 20.2, 19.4,  # 72-81
+        18.5, 17.7, 16.8, 16.0, 15.2, 14.4, 13.7, 12.9, 12.2, 11.5,  # 82-91
+        10.8, 10.1, 9.5, 8.9, 8.4, 7.8, 7.3, 6.8, 6.4, 6.0,  # 92-101
+        5.6, 5.2, 4.9, 4.6, 4.3, 4.1, 3.9, 3.7, 3.5, 3.4,  # 102-111
+        3.3, 3.1, 3.0, 2.9, 2.8, 2.7, 2.5, 2.3, 2.0,  # 112-120+
+    ]
+)
+ULT_LAST_AGE = ULT_FIRST_AGE + len(ULT_PERIODS) - 1  # 120, which stands for "120 and over"
 
 # --- Retirement-balance valuation ---------------------------------------------------------
 # After-tax wealth values a pre-tax balance as if it were withdrawn evenly over this many

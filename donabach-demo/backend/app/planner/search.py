@@ -1,7 +1,7 @@
 """Search over the strategy menu.
 
 Every strategy is evaluated on the same N futures (common random numbers). The score is the
-certainty-equivalent after-tax wealth at 70 under CRRA utility with risk aversion 3 and a
+certainty-equivalent after-tax wealth at the horizon (age 80) under CRRA utility with risk aversion 3 and a
 $50,000 floor: the guaranteed amount that would be exactly as good as the risky distribution.
 """
 
@@ -32,7 +32,7 @@ def certainty_equivalent(
 
 @dataclass(frozen=True)
 class Outcome:
-    """Summary of one strategy's after-tax wealth at 70 across the futures."""
+    """Summary of one strategy's after-tax wealth at the horizon across the futures."""
 
     median: float
     p10: float

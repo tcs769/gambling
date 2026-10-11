@@ -1,10 +1,10 @@
 """Why the plan wins, and what each decision is worth.
 
 * `advantage_steps`: start from the RIA baseline and switch Donabach's decisions on one at a
-  time, recording the change in median after-tax wealth at 70 on the same futures.
+  time, recording the change in median after-tax wealth at the horizon (80) on the same futures.
 * `year_detail`: for one year of the deterministic plan, the decisions taken, that year's full
   tax return, and the value of each decision, found by re-running the plan with only that
-  decision removed for that year and reporting the change in after-tax wealth at 70.
+  decision removed for that year and reporting the change in after-tax wealth at the horizon.
 * `headline_reason`: a one-line reason for the recommendation, computed from the simulation.
 """
 
@@ -24,6 +24,7 @@ from app.planner.strategies import (
     PRIVATE_CREDIT_SHARE,
     Strategy,
 )
+from app.schemas import HORIZON_AGE
 from app.sim import simulate as sim
 from app.sim.simulate import Policy, SimInputs, run_batch, run_detail
 from app.tax import params_2026 as P
@@ -36,7 +37,7 @@ from app.tax.engine import TaxInputs, TaxLine, TaxReturn, compute_return, pretax
 
 class AdvantageStep(BaseModel):
     label: str
-    delta_median: float  # change in median after-tax wealth at 70 from switching this on
+    delta_median: float  # change in median after-tax wealth at the horizon from switching this on
     delta_p10: float
     cumulative_median: float
     active: bool  # False when the chosen strategy does not use this decision
@@ -111,7 +112,7 @@ class Decision(BaseModel):
     label: str
     description: str
     amount: float | None = None
-    value: float | None = None  # after-tax wealth at 70 with the decision, minus without it
+    value: float | None = None  # after-tax wealth at the horizon with the decision, minus without it
     valued: bool = True
 
 
@@ -140,6 +141,7 @@ def tax_return_for_year(log: dict[str, np.ndarray], t: int) -> TaxReturn:
             children_under_17=int(log["kids"][t]),
             dependents=int(log["deps"][t]),
             capital_loss_carryforward=max(0.0, float(log["cf_in"][t])),
+            aged_spouses=int(log["aged"][t]),
         )
     )
 
@@ -264,7 +266,7 @@ class PretaxProjection:
 def pretax_projection(inputs_det: SimInputs, policy: Policy) -> PretaxProjection:
     log = run_detail(inputs_det, policy).log
     balance = float(log["pretax"][-1])
-    rate = float(pretax_withdrawal_rate(balance, float(inputs_det.hhc[sim.HC_SS])))
+    rate = float(pretax_withdrawal_rate(balance, float(inputs_det.hhc[sim.HC_SS]), float(log["aged"][-1])))
     return PretaxProjection(balance, rate)
 
 
@@ -281,7 +283,7 @@ def headline_reason(inputs_det: SimInputs, search_result: SearchResult, strategy
     if strategy.conversion_bracket is not None:
         with_plan = pretax_projection(inputs_det, strategy.policy())
         return (
-            f"Without conversions your pre-tax balance reaches {_compact(plain.balance)} by 70, taxed at about "
+            f"Without conversions your pre-tax balance reaches {_compact(plain.balance)} by {HORIZON_AGE}, taxed at about "
             f"{plain.rate * 100:.0f}% when withdrawn; filling the {strategy.conversion_bracket}% bracket "
             f"brings it to {_compact(with_plan.balance)}."
         )
@@ -291,6 +293,6 @@ def headline_reason(inputs_det: SimInputs, search_result: SearchResult, strategy
         shortfall = 1.0 - best_with.outcome.score / search_result.best.outcome.score
         gap = f" The best plan with Roth conversions scores {shortfall * 100:.1f}% lower, so paying that tax early does not pay."
     return (
-        f"Your pre-tax balance is projected at {_compact(plain.balance)} at 70, taxed at about "
+        f"Your pre-tax balance is projected at {_compact(plain.balance)} at {HORIZON_AGE}, taxed at about "
         f"{plain.rate * 100:.0f}% when withdrawn.{gap}"
     )

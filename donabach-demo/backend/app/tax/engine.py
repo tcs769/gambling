@@ -10,6 +10,8 @@ Conventions
 * `ordinary_dividends` is the 1040 line 3b total and *includes* the qualified dividends (3a).
 * Capital gains are treated as long-term. `net_capital_gain` may be negative.
 * `capital_loss_carryforward` is a positive number of dollars of loss brought in.
+* `aged_spouses` is how many of the two spouses are 65 or older (0, 1 or 2); each adds the
+  additional standard deduction of $1,650 (IRS Rev. Proc. 2025-32).
 * Amounts are real 2026 dollars; brackets are never indexed.
 """
 
@@ -80,7 +82,13 @@ def marginal_rate(ordinary_taxable: float) -> float:
 
 
 @jit
-def pretax_withdrawal_rate(balance: float, social_security: float) -> float:
+def standard_deduction(aged_spouses: float = 0.0) -> float:
+    """Standard deduction, married filing jointly, including the extra for each spouse 65 or older."""
+    return P.STANDARD_DEDUCTION_MFJ + P.STANDARD_DEDUCTION_AGED_PER_SPOUSE * aged_spouses
+
+
+@jit
+def pretax_withdrawal_rate(balance: float, social_security: float, aged_spouses: float = 0.0) -> float:
     """Federal rate on a pre-tax balance withdrawn evenly over 20 years alongside Social Security.
 
     This is the incremental rate: (tax with the withdrawal - tax on Social Security alone) /
@@ -90,8 +98,9 @@ def pretax_withdrawal_rate(balance: float, social_security: float) -> float:
         return 0.0
     withdrawal = balance / P.PRETAX_WITHDRAWAL_YEARS
     taxable_ss = P.SS_TAXABLE_SHARE * social_security
-    base = ordinary_tax(max(0.0, taxable_ss - P.STANDARD_DEDUCTION_MFJ))
-    full = ordinary_tax(max(0.0, withdrawal + taxable_ss - P.STANDARD_DEDUCTION_MFJ))
+    deduction = standard_deduction(aged_spouses)
+    base = ordinary_tax(max(0.0, taxable_ss - deduction))
+    full = ordinary_tax(max(0.0, withdrawal + taxable_ss - deduction))
     return (full - base) / withdrawal
 
 
@@ -109,6 +118,7 @@ def tax_core(
     children_under_17: float,
     dependents: float,
     capital_loss_carryforward: float,
+    aged_spouses: float = 0.0,
 ):
     qualified = min(qualified_dividends, ordinary_dividends)
     taxable_ss = P.SS_TAXABLE_SHARE * social_security
@@ -134,7 +144,7 @@ def tax_core(
         + taxable_ss
     )
     agi = total_income  # no above-the-line adjustments are modelled
-    taxable_income = max(0.0, agi - P.STANDARD_DEDUCTION_MFJ)
+    taxable_income = max(0.0, agi - standard_deduction(aged_spouses))
 
     # Qualified dividends and long-term gains are taxed at preferential rates and stack on top
     # of ordinary taxable income.
@@ -167,7 +177,7 @@ def tax_core(
     if agi > P.IL_EXEMPTION_AGI_LIMIT_MFJ:
         il_exemptions = 0.0
     else:
-        il_exemptions = P.IL_EXEMPTION_PER_PERSON * (2.0 + dependents)
+        il_exemptions = P.IL_EXEMPTION_PER_PERSON * (2.0 + dependents) + P.IL_EXEMPTION_AGED_PER_PERSON * aged_spouses
     il_taxable = max(0.0, il_base - il_exemptions)
     il_tax = P.IL_RATE * il_taxable
 
@@ -221,6 +231,9 @@ class TaxInputs(BaseModel):
         None, ge=0, description="Dependents for the Illinois exemption; defaults to the children"
     )
     capital_loss_carryforward: float = Field(0.0, ge=0, description="Loss carried in from prior years")
+    aged_spouses: int = Field(
+        0, ge=0, le=2, description="Spouses aged 65 or older; each adds the additional standard deduction"
+    )
 
 
 class TaxLine(BaseModel):
@@ -320,6 +333,7 @@ def compute_return(inputs: TaxInputs) -> TaxReturn:
         float(inputs.children_under_17),
         float(dependents),
         float(inputs.capital_loss_carryforward),
+        float(inputs.aged_spouses),
     )
     agi = r.agi
     return TaxReturn(
@@ -335,7 +349,7 @@ def compute_return(inputs: TaxInputs) -> TaxReturn:
         taxable_social_security=r.taxable_social_security,
         total_income=r.total_income,
         agi=agi,
-        standard_deduction=P.STANDARD_DEDUCTION_MFJ,
+        standard_deduction=float(standard_deduction(float(inputs.aged_spouses))),
         taxable_income=r.taxable_income,
         preferential_income=r.preferential_income,
         ordinary_taxable_income=r.ordinary_taxable_income,

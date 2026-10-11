@@ -117,6 +117,9 @@ The measurements behind the numbers are scripts, not hand-typed tables (run from
 | 300 households of six types (`household_study.csv`, `.md`) | `python -m app.study.household_study --per-type 50 --adaptive-paths 200 --checkpoint /tmp/study.csv --out-dir ../reports` |
 | Four-way evaluation and the value of judgment over time (`adaptive_evaluation.md`) | `python -m app.study.adaptive_evaluation --paths 2000 --out ../reports/adaptive_evaluation.md` |
 | Decision quality of the year-by-year search (`adaptive_decision_quality.md`) | `python -m app.study.decision_quality --paths 80 --out ../reports/adaptive_decision_quality.md` |
+| Is the plan holding too little equity? (`equity_share.md`) | `python -m app.study.equity_share --out ../reports/equity_share.md` |
+| What would have to change to reach 2 to 3% a year (`path_to_2_3_percent.md`) | `python -m app.study.reach --out ../reports/path_to_2_3_percent.md` |
+| The 300 households when the planner searches at risk aversion 3, 2 and 1, with each plan's tools alone at the advisor's allocation and a heirs'-tax sensitivity (`household_study_risk_aversion_N/`) | `python -m app.study.household_study --per-type 50 --risk-aversion 1 --measure-risk-aversion 3 --skill --heirs-rates 0.24 0.32 --out-dir ../reports/household_study_risk_aversion_1` |
 
 ## Regenerating things
 

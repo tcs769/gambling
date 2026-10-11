@@ -216,7 +216,9 @@ def run(
 def allocation_sentence(steps: list[tuple]) -> str:
     """What the allocation step of the attribution did, in words that follow from its numbers (it was written once for a plan
     that held less equity than the advisor; a plan that holds more does the opposite)."""
-    before, after = steps[3], steps[4]  # the step before the allocation (direct indexing) and the allocation step itself
+    labels = [row[0] for row in steps]
+    i = labels.index("Goal bonds, allocation and private credit")
+    before, after = steps[i - 1], steps[i]  # the step before the allocation and the allocation step itself
     d_median, d_adjusted = after[3] - before[3], after[4] - before[4]
     verb = lambda x: "adds" if x >= 0 else "costs"  # noqa: E731
     why = (

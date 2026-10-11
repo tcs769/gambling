@@ -246,11 +246,12 @@ def test_the_four_way_report_describes_the_allocation_step_from_its_numbers():
         ("RIA baseline", 100.0, 100.0, 0.0, 0.0),
         ("Lower fee", 120.0, 130.0, 0.005, 0.008),
         ("Asset location", 125.0, 133.0, 0.006, 0.009),
+        ("Tax-lot selection", 125.0, 133.0, 0.006, 0.009),
         ("Direct indexing", 125.0, 133.0, 0.006, 0.009),
         ("Goal bonds, allocation and private credit", 110.0, 300.0, 0.0003, 0.025),
         ("Roth timing and withdrawal order", 125.0, 310.0, 0.0027, 0.0254),
     ]
     less = allocation_sentence(steps)
     assert "costs 0.57 points a year of median advantage and adds 1.60 points of risk-adjusted advantage" in less and "holds less equity" in less
-    more = allocation_sentence([*steps[:4], ("Goal bonds, allocation and private credit", 160.0, 120.0, 0.0128, -0.0006), steps[5]])
+    more = allocation_sentence([*steps[:5], ("Goal bonds, allocation and private credit", 160.0, 120.0, 0.0128, -0.0006), steps[6]])
     assert "adds 0.68 points a year of median advantage and costs 0.96 points of risk-adjusted advantage" in more and "holds more equity" in more

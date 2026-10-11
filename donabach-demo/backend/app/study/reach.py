@@ -12,7 +12,8 @@ to be true for the sample household to show 2%, 2.5% and 3% in median wealth.
 2. One lever at a time on that plan: the Donabach fee, the equity return, the tax heirs pay on pre-tax money,
    and how much equity the advisor holds.
 3. The equity return the ceiling plan would need for 2%, 2.5% and 3%, with the specified fee and tax rule and
-   with a lower fee and a heavier heirs' tax together.
+   with a lower fee and a heavier heirs' tax together. At a higher return a plan with less private credit does better, so
+   the scenarios take the best of the ceiling plan's four private-credit sleeves (0, 5, 10, 15%) at each return.
 
 Plans are chosen on 6,000 futures and scored on 2,000 others the choice never saw. The advantage is the
 annualized growth-rate difference between median after-tax wealth at 80 (`app.study.metrics`).
@@ -23,6 +24,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -30,7 +32,7 @@ import numpy as np
 
 from app.planner.baseline import RIA_BASELINE, TYPICAL_ADVISOR
 from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, search
-from app.planner.strategies import Strategy, menu
+from app.planner.strategies import PRIVATE_CREDIT_SHARES, Strategy, menu
 from app.sim import markets
 from app.sim.simulate import HC_SS, TV_AGED, Policy, SimInputs, build_inputs, run_batch
 from app.study.equity_share import (
@@ -94,30 +96,54 @@ def raw_advantage(held: SimInputs, plan: Policy, baseline: Policy = RIA_BASELINE
     return float(annualized(np.median(w[0]), float(np.median(w[1])), held.n_years))
 
 
-def raw_with(held: SimInputs, plan: Policy, baseline: Policy, heirs: float | None = None) -> float:
-    """Raw advantage of `plan` over `baseline`; with `heirs`, the pre-tax balance at the horizon is taxed at that flat
-    rate instead of the specified 20-year spread (the tax already counted is added back, the heirs' tax taken off)."""
-    batch = run_batch(held, [plan, baseline])
+def ceiling_family(top: Policy) -> list[Policy]:
+    """The ceiling plan with each size of private credit sleeve. Which has the most median wealth depends on the equity return (the
+    sleeve is the part that is not equity), so the scenarios take the best of them at each return."""
+    return [top.replace(private_credit=share) for share in PRIVATE_CREDIT_SHARES]
+
+
+def best_raw(held: SimInputs, plans: Sequence[Policy], baseline: Policy, heirs: float | None = None) -> tuple[float, int]:
+    """The highest raw advantage over `baseline` among `plans`, and which plan it is. With `heirs`, the pre-tax balance at the
+    horizon is taxed at that flat rate instead of the specified 20-year spread (the tax already counted is added back, the
+    heirs' tax taken off)."""
+    batch = run_batch(held, [*plans, baseline])
     wealth = batch.wealth
     if heirs is not None:
         ss, aged = float(held.hhc[HC_SS]), float(held.tv[-1, TV_AGED])
-        balances = np.vstack([pretax_balance(batch.pretax_owed[i], ss, aged) for i in range(2)])
+        balances = np.vstack([pretax_balance(batch.pretax_owed[i], ss, aged) for i in range(len(plans) + 1)])
         wealth = wealth + batch.pretax_owed - heirs * balances
-    return float(annualized(np.median(wealth[0]), float(np.median(wealth[1])), held.n_years))
+    advisor = float(np.median(wealth[-1]))
+    raw = [float(annualized(np.median(wealth[i]), advisor, held.n_years)) for i in range(len(plans))]
+    best = int(np.argmax(raw))
+    return raw[best], best
+
+
+def raw_with(held: SimInputs, plan: Policy, baseline: Policy, heirs: float | None = None) -> float:
+    """Raw advantage of `plan` over `baseline` (see `best_raw` for `heirs`)."""
+    return best_raw(held, [plan], baseline, heirs)[0]
 
 
 def advantage_at(
-    held: SimInputs, mean: float, plan: Policy, baseline: Policy = RIA_BASELINE, fee: float | None = None, heirs: float | None = None
+    held: SimInputs,
+    mean: float,
+    plan: Policy | Sequence[Policy],
+    baseline: Policy = RIA_BASELINE,
+    fee: float | None = None,
+    heirs: float | None = None,
 ) -> float:
-    """Raw advantage on the same futures with the equity mean `mean`, optionally another Donabach fee and an heirs' tax rate."""
-    return raw_with(with_equity_return(held, mean), plan if fee is None else plan.replace(flat_fee=fee), baseline, heirs)
+    """Raw advantage on the same futures with the equity mean `mean`, optionally another Donabach fee and an heirs' tax rate. Given
+    several plans, the best of them."""
+    plans = [plan] if isinstance(plan, Policy) else list(plan)
+    if fee is not None:
+        plans = [p.replace(flat_fee=fee) for p in plans]
+    return best_raw(with_equity_return(held, mean), plans, baseline, heirs)[0]
 
 
 def solve_equity_return(
-    held: SimInputs, plan: Policy, target: float, fee: float | None = None, heirs: float | None = None, tol: float = 1e-4
+    held: SimInputs, plan: Policy | Sequence[Policy], target: float, fee: float | None = None, heirs: float | None = None, tol: float = 1e-4
 ) -> float | None:
-    """The equity return at which the plan's raw advantage over the good advisor equals `target`: None if even 40% a year
-    falls short, the specified return if it is already reached."""
+    """The equity return at which the plan's (or the best of several plans') raw advantage over the good advisor equals `target`:
+    None if even 40% a year falls short, the specified return if it is already reached."""
 
     def at(mean: float) -> float:
         return advantage_at(held, mean, plan, RIA_BASELINE, fee, heirs)
@@ -215,11 +241,13 @@ def run_reach(
         advisor_equity.append(((start_share, end_share), row[0].raw.median, row[1].raw.median, row[0].adjusted.risk_adjusted))
     say("advisor equity done")
 
+    family = ceiling_family(top)
     equity_returns = []
     for mean in EQUITY_RETURNS:
         shifted = with_equity_return(held, mean)
-        row = evaluate(shifted, [("ceiling", top, None), ("app", rec, None)])
-        equity_returns.append((mean, row[0].raw.median, row[1].raw.median, row[0].shortfall))
+        row = evaluate(shifted, [(f"ceiling {i}", plan, None) for i, plan in enumerate(family)] + [("app", rec, None)])
+        best = max(row[: len(family)], key=lambda r: r.raw.median)
+        equity_returns.append((mean, best.raw.median, row[-1].raw.median, best.shortfall))
     say("equity returns done")
 
     heirs = [(rate, raw_with(held, top, RIA_BASELINE, rate), raw_with(held, rec, RIA_BASELINE, rate)) for rate in HEIRS_RATES]
@@ -232,7 +260,7 @@ def run_reach(
         "a 0.25% fee and heirs taxed at 32%": {"fee": 0.0025, "heirs": 0.32},
     }
     for name, options in scenarios.items():
-        break_even[name] = [(target, solve_equity_return(held, top, target, **options)) for target in TARGETS]
+        break_even[name] = [(target, solve_equity_return(held, family, target, **options)) for target in TARGETS]
     say("break-even done")
 
     advisor_batch = run_batch(held, [RIA_BASELINE])
@@ -329,7 +357,8 @@ def render(reach: Reach) -> str:
     lines += [
         "",
         "**The equity return** (real, arithmetic mean; specified 5.5%, volatility 16%). The advisor is on the same futures, so a higher return lifts both; "
-        "it widens the gap only because the plan holds more equity.",
+        "it widens the gap only because the plan holds more equity. The ceiling plan here is the best of its four private credit sleeves (0, 5, 10 and 15%) "
+        "at each return: the higher the return, the less of the portfolio the best plan keeps out of stocks.",
         "",
         "| Equity return | Ceiling plan: raw | The app today: raw | Ceiling plan: chance of running out of money |",
         "|---|---|---|---|",
@@ -355,7 +384,7 @@ def render(reach: Reach) -> str:
         "",
         "## 3. What the equity return would have to be",
         "",
-        "The equity return at which the ceiling plan's raw advantage reaches each target, everything else as specified except where the row says so. "
+        "The equity return at which the ceiling plan's raw advantage (the best of its private credit sleeves at that return) reaches each target, everything else as specified except where the row says so. "
         "'Not reachable' means 40% a year real is still not enough.",
         "",
         "| Target | " + " | ".join(reach.break_even) + " |",

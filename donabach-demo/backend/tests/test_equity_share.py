@@ -218,3 +218,21 @@ def test_the_plan_sentence_says_how_much_of_the_portfolio_is_in_stocks_when_ther
     assert "(63% of the portfolio)" in strategy(0.7, 0.10).describe()
     without = strategy(0.5, 0.0).describe()
     assert without.startswith("Hold 50% of long-term money in stocks until 58") and "portfolio)" not in without
+
+
+def test_the_household_study_can_run_each_plans_tools_at_the_advisors_allocation():
+    import pandas as pd
+
+    from app.study.household_study import household_row, summarize
+
+    items = generate(seed=10, per_type=1)
+    plain = household_row(items[0], 0, 60, 60, 3.0)
+    assert "skill_median_vs_good_ria" not in plain
+    assert 0.0 <= plain["plan_equity_from_70"] <= plain["plan_equity_today"] <= 1.0
+    frame = pd.DataFrame([household_row(item, i, 60, 60, 3.0, skill=True) for i, item in enumerate(items)])
+    for key in ("good_ria", "typical_advisor"):
+        assert np.isfinite(frame[f"skill_median_vs_{key}"]).all()
+    assert ((frame["skill_shortfall"] >= 0) & (frame["skill_shortfall"] <= 1)).all()
+    text = summarize(frame, 60, 3.0)
+    assert "## How much of the advantage is the tools, and how much is a different amount of equity" in text and "**All 6 households**" in text
+    assert "Tools only" in text

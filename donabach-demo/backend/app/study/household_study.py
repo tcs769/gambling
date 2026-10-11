@@ -29,6 +29,7 @@ from app.sim.simulate import HC_SS, TV_AGED, build_inputs, run_batch
 from app.study import households as hh
 from app.study.adaptive_evaluation import LABELS, four_way
 from app.study.metrics import annualized, compare
+from app.study.equity_share import advisor_allocation_chain, equity_exposure
 from app.study.reach import pretax_balance
 
 EVAL_SEED_OFFSET = 1_000_003
@@ -68,10 +69,12 @@ def household_row(
     adaptive_paths: int = 0,
     measure_risk_aversion: float | None = None,
     heirs_rates: tuple[float, ...] = (),
+    skill: bool = False,
 ) -> dict:
     """`risk_aversion` is what the planner searches at; `measure_risk_aversion` (default the same) is the risk aversion
     behind the reported risk-adjusted advantage, so plans chosen at different settings can be read on one yardstick.
-    `heirs_rates` add the raw advantage with the pre-tax balance at the horizon taxed at those flat rates."""
+    `heirs_rates` add the raw advantage with the pre-tax balance at the horizon taxed at those flat rates.
+    `skill` adds the plan's tools run at the advisor's own allocation: the part of the advantage that is not extra equity."""
     measure_risk_aversion = risk_aversion if measure_risk_aversion is None else measure_risk_aversion
     household = item.household
     seed = 5_000 + position
@@ -80,6 +83,8 @@ def household_row(
     chosen = search(futures, risk_aversion=risk_aversion).best.strategy
     held = build_inputs(household, n_paths=n_eval, seed=seed + EVAL_SEED_OFFSET)
     policies = [chosen.policy(), *(b.policy for b in BASELINES)]
+    if skill:
+        policies.append(advisor_allocation_chain(chosen)[-1][1])
     batch = run_batch(held, policies)
     a = household.accounts
     liquid = household.liquid_wealth
@@ -103,6 +108,8 @@ def household_row(
         "plan_p10": float(np.percentile(batch.wealth[0], 10)),
         "plan_taxes": float(np.median(batch.taxes_paid[0] + batch.pretax_owed[0])),
         "plan_shortfall": float(np.mean(batch.unfunded[0] > 0)),
+        "plan_equity_today": equity_exposure(policies[0], household.primary_age, household.primary_age),
+        "plan_equity_from_70": equity_exposure(policies[0], 70.0, household.primary_age),
     }
     for i, baseline in enumerate(BASELINES, start=1):
         adv = compare(batch.wealth[0], batch.wealth[i], years, measure_risk_aversion)
@@ -113,6 +120,12 @@ def household_row(
         row[f"{key}_shortfall"] = float(np.mean(batch.unfunded[i] > 0))
         row[f"adv_median_vs_{key}"] = adv.median
         row[f"adv_risk_adjusted_vs_{key}"] = adv.risk_adjusted
+    if skill:
+        for i, baseline in enumerate(BASELINES, start=1):
+            row[f"skill_median_vs_{baseline.key}"] = annualized(
+                float(np.median(batch.wealth[-1])), float(np.median(batch.wealth[i])), years
+            )
+        row["skill_shortfall"] = float(np.mean(batch.unfunded[-1] > 0))
     if heirs_rates:
         ss, aged = float(held.hhc[HC_SS]), float(held.tv[-1, TV_AGED])
         balances = np.vstack([pretax_balance(batch.pretax_owed[i], ss, aged) for i in range(len(policies))])
@@ -140,6 +153,7 @@ def run(
     checkpoint: Path | None = None,
     measure_risk_aversion: float | None = None,
     heirs_rates: tuple[float, ...] = (),
+    skill: bool = False,
 ) -> pd.DataFrame:
     """The study. With a `checkpoint` path the rows so far are saved every 25 households and a rerun resumes from them."""
     items = hh.generate(seed=seed, per_type=per_type)
@@ -155,7 +169,9 @@ def run(
     first = len(rows)
     for position in range(first, len(items)):
         rows.append(
-            household_row(items[position], position, n_search, n_eval, risk_aversion, adaptive_paths, measure_risk_aversion, heirs_rates)
+            household_row(
+                items[position], position, n_search, n_eval, risk_aversion, adaptive_paths, measure_risk_aversion, heirs_rates, skill
+            )
         )
         if progress and (position + 1) % 25 == 0:
             elapsed = time.perf_counter() - started
@@ -259,6 +275,34 @@ def heirs_sections(frame: pd.DataFrame) -> list[str]:
     return lines
 
 
+def skill_sections(frame: pd.DataFrame) -> list[str]:
+    """How much of the advantage over the good RIA is the tools and how much is holding more or less equity than it does."""
+    lines = [
+        "## How much of the advantage is the tools, and how much is a different amount of equity",
+        "",
+        "'Tools only' runs the plan's own choices (fee, asset location, conversions, withdrawal order, 401(k) type, goal funding, direct indexing) "
+        "with the good RIA's allocation (80% stocks today falling to 50% from 70, no private credit), so it differs from the advisor in nothing "
+        "else. The rest of the plan's advantage comes from its different stock share and private credit sleeve, which is a different amount of risk. "
+        "Cells are medians across the households of the type; stocks are a share of the whole portfolio.",
+        "",
+        "| Type | Plan: stocks today / from 70 | Plan: raw advantage | Tools only: raw advantage | From the allocation | Chance of running out: plan / tools only / good RIA |",
+        "|---|---|---|---|---|---|",
+    ]
+
+    def row(title: str, sub: pd.DataFrame) -> str:
+        plan, tools = sub["adv_median_vs_good_ria"], sub["skill_median_vs_good_ria"]
+        return (
+            f"| {title} | {sub['plan_equity_today'].median():.0%} / {sub['plan_equity_from_70'].median():.0%} | {_pct(plan.median())} | "
+            f"{_pct(tools.median())} ({_pct(tools.quantile(0.1))} to {_pct(tools.quantile(0.9))}) | {_pct((plan - tools).median())} | "
+            f"{sub['plan_shortfall'].mean() * 100:.1f}% / {sub['skill_shortfall'].mean() * 100:.1f}% / {sub['good_ria_shortfall'].mean() * 100:.1f}% |"
+        )
+
+    for t, title in hh.TYPES.items():
+        lines.append(row(title, frame[frame["type"] == t]))
+    lines += [row(f"**All {len(frame)} households**", frame), ""]
+    return lines
+
+
 def summarize(frame: pd.DataFrame, n_eval: int, risk_aversion: float, measure_risk_aversion: float | None = None) -> str:
     measure = risk_aversion if measure_risk_aversion is None else measure_risk_aversion
     setting = (
@@ -328,6 +372,8 @@ def summarize(frame: pd.DataFrame, n_eval: int, risk_aversion: float, measure_ri
         )
     if "judgment_median" in frame.columns:
         lines += [""] + adaptive_sections(frame)
+    if "skill_median_vs_good_ria" in frame.columns:
+        lines += [""] + skill_sections(frame)
     if any("_heirs" in c for c in frame.columns):
         lines += [""] + heirs_sections(frame)
     lines += [
@@ -366,11 +412,12 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--heirs-rates", type=float, nargs="*", default=[], help="flat tax rates on pre-tax money at the horizon to report as a sensitivity, e.g. 0.24 0.32"
     )
+    parser.add_argument("--skill", action="store_true", help="also run each plan's tools at the good RIA's allocation (the part of the advantage that is not extra equity)")
     args = parser.parse_args(argv)
     frame = run(
         per_type=args.per_type, n_eval=args.n_eval, seed=args.seed, progress=True,
         adaptive_paths=args.adaptive_paths, checkpoint=args.checkpoint, risk_aversion=args.risk_aversion,
-        measure_risk_aversion=args.measure_risk_aversion, heirs_rates=tuple(args.heirs_rates),
+        measure_risk_aversion=args.measure_risk_aversion, heirs_rates=tuple(args.heirs_rates), skill=args.skill,
     )
     args.out_dir.mkdir(parents=True, exist_ok=True)
     frame.to_csv(args.out_dir / "household_study.csv", index=False)

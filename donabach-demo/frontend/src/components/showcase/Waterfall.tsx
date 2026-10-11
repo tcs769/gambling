@@ -154,7 +154,6 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle, onAllO
       <Button
         variant="ghost"
         className={styles.explain}
-        aria-pressed={allOpen}
         onClick={() => setOpen(allOpen ? new Set() : new Set(strategyRows.map((row) => row.key)))}
       >
         <Icon name="info" size={18} />
@@ -274,6 +273,8 @@ function Tip({
       <div className={styles.tipDetail}>{second}</div>
       {row.kind === "strategy" && !row.enabled ? (
         <div className={styles.tipDetail}>Switched off: it adds nothing</div>
+      ) : isIdle(row) ? (
+        <div className={styles.tipDetail}>On, but it adds nothing to the strategies before it</div>
       ) : (
         row.kind === "strategy" && (
           <div className={styles.tipDetail}>
@@ -284,6 +285,10 @@ function Tip({
     </>
   );
 }
+
+/** A strategy that is on and, given the ones before it, changes nothing (it needs something that is switched off). */
+const isIdle = (row: WaterfallRow): boolean =>
+  row.kind === "strategy" && row.enabled && row.delta.dollars === 0 && row.delta.rate === 0;
 
 interface RowProps {
   row: WaterfallRow;
@@ -323,6 +328,10 @@ function RowView({
   onBlur,
 }: RowProps) {
   const off = row.kind === "strategy" && !row.enabled;
+  // A strategy with no sentence about it has nothing to open.
+  const hasDetail = row.detail.trim() !== "";
+  // On, but with the strategies before it the API measures no change at all: a sliver of a bar and zeros, so it says why.
+  const idle = isIdle(row);
   const a = row.from[unit];
   const b = row.to[unit];
   const lo = place(axis, Math.min(a, b));
@@ -372,22 +381,27 @@ function RowView({
                 label={row.label}
                 checked={checked}
                 onChange={(on) => onToggle(row.key, on)}
-                describedBy={detailId}
+                describedBy={hasDetail ? detailId : undefined}
               />
-              <button
-                type="button"
-                className={styles.info}
-                aria-expanded={open}
-                aria-controls={detailId}
-                aria-label={`What “${row.label}” does`}
-                onClick={() => onOpen(row.key)}
-              >
-                <Icon name="info" size={18} />
-              </button>
+              {hasDetail && (
+                <button
+                  type="button"
+                  className={styles.info}
+                  aria-expanded={open}
+                  aria-controls={detailId}
+                  aria-label={`What “${row.label}” does`}
+                  onClick={() => onOpen(row.key)}
+                >
+                  <Icon name="info" size={18} />
+                </button>
+              )}
             </div>
-            <p id={detailId} className={styles.detail} hidden={!open}>
-              {row.detail}
-            </p>
+            {idle && <p className={styles.idle}>On, but it adds nothing here.</p>}
+            {hasDetail && (
+              <p id={detailId} className={styles.detail} hidden={!open}>
+                {row.detail}
+              </p>
+            )}
           </>
         ) : (
           <div className={styles.nameLine}>
@@ -465,6 +479,7 @@ function WaterfallTable({
             </span>
           )}
           {row.kind === "strategy" && !row.enabled && <span className={styles.tableNote}>Switched off</span>}
+          {isIdle(row) && <span className={styles.tableNote}>On, but it adds nothing here</span>}
         </>
       ),
     },

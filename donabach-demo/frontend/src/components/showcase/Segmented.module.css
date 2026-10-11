@@ -12,7 +12,6 @@
   display: inline-flex;
   min-width: 0;
   cursor: pointer;
-  scroll-margin-block: 130px;
 }
 
 /* The radio itself is invisible but stays in the tab order and answers the keyboard. */
@@ -58,5 +57,18 @@
 @media (max-width: 420px) {
   .face {
     padding-inline: 12px;
+  }
+}
+
+/* The narrowest phones: the two parts share the room between them and their words wrap, rather than the pill reaching past its panel. */
+@media (max-width: 380px) {
+  .option {
+    flex: 1 1 0;
+  }
+  .face {
+    justify-content: center;
+    padding-inline: 8px;
+    text-align: center;
+    white-space: normal;
   }
 }

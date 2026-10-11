@@ -81,9 +81,14 @@
 
 .nameLine {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   min-height: 44px;
+}
+/* The start and the total have one or two lines of their own, centred on the bar. */
+.row[data-kind="start"] .nameLine,
+.row[data-kind="total"] .nameLine {
+  align-items: center;
 }
 
 .plainName {
@@ -106,7 +111,7 @@
 }
 
 .info {
-  scroll-margin-block: 130px;
+  margin-top: 4px;
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
@@ -124,6 +129,15 @@
 .info[aria-expanded="true"] {
   color: var(--brown);
   background: var(--gold-wash);
+}
+
+/* A strategy that is on but changes nothing given the ones before it. */
+.idle {
+  margin: 0 0 4px;
+  padding-left: 54px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.4;
 }
 
 /* What the strategy does, in the API's words: shown on request, and always read out with the switch. */

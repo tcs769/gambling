@@ -1,7 +1,8 @@
 .switch {
   position: relative;
   display: inline-flex;
-  align-items: center;
+  /* A name that runs to a second line keeps the switch beside its first line, level with the bar of its row. */
+  align-items: flex-start;
   gap: 12px;
   min-height: 44px;
   min-width: 0;
@@ -10,8 +11,6 @@
   color: var(--espresso);
   font-weight: 600;
   line-height: 1.3;
-  /* Tabbing to a switch (or scrolling to it) must not leave it under the sticky header. */
-  scroll-margin-block: 130px;
 }
 
 /* The checkbox covers the whole control but is not drawn: it is what is clicked, focused and read out. */
@@ -28,6 +27,7 @@
 .track {
   position: relative;
   flex-shrink: 0;
+  margin-top: 10px;
   width: 42px;
   height: 24px;
   border-radius: 999px;
@@ -62,4 +62,5 @@
 
 .text {
   min-width: 0;
+  padding-top: 11px;
 }

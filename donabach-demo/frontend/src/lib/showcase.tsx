@@ -168,6 +168,13 @@ export function ShowcaseProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  // A safety net for the one thing that must never last: switches and numbers that disagree with no answer on its way
+  // (a request dropped by a hot reload, say). The screens then ask for the analysis of the set that is switched on.
+  const { shown, enabled } = state;
+  useEffect(() => {
+    if (shown && shown.key !== setKey(enabled) && pending.current === null) apply(enabled);
+  }, [shown, enabled, apply]);
+
   const actions = useMemo<ShowcaseActions>(
     () => ({
       toggle: (key, on) => apply(keysRef.current.filter((k) => (k === key ? on : enabledNow.current.includes(k)))),

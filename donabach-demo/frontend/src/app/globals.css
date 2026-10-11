@@ -149,6 +149,12 @@
   }
 }
 
+/* Inside the showcase flow whatever takes focus is scrolled to below the sticky header (Shift+Tab up the page, or a script
+   scrolling to a control), never under it. */
+[data-showcase] :is(a, button, input, [tabindex]) {
+  scroll-margin-top: 130px;
+}
+
 *,
 *::before,
 *::after {

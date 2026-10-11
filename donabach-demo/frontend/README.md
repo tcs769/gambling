@@ -68,8 +68,9 @@ link beside it.
 
 The data is two calls: `GET /showcase` (the household, its card and the analysis with every strategy on) and
 `POST /showcase/analysis {enabled}` (the analysis with only those strategies on). No number on these screens is typed in the
-app, and nothing about the household is: the e2e checks them against the API's own answers, and the screens were looked at
-with households of other shapes (one earner, no children, no taxable account, early retirement, strategies that cost a little).
+app, and nothing about the household is: the e2e checks them against the API's own answers, and it (and the screens) were run
+against households of other shapes: one earner with no children and an early retirement, no taxable account, two goals in the
+same year, a short horizon, strategies that cost a little, a strategy that does nothing once another is off.
 
 **How the switches flow.** `src/lib/showcase.tsx` holds the flow's state (the household, which strategies are on, the analysis
 on screen) in a provider rendered by `src/app/showcase/layout.tsx`, so the wealth screen shows what was chosen on the
@@ -80,13 +81,14 @@ stay on screen, dimmed, with "Recomputing…" and a polite announcement for scre
 to their new places and the recomputed total is announced. Answers are kept by the set they are for, so switching a
 strategy back is instant. A change made while an answer is on its way drops that answer (its request is aborted, and one that
 arrives anyway is ignored). If the API refuses a change, its message is shown and the switches go back to what the numbers on
-screen are for. Opening the wealth screen directly loads the household with every strategy on.
+screen are for. Opening the wealth screen directly loads the household with every strategy on; opening it while a change is
+still being worked out shows the previous numbers dimmed and then the answer to that same request (never a second one).
 
 **The dark theme** belongs to this flow only. The demo's other screens are light; while the showcase is on the page,
 `:root:has([data-showcase])` in `src/app/globals.css` re-declares the tokens for a system that asks for dark. Series colours
 are restepped for the dark panel (not inverted), and `npm run check:colors` runs the same gates on them, and on the colours
-side by side in the savings bar. The e2e looks at every screen in both themes at 390, 768 and 1280 wide (overflow, text
-size, contrast of every piece of text).
+side by side in the savings bar. The e2e looks at every screen at phone width (390) in both themes, at 768 in the light one and
+at 1280 in the dark one (overflow, text size, contrast of every piece of text, what spills out of its panel).
 
 `e2e/showcase.mjs` holds the checks, called at the end of `walkthrough.mjs`; run alone it takes about a minute
 (`BASE_URL=... CHROMIUM_PATH=... node e2e/showcase.mjs`).

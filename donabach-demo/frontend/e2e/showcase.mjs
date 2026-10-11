@@ -35,7 +35,8 @@ const pct0 = (fraction) => `${(fraction * 100).toFixed(0)}%`;
 const pct1 = (fraction) => `${Number((fraction * 100).toFixed(1))}%`;
 const count = (n) => Math.round(n).toLocaleString("en-US");
 const squash = (text) => text.replace(/\s+/g, " ").trim();
-const list = (items) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
+const list = (items) =>
+  items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 const noun = (n) => `${n} ${n === 1 ? "strategy" : "strategies"}`;
 const strategiesOn = (on, total) => (on === total ? `All ${noun(on)} on` : `${on} of ${noun(total)} on`);
 
@@ -91,7 +92,8 @@ async function lowContrast(page) {
       if (!text || !el || el.closest("script,style,noscript,nextjs-portal,[hidden],.sr-only")) continue;
       const style = getComputedStyle(el);
       const box = el.getBoundingClientRect();
-      if (style.visibility === "hidden" || style.display === "none" || box.width < 2 || box.height < 2 || faded(el)) continue;
+      if (style.visibility === "hidden" || style.display === "none" || box.width < 2 || box.height < 2 || faded(el))
+        continue;
       const isSvg = el instanceof SVGElement;
       const fg = parse(isSvg ? style.fill : style.color);
       if (!fg) continue;
@@ -118,7 +120,13 @@ export async function runShowcase({ browser, base, out, check, notes }) {
   const api = base + "/api";
   const getJson = async (path) => (await fetch(api + path)).json();
   const postJson = async (path, body) =>
-    (await fetch(api + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })).json();
+    (
+      await fetch(api + path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+    ).json();
 
   // The API's own answers: the household, its card and the analysis with everything on, and the analysis for a set of strategies.
   const started = Date.now();
@@ -145,7 +153,8 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     page.on("request", (r) => {
       const { pathname } = new URL(r.url());
       if (r.method() === "GET" && pathname === "/api/showcase") requests.showcase++;
-      if (r.method() === "POST" && pathname === "/api/showcase/analysis") requests.analysis.push(JSON.parse(r.postData() ?? "{}"));
+      if (r.method() === "POST" && pathname === "/api/showcase/analysis")
+        requests.analysis.push(JSON.parse(r.postData() ?? "{}"));
     });
     return { context, page, issues, requests };
   };
@@ -163,28 +172,48 @@ export async function runShowcase({ browser, base, out, check, notes }) {
         if (!el || el.closest("script,style,noscript,[hidden],nextjs-portal,.sr-only")) continue;
         const style = getComputedStyle(el);
         const rect = el.getBoundingClientRect();
-        if (style.visibility === "hidden" || style.display === "none" || +style.opacity === 0 || rect.width < 2 || rect.height < 2) continue;
+        if (
+          style.visibility === "hidden" ||
+          style.display === "none" ||
+          +style.opacity === 0 ||
+          rect.width < 2 ||
+          rect.height < 2
+        )
+          continue;
         const size = parseFloat(style.fontSize);
         if (size < 13.99) small.push(`${size}px "${node.textContent.trim().slice(0, 40)}"`);
       }
-      return { small: [...new Set(small)].slice(0, 6), overflow: document.documentElement.scrollWidth - window.innerWidth };
+      return {
+        small: [...new Set(small)].slice(0, 6),
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+      };
     });
     check(issues.length === 0, `${name}: no console errors${issues.length ? ` (${issues[0]})` : ""}`);
     issues.length = 0;
-    check(result.small.length === 0, `${name}: no visible text under 14px${result.small.length ? ` (${result.small.join(", ")})` : ""}`);
+    check(
+      result.small.length === 0,
+      `${name}: no visible text under 14px${result.small.length ? ` (${result.small.join(", ")})` : ""}`,
+    );
     check(result.overflow <= 0, `${name}: no horizontal overflow (${result.overflow}px)`);
   };
 
   const settled = (page) =>
-    page.waitForFunction(() => document.querySelector('[data-stale="true"]') === null && document.querySelector("[aria-busy='true']") === null, null, {
-      timeout: 60000,
-    });
+    page.waitForFunction(
+      () =>
+        document.querySelector('[data-stale="true"]') === null && document.querySelector("[aria-busy='true']") === null,
+      null,
+      {
+        timeout: 60000,
+      },
+    );
   const settleLines = (page, n) =>
     page
       .waitForFunction(
         (want) => {
           const lines = [...document.querySelectorAll("path.recharts-line-curve")];
-          return lines.length === want && lines.every((l) => !(l.getAttribute("stroke-dasharray") ?? "").includes("px"));
+          return (
+            lines.length === want && lines.every((l) => !(l.getAttribute("stroke-dasharray") ?? "").includes("px"))
+          );
         },
         n,
         { timeout: 10000 },
@@ -197,7 +226,10 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await page.goto(base + "/", { waitUntil: "networkidle" });
     const entry = page.getByRole("link", { name: /Open the showcase/ });
     await entry.waitFor({ timeout: 20000 });
-    check((await entry.getAttribute("href")) === "/showcase", "showcase entry: the home page has a clear link, 'Open the showcase', that goes to /showcase");
+    check(
+      (await entry.getAttribute("href")) === "/showcase",
+      "showcase entry: the home page has a clear link, 'Open the showcase', that goes to /showcase",
+    );
     const dark = await newPage(1440, "dark");
     await dark.page.goto(base + "/", { waitUntil: "networkidle" });
     const homeBackground = await dark.page.evaluate(() => getComputedStyle(document.body).backgroundColor);
@@ -240,14 +272,24 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     // People, children, income and savings.
     const cardText = squash(await page.locator('article[aria-label="Household summary"]').innerText());
     const kids = card.children_ages;
-    const kidsText = kids.length === 0 ? "No children" : kids.length === 1 ? `1 child, age ${kids[0]}` : `${kids.length} children, ages ${list(kids)}`;
+    const kidsText =
+      kids.length === 0
+        ? "No children"
+        : kids.length === 1
+          ? `1 child, age ${kids[0]}`
+          : `${kids.length} children, ages ${list(kids)}`;
     check(
-      card.people.every((p) => cardText.includes(p.label) && cardText.includes(`Age ${p.age}`) && cardText.includes(`${exact(p.wages)} a year in wages`)) &&
-        cardText.includes(kidsText),
+      card.people.every(
+        (p) =>
+          cardText.includes(p.label) &&
+          cardText.includes(`Age ${p.age}`) &&
+          cardText.includes(`${exact(p.wages)} a year in wages`),
+      ) && cardText.includes(kidsText),
       `showcase household: ${card.people.length === 1 ? "the earner" : `all ${card.people.length} earners`} with age and wages, and the children (${kidsText}), are the API's`,
     );
     check(
-      cardText.includes(`Household income ${exact(card.annual_income)} a year`) && cardText.includes(`Total saved ${exact(card.total_savings)}`),
+      cardText.includes(`Household income ${exact(card.annual_income)} a year`) &&
+        cardText.includes(`Total saved ${exact(card.total_savings)}`),
       `showcase household: annual income (${exact(card.annual_income)}) and total saved (${exact(card.total_savings)}) are the API's`,
     );
 
@@ -260,15 +302,23 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     ).map(squash);
     check(
       legend.length === card.accounts.length &&
-        card.accounts.every((a, i) => legend[i].includes(a.label) && legend[i].includes(exact(a.value)) && legend[i].includes(`${pct0(a.share)} of savings`)),
+        card.accounts.every(
+          (a, i) =>
+            legend[i].includes(a.label) &&
+            legend[i].includes(exact(a.value)) &&
+            legend[i].includes(`${pct0(a.share)} of savings`),
+        ),
       `showcase household: the legend lists all ${card.accounts.length} accounts in the API's order with dollars and share (${card.accounts.map((a) => `${a.key} ${exact(a.value)}`).join(", ")})`,
     );
     const segments = await page
       .locator('section[aria-labelledby="card-savings"] div[aria-hidden="true"] span[data-account]')
-      .evaluateAll((els) => els.map((el) => ({ key: el.getAttribute("data-account"), grow: parseFloat(el.style.flexGrow) })));
+      .evaluateAll((els) =>
+        els.map((el) => ({ key: el.getAttribute("data-account"), grow: parseFloat(el.style.flexGrow) })),
+      );
     const drawn = card.accounts.filter((a) => a.share > 0);
     check(
-      segments.length === drawn.length && drawn.every((a, i) => segments[i].key === a.key && Math.abs(segments[i].grow - a.share) < 1e-5),
+      segments.length === drawn.length &&
+        drawn.every((a, i) => segments[i].key === a.key && Math.abs(segments[i].grow - a.share) < 1e-5),
       `showcase household: the savings bar has a segment for each account with money in it, as wide as its share (${drawn.map((a) => `${a.key} ${pct0(a.share)}`).join(", ")})`,
     );
     const taxable = card.accounts.find((a) => a.key === "taxable");
@@ -277,20 +327,32 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       const text = squash(await callout.innerText());
       check(
         text.includes(`Cost basis ${exact(taxable.basis)}`) &&
-          (taxable.unrealized_gain > 0 ? text.includes(`Unrealized gain ${exact(taxable.unrealized_gain)}`) : text.includes("No unrealized gain")),
+          (taxable.unrealized_gain > 0
+            ? text.includes(`Unrealized gain ${exact(taxable.unrealized_gain)}`)
+            : text.includes("No unrealized gain")),
         `showcase household: the taxable account's basis (${exact(taxable.basis)}) and unrealized gain (${exact(taxable.unrealized_gain)}) are called out`,
       );
     } else {
-      check((await callout.count()) === 0, "showcase household: with no taxable account there is no basis and gain callout");
+      check(
+        (await callout.count()) === 0,
+        "showcase household: with no taxable account there is no basis and gain callout",
+      );
     }
 
     // What they are saving for: a marker on the line for each goal, in order of date, and every goal's detail sentence.
     const goalItems = (await page.locator('section[aria-labelledby="card-goals"] ol > li').allInnerTexts()).map(squash);
-    const dated = card.goals.filter((g) => typeof g.years_from_now === "number").sort((a, b) => a.years_from_now - b.years_from_now);
+    const dated = card.goals
+      .filter((g) => typeof g.years_from_now === "number")
+      .sort((a, b) => a.years_from_now - b.years_from_now);
     const startAge = card.people[0].age;
     check(
       goalItems.length === dated.length &&
-        dated.every((g, i) => goalItems[i].includes(g.label) && goalItems[i].includes(g.detail) && goalItems[i].includes(`Age ${startAge + g.years_from_now}`)),
+        dated.every(
+          (g, i) =>
+            goalItems[i].includes(g.label) &&
+            goalItems[i].includes(g.detail) &&
+            goalItems[i].includes(`Age ${startAge + g.years_from_now}`),
+        ),
       `showcase household: the goals are on a timeline in the order they happen, each with its age and the API's detail (${dated.map((g) => `${g.label} at ${startAge + g.years_from_now}`).join(", ")})`,
     );
     const marks = await page
@@ -299,7 +361,10 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     const span = Math.max(1, horizon - startAge);
     check(
       marks.length === dated.length &&
-        dated.every((g, i) => marks[i].key === g.key && Math.abs(marks[i].left - Math.min(1, g.years_from_now / span) * 100) < 0.01),
+        dated.every(
+          (g, i) =>
+            marks[i].key === g.key && Math.abs(marks[i].left - Math.min(1, g.years_from_now / span) * 100) < 0.01,
+        ),
       `showcase household: each goal's marker sits where it falls between today (age ${startAge}) and age ${horizon}`,
     );
     const ends = squash(await page.locator('section[aria-labelledby="card-goals"]').innerText());
@@ -311,7 +376,8 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     // What stands out: exactly the API's notes.
     const notesOnScreen = (await page.locator('section[aria-labelledby="card-notes"] li').allInnerTexts()).map(squash);
     check(
-      JSON.stringify(notesOnScreen) === JSON.stringify(card.notes.map(squash)) && (card.notes.length > 0 || (await page.locator("#card-notes").count()) === 0),
+      JSON.stringify(notesOnScreen) === JSON.stringify(card.notes.map(squash)) &&
+        (card.notes.length > 0 || (await page.locator("#card-notes").count()) === 0),
       `showcase household: "What stands out" lists the API's ${card.notes.length} note${card.notes.length === 1 ? "" : "s"}${card.notes.length === 0 ? " (none, so no section)" : ""}`,
     );
     check(
@@ -319,27 +385,42 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       "showcase household: a back link goes to the demo's home",
     );
     const next = page.getByRole("link", { name: /See the strategies/ });
-    check((await next.getAttribute("href")) === "/showcase/strategies", "showcase household: the primary button goes on to the strategies");
+    check(
+      (await next.getAttribute("href")) === "/showcase/strategies",
+      "showcase household: the primary button goes on to the strategies",
+    );
     await audit(page, issues, "showcase 1 household", "showcase-1-household");
 
     // The dark theme: the flow's own, applied while it is on the page.
     const lightBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    check(lightBg === "rgb(251, 247, 238)", `dark theme: with a light system setting the showcase is on the light theme too (background ${lightBg})`);
+    check(
+      lightBg === "rgb(251, 247, 238)",
+      `dark theme: with a light system setting the showcase is on the light theme too (background ${lightBg})`,
+    );
     const weak = await lowContrast(page);
-    check(weak.length === 0, `showcase household (light): all text has enough contrast${weak.length ? ` (${weak.join("; ")})` : ""}`);
+    check(
+      weak.length === 0,
+      `showcase household (light): all text has enough contrast${weak.length ? ` (${weak.join("; ")})` : ""}`,
+    );
 
     // Moving on keeps the household (it is loaded once for the whole flow).
     await next.click();
     await page.waitForURL("**/showcase/strategies");
-    await page.locator("li[data-key]").first().waitFor({ timeout: 30000 });
-    check(requests.showcase === 1, `showcase flow: the household is asked of the API once for the whole flow (${requests.showcase} request)`);
+    await page
+      .locator(keys.length > 0 ? "li[data-key]" : "main h1")
+      .first()
+      .waitFor({ timeout: 30000 });
+    check(
+      requests.showcase === 1,
+      `showcase flow: the household is asked of the API once for the whole flow (${requests.showcase} request)`,
+    );
     await context.close();
   }
 
   // === Narrow and dark: the three screens at a phone's width, and in the dark theme ==================================
   for (const [path, label, waitFor] of [
     ["/showcase", "household", "article"],
-    ["/showcase/strategies", "strategies", "li[data-key]"],
+    ["/showcase/strategies", "strategies", keys.length > 0 ? "li[data-key]" : "main h1"],
     ["/showcase/wealth", "wealth", ".recharts-wrapper"],
   ]) {
     for (const [width, scheme] of [
@@ -363,12 +444,16 @@ export async function runShowcase({ browser, base, out, check, notes }) {
           for (const el of panel.querySelectorAll("*")) {
             if (el.closest(".sr-only,[hidden],table,svg,[data-track]") || !el.getBoundingClientRect().width) continue;
             const r = el.getBoundingClientRect();
-            if (r.right > box.right + 1 || r.left < box.left - 1) out.push(`${el.tagName.toLowerCase()} "${(el.textContent ?? "").trim().slice(0, 24)}"`);
+            if (r.right > box.right + 1 || r.left < box.left - 1)
+              out.push(`${el.tagName.toLowerCase()} "${(el.textContent ?? "").trim().slice(0, 24)}"`);
           }
         }
         return [...new Set(out)].slice(0, 4);
       });
-      check(spill.length === 0, `${name}: nothing spills out of its panel${spill.length ? ` (${spill.join(", ")})` : ""}`);
+      check(
+        spill.length === 0,
+        `${name}: nothing spills out of its panel${spill.length ? ` (${spill.join(", ")})` : ""}`,
+      );
       if (scheme === "dark") {
         const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
         check(bg === "rgb(21, 18, 13)", `${name}: the page is on the dark theme (background ${bg})`);
@@ -378,13 +463,14 @@ export async function runShowcase({ browser, base, out, check, notes }) {
         check(weak.length === 0, `${name}: all text has enough contrast${weak.length ? ` (${weak.join("; ")})` : ""}`);
       }
       check(issues.length === 0, `${name}: no console errors${issues.length ? ` (${issues[0]})` : ""}`);
-      if (width === 390 || scheme === "dark") await page.screenshot({ path: `${out}/showcase-${label}-${width}-${scheme}.png`, fullPage: true });
+      if (width === 390 || scheme === "dark")
+        await page.screenshot({ path: `${out}/showcase-${label}-${width}-${scheme}.png`, fullPage: true });
       await context.close();
     }
   }
 
   // === Screen 2: the waterfall ==========================================================================================
-  {
+  if (keys.length > 0) {
     const { context, page, issues, requests } = await newPage();
     await page.goto(base + "/showcase/strategies", { waitUntil: "networkidle" });
     await page.locator("li[data-key]").first().waitFor({ timeout: 90000 });
@@ -394,7 +480,9 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     const advisor = full.advisor_label;
 
     // One bar for each strategy, in the API's order, between the advisor's result and Donabach's.
-    const kinds = await rows.evaluateAll((els) => els.map((el) => `${el.getAttribute("data-kind")}:${el.getAttribute("data-key")}`));
+    const kinds = await rows.evaluateAll((els) =>
+      els.map((el) => `${el.getAttribute("data-kind")}:${el.getAttribute("data-key")}`),
+    );
     check(
       JSON.stringify(kinds) === JSON.stringify(["start:start", ...keys.map((k) => `strategy:${k}`), "total:total"]),
       `showcase waterfall: the advisor's result, then one row for each of the ${keys.length} strategies in the API's order, then the total (${keys.join(", ")})`,
@@ -406,7 +494,9 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     for (const bar of full.bars) {
       const text = squash(await rowByKey(bar.key).innerText());
       bothLabels &&=
-        text.includes(`${signedMoney(bar.delta_dollars)} at ${horizon}`) && text.includes(`${ratePct(bar.delta_rate)} a year`) && text.includes(bar.label);
+        text.includes(`${signedMoney(bar.delta_dollars)} at ${horizon}`) &&
+        text.includes(`${ratePct(bar.delta_rate)} a year`) &&
+        text.includes(bar.label);
     }
     check(
       bothLabels,
@@ -462,27 +552,36 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     );
     await info.click();
     const detailText = squash(await page.locator(`[id="${detailId}"]`).innerText());
-    const describedBy = await page.getByRole("switch", { name: probe.label, exact: true }).getAttribute("aria-describedby");
+    const describedBy = await page
+      .getByRole("switch", { name: probe.label, exact: true })
+      .getAttribute("aria-describedby");
     check(
-      (await info.getAttribute("aria-expanded")) === "true" && detailText === squash(probe.detail) && describedBy === detailId,
+      (await info.getAttribute("aria-expanded")) === "true" &&
+        detailText === squash(probe.detail) &&
+        describedBy === detailId,
       `showcase waterfall: it opens to the API's own sentence ("${probe.detail.slice(0, 48)}..."), which is also the switch's description`,
     );
     await info.click();
     await page.getByRole("button", { name: /Explain each strategy/ }).click();
     const allDetails = (
-      await page.locator("li[data-kind=strategy] p[id]").evaluateAll((els) => els.map((el) => ({ shown: !el.hidden, text: el.textContent })))
+      await page
+        .locator("li[data-kind=strategy] p[id]")
+        .evaluateAll((els) => els.map((el) => ({ shown: !el.hidden, text: el.textContent })))
     ).map((d) => ({ ...d, text: squash(d.text) }));
     check(
-      allDetails.length === keys.length && allDetails.every((d, i) => d.shown && d.text === squash(full.bars[i].detail)),
+      allDetails.length === keys.length &&
+        allDetails.every((d, i) => d.shown && d.text === squash(full.bars[i].detail)),
       "showcase waterfall: 'Explain each strategy' shows every strategy's sentence at once",
     );
     await page.getByRole("button", { name: /Hide the explanations/ }).click();
 
     // What the bars' length shows: a segmented control; the geometry follows it and both labels stay.
-    const widthOf = (key) => page.locator(`li[data-key="${key}"] [data-track] > span[data-kind]`).evaluate((el) => parseFloat(el.style.width));
+    const widthOf = (key) =>
+      page.locator(`li[data-key="${key}"] [data-track] > span[data-kind]`).evaluate((el) => parseFloat(el.style.width));
     const radios = page.getByRole("radiogroup", { name: "What the length of a bar shows" });
     check(
-      (await radios.getByRole("radio").count()) === 2 && (await radios.getByRole("radio", { name: `Dollars at ${horizon}` }).isChecked()),
+      (await radios.getByRole("radio").count()) === 2 &&
+        (await radios.getByRole("radio", { name: `Dollars at ${horizon}` }).isChecked()),
       `showcase waterfall: a segmented control chooses what the bars' length shows (dollars at ${horizon}, percent a year), dollars to begin with`,
     );
     const [first, second] = [
@@ -507,7 +606,9 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       );
       await radios.getByRole("radio", { name: `Dollars at ${horizon}` }).check();
     } else {
-      notes.push("showcase waterfall: fewer than two strategies add anything here, so the bar lengths were not compared across the two units");
+      notes.push(
+        "showcase waterfall: fewer than two strategies add anything here, so the bar lengths were not compared across the two units",
+      );
     }
 
     // The chart's table twin: every number, row by row, with the running total.
@@ -536,7 +637,10 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       const onSet = keys.filter((k) => k !== off.key);
       const expected = await analysisFor(onSet);
       const live = page.locator("p[role=status]");
-      check((await live.count()) === 1, "showcase waterfall: a live region (aria-live polite) is there to announce the recomputed total");
+      check(
+        (await live.count()) === 1,
+        "showcase waterfall: a live region (aria-live polite) is there to announce the recomputed total",
+      );
       // Hold the answer back a moment, to see the state while it is worked out.
       let release;
       const held = new Promise((r) => (release = r));
@@ -557,13 +661,19 @@ export async function runShowcase({ browser, base, out, check, notes }) {
         "showcase waterfall: switching a strategy off moves its switch at once, keeps the previous bars and total on screen, says it is recomputing, and announces it",
       );
       await page.waitForTimeout(400);
-      const dimmedNow = await page.evaluate(() => +getComputedStyle(document.querySelector('li[data-kind="strategy"] [data-track]')).opacity);
-      check(dimmedNow < 1, `showcase waterfall: while it recomputes the previous bars are dimmed (opacity ${dimmedNow})`);
+      const dimmedNow = await page.evaluate(
+        () => +getComputedStyle(document.querySelector('li[data-kind="strategy"] [data-track]')).opacity,
+      );
+      check(
+        dimmedNow < 1,
+        `showcase waterfall: while it recomputes the previous bars are dimmed (opacity ${dimmedNow})`,
+      );
       release();
       await settled(page);
       await page.unroute("**/api/showcase/analysis");
       check(
-        requests.analysis.length === beforeCount + 1 && JSON.stringify(requests.analysis.at(-1)) === JSON.stringify({ enabled: onSet }),
+        requests.analysis.length === beforeCount + 1 &&
+          JSON.stringify(requests.analysis.at(-1)) === JSON.stringify({ enabled: onSet }),
         `showcase waterfall: exactly one request went out, asking for the other ${onSet.length} strategies on (${JSON.stringify(requests.analysis.at(-1))})`,
       );
       const after = squash(await page.locator('section[aria-labelledby="total-title"]').innerText());
@@ -578,13 +688,38 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       let barsOk = true;
       for (const bar of expected.bars) {
         const text = squash(await rowByKey(bar.key).innerText());
-        barsOk &&= text.includes(`${signedMoney(bar.delta_dollars)} at ${horizon}`) && text.includes(`${ratePct(bar.delta_rate)} a year`);
+        barsOk &&=
+          text.includes(`${signedMoney(bar.delta_dollars)} at ${horizon}`) &&
+          text.includes(`${ratePct(bar.delta_rate)} a year`);
       }
-      check(barsOk, "showcase waterfall: every bar was measured again: each row shows the API's numbers for the new set");
+      check(
+        barsOk,
+        "showcase waterfall: every bar was measured again: each row shows the API's numbers for the new set",
+      );
+      // A strategy that is on but changes nothing given the ones before it says so (and no other row does).
+      const idleKeys = expected.bars
+        .filter((b) => b.enabled && b.delta_dollars === 0 && b.delta_rate === 0)
+        .map((b) => b.key);
+      let idleNotes = true;
+      for (const bar of expected.bars) {
+        const text = squash(await rowByKey(bar.key).innerText());
+        idleNotes &&= text.includes("On, but it adds nothing here") === idleKeys.includes(bar.key);
+      }
+      check(
+        idleNotes,
+        idleKeys.length
+          ? `showcase waterfall: a strategy that is on but adds nothing with the others off says so (${idleKeys.join(", ")}), and no other row does`
+          : "showcase waterfall: no strategy that is on changes nothing in this set, so no row carries the 'adds nothing' note",
+      );
       await page.waitForTimeout(1000); // the bars glide to their new places over 700ms
       const ghost = await page.locator(`li[data-key="${off.key}"] [data-track] > span[data-kind]`).evaluate((el) => {
         const s = getComputedStyle(el);
-        return { off: el.getAttribute("data-off"), border: s.borderTopStyle, fill: s.backgroundColor, width: el.getBoundingClientRect().width };
+        return {
+          off: el.getAttribute("data-off"),
+          border: s.borderTopStyle,
+          fill: s.backgroundColor,
+          width: el.getBoundingClientRect().width,
+        };
       });
       const offText = squash(await rowByKey(off.key).innerText());
       check(
@@ -638,7 +773,9 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       });
       await page.getByRole("switch", { name: a.label, exact: true }).click();
       await page.getByRole("switch", { name: b.label, exact: true }).click();
-      await page.waitForFunction(() => document.querySelector('[data-stale="true"]') === null, null, { timeout: 30000 });
+      await page.waitForFunction(() => document.querySelector('[data-stale="true"]') === null, null, {
+        timeout: 30000,
+      });
       lateFirst(); // now the stale answer arrives
       await page.waitForTimeout(800);
       const finalText = squash(await page.locator('section[aria-labelledby="total-title"]').innerText());
@@ -674,7 +811,10 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       );
       await page.unroute("**/api/showcase/analysis");
       await alert.getByRole("button", { name: "Dismiss" }).click();
-      check((await page.getByRole("alert").filter({ hasText: "could not be applied" }).count()) === 0, "showcase waterfall: the message can be dismissed");
+      check(
+        (await page.getByRole("alert").filter({ hasText: "could not be applied" }).count()) === 0,
+        "showcase waterfall: the message can be dismissed",
+      );
       issues.length = 0; // the browser logged the 422 this test made up as a console error: it is not one of the page's
     }
 
@@ -693,7 +833,10 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     }
 
     const weak = await lowContrast(page);
-    check(weak.length === 0, `showcase waterfall (light): all text has enough contrast${weak.length ? ` (${weak.join("; ")})` : ""}`);
+    check(
+      weak.length === 0,
+      `showcase waterfall (light): all text has enough contrast${weak.length ? ` (${weak.join("; ")})` : ""}`,
+    );
     await audit(page, issues, "showcase 2 strategies", "showcase-2-strategies");
     check(
       (await page.getByRole("link", { name: /Back to the household/ }).getAttribute("href")) === "/showcase",
@@ -704,6 +847,19 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       "showcase waterfall: the primary button goes on to wealth over time",
     );
     await context.close();
+  } else {
+    // A household for which no strategy differs from the advisor's: nothing to switch.
+    notes.push(
+      "showcase: this household has no strategy that differs from the advisor's, so the waterfall's switches were not exercised",
+    );
+    const { context, page } = await newPage();
+    await page.goto(base + "/showcase/strategies", { waitUntil: "networkidle" });
+    await page.getByRole("heading", { level: 1 }).waitFor({ timeout: 90000 });
+    check(
+      /nothing to switch on or off/.test(squash(await page.locator("main").innerText())),
+      "showcase waterfall: with no strategy that differs from the advisor's the screen says there is nothing to switch",
+    );
+    await context.close();
   }
 
   // === Screen 3: wealth over time, with what was chosen on screen 2 =====================================================
@@ -711,7 +867,10 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     const { context, page, issues, requests } = await newPage();
     // Go the way a person does: the strategies screen, a strategy off, then on.
     await page.goto(base + "/showcase/strategies", { waitUntil: "networkidle" });
-    await page.locator("li[data-key]").first().waitFor({ timeout: 90000 });
+    await page
+      .locator(keys.length > 0 ? "li[data-key]" : "main h1")
+      .first()
+      .waitFor({ timeout: 90000 });
     const offBars = keys.length >= 3 ? [full.bars[1], full.bars[2]] : keys.length >= 1 ? [full.bars[0]] : [];
     for (const bar of offBars) await page.getByRole("switch", { name: bar.label, exact: true }).click();
     const onSet = keys.filter((k) => !offBars.some((b) => b.key === k));
@@ -723,7 +882,10 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await settleLines(page, 4);
     const adv = analysis.advantage;
     const main = squash(await page.locator("main").innerText());
-    check(requests.showcase === 1, `showcase wealth: moving between the screens does not load the household again (${requests.showcase} request)`);
+    check(
+      requests.showcase === 1,
+      `showcase wealth: moving between the screens does not load the household again (${requests.showcase} request)`,
+    );
 
     // This screen follows what was switched off.
     if (offBars.length) {
@@ -737,21 +899,35 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       check(main.includes(`All ${noun(keys.length)} on`), "showcase wealth: with nothing off it says so");
     }
     const changeLink = page.getByRole("link", { name: "Change the strategies" });
-    check((await changeLink.getAttribute("href")) === "/showcase/strategies", "showcase wealth: a link goes back to change the switches");
+    check(
+      (await changeLink.getAttribute("href")) === "/showcase/strategies",
+      "showcase wealth: a link goes back to change the switches",
+    );
 
     // The headline: median, and the risk-adjusted one explained in a line of its own.
-    const medianCell = squash(await page.locator("h2", { hasText: "Median advantage" }).locator("xpath=..").innerText());
+    const medianCell = squash(
+      await page.locator("h2", { hasText: "Median advantage" }).locator("xpath=..").innerText(),
+    );
     check(
       medianCell.includes(`${ratePct(adv.median_rate)} a year`) &&
-        medianCell.includes(adv.median_dollars >= 0 ? `${money(adv.median_dollars)} more at ${horizon}` : `${money(-adv.median_dollars)} less at ${horizon}`),
+        medianCell.includes(
+          adv.median_dollars >= 0
+            ? `${money(adv.median_dollars)} more at ${horizon}`
+            : `${money(-adv.median_dollars)} less at ${horizon}`,
+        ),
       `showcase wealth: the headline is ${ratePct(adv.median_rate)} a year and ${money(Math.abs(adv.median_dollars))} ${adv.median_dollars >= 0 ? "more" : "less"} at ${horizon} (median), as the API has it`,
     );
-    const riskCell = squash(await page.locator("h2", { hasText: analysis.risk_adjusted_label }).locator("xpath=..").innerText());
+    const riskCell = squash(
+      await page.locator("h2", { hasText: analysis.risk_adjusted_label }).locator("xpath=..").innerText(),
+    );
     check(
-      riskCell.includes(`${ratePct(adv.risk_adjusted_rate)} a year`) && riskCell.includes(squash(analysis.risk_adjusted_explanation)),
+      riskCell.includes(`${ratePct(adv.risk_adjusted_rate)} a year`) &&
+        riskCell.includes(squash(analysis.risk_adjusted_explanation)),
       `showcase wealth: the "${analysis.risk_adjusted_label}" is ${ratePct(adv.risk_adjusted_rate)} a year with the API's own explanation, word for word`,
     );
-    const explanationLines = await page.locator("p", { hasText: squash(analysis.risk_adjusted_explanation).slice(0, 40) }).count();
+    const explanationLines = await page
+      .locator("p", { hasText: squash(analysis.risk_adjusted_explanation).slice(0, 40) })
+      .count();
     check(explanationLines === 1, "showcase wealth: that explanation is one paragraph of its own, shown once");
     check(
       /nine in ten/.test(main) && /10th percentile/.test(main),
@@ -760,7 +936,10 @@ export async function runShowcase({ browser, base, out, check, notes }) {
 
     // The four lines: two for each entity, the typical future solid and the bad market dashed, in the app's colours.
     const lines = await page.evaluate(() =>
-      [...document.querySelectorAll("path.recharts-line-curve")].map((l) => ({ stroke: l.getAttribute("stroke"), dash: l.getAttribute("stroke-dasharray") })),
+      [...document.querySelectorAll("path.recharts-line-curve")].map((l) => ({
+        stroke: l.getAttribute("stroke"),
+        dash: l.getAttribute("stroke-dasharray"),
+      })),
     );
     check(
       lines.length === 4 &&
@@ -839,7 +1018,8 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     );
     const risk = squash(await page.locator('section[aria-label="Chance of running out of money"]').innerText());
     check(
-      risk.includes(`Donabach ${pct1(adv.plan_shortfall)}`) && risk.includes(`${analysis.advisor_label} ${pct1(adv.advisor_shortfall)}`),
+      risk.includes(`Donabach ${pct1(adv.plan_shortfall)}`) &&
+        risk.includes(`${analysis.advisor_label} ${pct1(adv.advisor_shortfall)}`),
       `showcase wealth: the chance of running out of money is shown for both (${pct1(adv.plan_shortfall)} with Donabach, ${pct1(adv.advisor_shortfall)} with the advisor)`,
     );
 
@@ -853,17 +1033,23 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       heads.length === 5 &&
         tableData.length === w.ages.length &&
         [0, Math.floor(lastIndex / 2), lastIndex].every(
-          (i) => tableData[i] === `${w.ages[i]} ${money(w.plan_median[i])} ${money(w.plan_p10[i])} ${money(w.advisor_median[i])} ${money(w.advisor_p10[i])}`,
+          (i) =>
+            tableData[i] ===
+            `${w.ages[i]} ${money(w.plan_median[i])} ${money(w.plan_p10[i])} ${money(w.advisor_median[i])} ${money(w.advisor_p10[i])}`,
         ),
       `showcase wealth: the table twin has a row for each of the ${w.ages.length} ages with the four values (${heads.join(" / ")})`,
     );
     await page.getByRole("button", { name: "View as chart" }).click();
     await settleLines(page, 4);
     const weak = await lowContrast(page);
-    check(weak.length === 0, `showcase wealth (light): all text has enough contrast${weak.length ? ` (${weak.join("; ")})` : ""}`);
+    check(
+      weak.length === 0,
+      `showcase wealth (light): all text has enough contrast${weak.length ? ` (${weak.join("; ")})` : ""}`,
+    );
     await audit(page, issues, "showcase 3 wealth", "showcase-3-wealth");
     check(
-      (await page.getByRole("link", { name: /Back to the strategies/ }).getAttribute("href")) === "/showcase/strategies",
+      (await page.getByRole("link", { name: /Back to the strategies/ }).getAttribute("href")) ===
+        "/showcase/strategies",
       "showcase wealth: a back link goes to the strategies",
     );
     check(
@@ -878,7 +1064,9 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       await page.locator("li[data-key]").first().waitFor();
       let still = true;
       for (const bar of full.bars)
-        still &&= (await page.getByRole("switch", { name: bar.label, exact: true }).isChecked()) === !offBars.some((b) => b.key === bar.key);
+        still &&=
+          (await page.getByRole("switch", { name: bar.label, exact: true }).isChecked()) ===
+          !offBars.some((b) => b.key === bar.key);
       check(
         still && requests.showcase === 1,
         `showcase wealth: back on the strategies screen the switches are as they were left (${offBars.map((b) => b.label).join(", ")} off)`,
@@ -931,9 +1119,12 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
     const page = await context.newPage();
     await page.goto(base + "/showcase/strategies", { waitUntil: "networkidle" });
-    await page.locator("li[data-key]").first().waitFor({ timeout: 90000 });
+    await page
+      .locator(keys.length > 0 ? "li[data-key]" : "main h1")
+      .first()
+      .waitFor({ timeout: 90000 });
     const durations = await page.evaluate(() => {
-      const bar = document.querySelector("li[data-kind=strategy] [data-track] > span[data-kind]");
+      const bar = document.querySelector("li[data-kind=strategy] [data-track] > span[data-kind]") ?? document.body;
       const seconds = (css) => Math.max(...css.split(",").map((d) => parseFloat(d)));
       return {
         bar: seconds(getComputedStyle(bar).transitionDuration),
@@ -947,8 +1138,13 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await page.goto(base + "/showcase/wealth", { waitUntil: "networkidle" });
     await page.locator(".recharts-wrapper").first().waitFor({ timeout: 30000 });
     await page.waitForTimeout(150);
-    const dashes = await page.evaluate(() => [...document.querySelectorAll("path.recharts-line-curve")].map((l) => l.getAttribute("stroke-dasharray") ?? ""));
-    check(dashes.length === 4 && dashes.every((d) => !d.includes("px")), "reduced motion: the chart's lines are drawn at once, not drawn in");
+    const dashes = await page.evaluate(() =>
+      [...document.querySelectorAll("path.recharts-line-curve")].map((l) => l.getAttribute("stroke-dasharray") ?? ""),
+    );
+    check(
+      dashes.length === 4 && dashes.every((d) => !d.includes("px")),
+      "reduced motion: the chart's lines are drawn at once, not drawn in",
+    );
     await context.close();
   }
 
@@ -959,7 +1155,9 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await page.locator(".recharts-wrapper").first().waitFor({ timeout: 90000 });
     const main = squash(await page.locator("main").innerText());
     check(
-      main.includes(`All ${noun(keys.length)} on`) && requests.analysis.length === 0 && main.includes(`${ratePct(full.advantage.median_rate)} a year`),
+      main.includes(`All ${noun(keys.length)} on`) &&
+        requests.analysis.length === 0 &&
+        main.includes(`${ratePct(full.advantage.median_rate)} a year`),
       "showcase wealth: opened directly, it loads the household with every strategy on and asks for no other analysis",
     );
     await context.close();
@@ -970,12 +1168,21 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     const { context, page } = await newPage();
     let fail = true;
     await page.route("**/api/showcase", (route) =>
-      fail ? route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ detail: "the e2e made this error up" }) }) : route.fallback(),
+      fail
+        ? route.fulfill({
+            status: 500,
+            contentType: "application/json",
+            body: JSON.stringify({ detail: "the e2e made this error up" }),
+          })
+        : route.fallback(),
     );
     await page.goto(base + "/showcase", { waitUntil: "networkidle" });
     const alert = page.getByRole("alert");
     await alert.first().waitFor({ timeout: 15000 });
-    check((await alert.first().innerText()).includes("the e2e made this error up"), "showcase household: when the API fails the screen shows its message");
+    check(
+      (await alert.first().innerText()).includes("the e2e made this error up"),
+      "showcase household: when the API fails the screen shows its message",
+    );
     fail = false;
     await page.getByRole("button", { name: "Try again" }).click();
     await page.getByRole("heading", { level: 1, name: showcase.name }).waitFor({ timeout: 60000 });
@@ -989,7 +1196,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   const { chromium } = await import("playwright-core");
   const base = process.env.BASE_URL ?? "http://localhost:3000";
   const out = resolve(process.env.OUT_DIR ?? new URL("../../.screenshots", import.meta.url).pathname);
-  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
+  const browser = await chromium.launch({
+    executablePath: process.env.CHROMIUM_PATH || undefined,
+    args: ["--no-sandbox"],
+  });
   const failures = [];
   const notes = [];
   let checks = 0;
@@ -1006,7 +1216,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   await browser.close();
   for (const n of notes) console.log(` note  ${n}`);
   console.log(
-    failures.length ? `\n${failures.length} of ${checks} check(s) failed:\n - ${failures.join("\n - ")}` : `\nAll checks passed (${checks} of ${checks})`,
+    failures.length
+      ? `\n${failures.length} of ${checks} check(s) failed:\n - ${failures.join("\n - ")}`
+      : `\nAll checks passed (${checks} of ${checks})`,
   );
   process.exit(failures.length ? 1 : 0);
 }

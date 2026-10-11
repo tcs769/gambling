@@ -65,6 +65,8 @@
 .pair {
   display: grid;
   grid-template-columns: repeat(2, auto);
+  /* A label that wraps (on a phone) lifts its own figure no higher than the other's. */
+  align-items: end;
   gap: 2px 32px;
   margin: 0;
 }

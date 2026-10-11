@@ -2,41 +2,39 @@
   "id": "tanaka",
   "name": "The Tanaka family",
   "type_label": "Large unrealized gains (brokerage basis under 40% of value)",
-  "tagline": "one earner aged 47, 3 children, $313k of wages, $0.95M saved ($0.40M taxable with $0.29M of unrealized gain, $0.45M pre-tax, $0.06M Roth); retiring at 65 on $125k a year; college from year 17.",
+  "tagline": "one earner aged 50, 1 child, $204k of wages, $1.19M saved ($0.65M taxable with $0.41M of unrealized gain, $0.43M pre-tax, $0.09M Roth); retiring at 60 on $90k a year; college from year 8.",
   "household": {
     "people": [
       {
         "name": "Kenji Tanaka",
-        "age": 47,
-        "wages": 312885.5843095749,
+        "age": 50,
+        "wages": 204268.1178437558,
         "pretax_401k": 0.0
       }
     ],
     "children_ages": [
-      1,
-      1,
-      11
+      10
     ],
     "accounts": {
-      "brokerage_value": 402333.09701847954,
-      "brokerage_basis": 114408.85825092347,
-      "pretax_balance": 453197.7961363891,
-      "pretax_equity_share": 0.636,
-      "roth_balance": 63025.437333343645,
+      "brokerage_value": 645776.5889251672,
+      "brokerage_basis": 232795.28743796155,
+      "pretax_balance": 429185.46348976647,
+      "pretax_equity_share": 0.6000000000000001,
+      "roth_balance": 94380.31580549403,
       "roth_equity_share": 1.0,
-      "cash": 30629.636258574512
+      "cash": 23940.442563266348
     },
     "goals": {
       "home_purchase_in_years": null,
       "home_down_payment": 120000.0,
-      "college_starts_in_years": 17,
-      "college_annual_cost": 42660.76850777723,
+      "college_starts_in_years": 8,
+      "college_annual_cost": 44539.6192132624,
       "college_years": 4,
-      "retirement_age": 65,
-      "retirement_spending": 124617.60605369373
+      "retirement_age": 60,
+      "retirement_spending": 90015.30971996777
     },
     "social_security": {
-      "annual_benefit": 70000.0,
+      "annual_benefit": 61280.43535312674,
       "start_age": 67
     },
     "snapshot": null,

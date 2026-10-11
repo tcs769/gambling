@@ -1,40 +1,38 @@
 {
   "id": "lindqvist",
   "name": "The Lindqvist family",
-  "type_label": "Large unrealized gains (brokerage basis under 40% of value)",
-  "tagline": "one earner aged 50, 1 child, $204k of wages, $1.19M saved ($0.65M taxable with $0.41M of unrealized gain, $0.43M pre-tax, $0.09M Roth); retiring at 60 on $90k a year; college from year 8.",
+  "type_label": "Concentrated single stock (40%+ of investable assets, low basis)",
+  "tagline": "one earner aged 52, $326k of wages, $1.52M saved ($0.76M taxable with $0.58M of unrealized gain, $0.73M pre-tax, $0.01M Roth); retiring at 59 on $102k a year.",
   "household": {
     "people": [
       {
         "name": "Anders Lindqvist",
-        "age": 50,
-        "wages": 204268.1178437558,
+        "age": 52,
+        "wages": 325740.839938018,
         "pretax_401k": 0.0
       }
     ],
-    "children_ages": [
-      10
-    ],
+    "children_ages": [],
     "accounts": {
-      "brokerage_value": 645776.5889251672,
-      "brokerage_basis": 232795.28743796155,
-      "pretax_balance": 429185.46348976647,
-      "pretax_equity_share": 0.6000000000000001,
-      "roth_balance": 94380.31580549403,
+      "brokerage_value": 760909.1576309585,
+      "brokerage_basis": 181047.51175717235,
+      "pretax_balance": 733892.3147219853,
+      "pretax_equity_share": 0.5760000000000001,
+      "roth_balance": 6124.789623817544,
       "roth_equity_share": 1.0,
-      "cash": 23940.442563266348
+      "cash": 18164.134443741805
     },
     "goals": {
       "home_purchase_in_years": null,
       "home_down_payment": 120000.0,
-      "college_starts_in_years": 8,
-      "college_annual_cost": 44539.6192132624,
+      "college_starts_in_years": null,
+      "college_annual_cost": 35000.0,
       "college_years": 4,
-      "retirement_age": 60,
-      "retirement_spending": 90015.30971996777
+      "retirement_age": 59,
+      "retirement_spending": 101975.90333226675
     },
     "social_security": {
-      "annual_benefit": 61280.43535312674,
+      "annual_benefit": 70000.0,
       "start_age": 67
     },
     "snapshot": null,

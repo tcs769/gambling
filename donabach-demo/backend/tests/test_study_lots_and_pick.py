@@ -89,12 +89,34 @@ def test_the_listed_households_are_re_measured_ranked_named_and_installable(stud
     passed, _ = pick.screen(frame, built)
     candidates = pick.remeasure(passed, built, count=3)
     assert [c.rank for c in candidates] == [1, 2, 3]
-    assert candidates[0].analysis.advantage.median_rate >= candidates[1].analysis.advantage.median_rate >= candidates[2].analysis.advantage.median_rate
+    in_the_study = [c.row["adv_median_vs_good_ria"] for c in candidates]
+    assert in_the_study == sorted(in_the_study, reverse=True)  # ranked as the study ranked them
+    assert in_the_study[0] == passed["adv_median_vs_good_ria"].max()
     assert candidates[0].fixture.household.people[0].name.endswith(candidates[0].name)  # the earners have names
     text = pick.render(frame, passed, [("a screen", 1)], candidates)
-    assert "| 1 | The" in text and "How the list was made" in text
+    assert "| 1 | The" in text and "How the list was made" in text and "2,000 fresh futures" in text
     paths = pick.write_fixtures(candidates, tmp_path)
     fixture = showcase.load_fixture(paths[0])
     assert fixture.household == candidates[0].fixture.household and fixture.tagline and fixture.id == candidates[0].name.lower()
     assert json.loads(paths[0].read_text())["name"].startswith("The ")
+    showcase.reset()
+
+
+def test_the_list_keeps_the_study_s_order_whatever_the_fresh_futures_say(study, monkeypatch):
+    # The fresh futures are for scoring, never for choosing: a list ranked on them would be picked on the number it shows.
+    frame, built = study
+    passed, _ = pick.screen(frame, built)
+    fresh = iter([0.010, 0.030, 0.020])  # the fresh futures would rank the three the other way round
+    real = showcase.analyze
+
+    def analyze(prepared, enabled=None):
+        out = real(prepared, enabled)
+        return out.model_copy(update={"advantage": out.advantage.model_copy(update={"median_rate": next(fresh)})})
+
+    monkeypatch.setattr(showcase, "analyze", analyze)
+    candidates = pick.remeasure(passed, built, count=3)
+    assert [c.analysis.advantage.median_rate for c in candidates] == [0.010, 0.030, 0.020]  # not re-sorted
+    in_the_study = [c.row["adv_median_vs_good_ria"] for c in candidates]
+    assert in_the_study == sorted(in_the_study, reverse=True) and [c.rank for c in candidates] == [1, 2, 3]
+    assert [c.name for c in candidates] == [n[0] for n in pick.NAMES[:3]]
     showcase.reset()

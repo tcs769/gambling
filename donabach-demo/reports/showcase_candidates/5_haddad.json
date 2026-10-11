@@ -1,35 +1,45 @@
 {
   "id": "haddad",
   "name": "The Haddad family",
-  "type_label": "Concentrated single stock (40%+ of investable assets, low basis)",
-  "tagline": "one earner aged 52, $326k of wages, $1.52M saved ($0.76M taxable with $0.58M of unrealized gain, $0.73M pre-tax, $0.01M Roth); retiring at 59 on $102k a year.",
+  "type_label": "Diversified, modest unrealized gains",
+  "tagline": "two earners aged 46 and 49, 3 children, $331k of wages, $0.59M saved ($0.21M taxable with $0.04M of unrealized gain, $0.31M pre-tax, $0.03M Roth); retiring at 62 on $118k a year; college from year 16.",
   "household": {
     "people": [
       {
         "name": "Samir Haddad",
-        "age": 52,
-        "wages": 325740.839938018,
+        "age": 46,
+        "wages": 191979.92196842277,
+        "pretax_401k": 0.0
+      },
+      {
+        "name": "Leila Haddad",
+        "age": 49,
+        "wages": 138827.27304368658,
         "pretax_401k": 0.0
       }
     ],
-    "children_ages": [],
+    "children_ages": [
+      2,
+      5,
+      13
+    ],
     "accounts": {
-      "brokerage_value": 760909.1576309585,
-      "brokerage_basis": 181047.51175717235,
-      "pretax_balance": 733892.3147219853,
-      "pretax_equity_share": 0.5760000000000001,
-      "roth_balance": 6124.789623817544,
+      "brokerage_value": 211453.5408996323,
+      "brokerage_basis": 176202.18433784912,
+      "pretax_balance": 314201.24781147996,
+      "pretax_equity_share": 0.648,
+      "roth_balance": 32815.892334636155,
       "roth_equity_share": 1.0,
-      "cash": 18164.134443741805
+      "cash": 33670.68811939528
     },
     "goals": {
       "home_purchase_in_years": null,
-      "home_down_payment": 120000.0,
-      "college_starts_in_years": null,
-      "college_annual_cost": 35000.0,
+      "home_down_payment": 136642.29928144385,
+      "college_starts_in_years": 16,
+      "college_annual_cost": 44396.60736412644,
       "college_years": 4,
-      "retirement_age": 59,
-      "retirement_spending": 101975.90333226675
+      "retirement_age": 62,
+      "retirement_spending": 117670.60251329048
     },
     "social_security": {
       "annual_benefit": 70000.0,

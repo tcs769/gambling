@@ -1,12 +1,14 @@
 """Which household should the showcase be about? A short list from the 300-household study.
 
-The list is the five households with the highest raw median advantage over the good advisor that are plausible and can be
-named as a type. "Plausible" is decided from the household alone, never from a result, by the screens below (written before the
-list was looked at): ordinary ages, incomes and savings, a taxable account that is not nearly all gain and not nearly all of
-the savings, a retirement that can be funded by the household and by the advisor alike, goals that are not larger than what is
-saved for them. The study ranks households on 1,000 futures each, and the best of 300 is partly lucky, so the twelve best that
-pass are measured again on 2,000 other futures (the showcase's own, `app.showcase`) and the five with the highest raw advantage
-there are listed, with what each is worth and what it is made of. Nothing is tuned.
+The list is the five households with the highest raw median advantage over the good advisor, in the study, that are plausible
+and can be named as a type. "Plausible" is decided from the household alone, never from a result, by the screens below (written
+before the list was looked at): ordinary ages, incomes and savings, a taxable account that is not nearly all gain and not nearly
+all of the savings, a retirement that can be funded by the household and by the advisor alike, goals that are not larger than
+what is saved for them. The study ranks households on 1,000 futures each, and the best of 300 is partly lucky, so each of the
+twelve best that pass is measured again on 2,000 other futures (the showcase's own, `app.showcase`) that played no part in
+choosing it. The list keeps the study's order, so the figure measured on the fresh futures, which is the one the showcase
+shows, is not itself a winner of anything; ranking on it too would pick the luckiest twice. Each household is listed with what it
+is worth and what it is made of. Nothing is tuned.
 
     python -m app.study.showcase_pick --out ../reports/showcase_candidates.md --fixtures ../reports/showcase_candidates
 """
@@ -146,7 +148,7 @@ def remeasure(frame: pd.DataFrame, built, count: int) -> list[Candidate]:
         prepared = showcase.prepare(fixture)
         analysis = showcase.analyze(prepared)
         measured.append(Candidate(0, row, study, "", fixture, analysis, prepared.strategy.short_label()))
-    measured.sort(key=lambda c: c.analysis.advantage.median_rate, reverse=True)
+    # `measured` keeps the study's order: the rank is the study's, never the fresh futures' (see the module's note on picking twice).
     for rank, c in enumerate(measured, start=1):
         # Names go by rank, so the list reads the same however the pool was drawn (they play no part in the simulation).
         naming = NAMES[(rank - 1) % len(NAMES)]
@@ -174,12 +176,14 @@ def render(frame_all: pd.DataFrame, passed: pd.DataFrame, removed, candidates: l
         "",
         *[f"* {label}" + f" (removes {n} of {len(frame_all)} on its own)" for label, n in removed],
         "",
-        f"{len(passed)} of {len(frame_all)} households pass all of them. The study ranks households on 1,000 futures each, so the best of 300 is "
-        f"partly lucky: the {len(candidates)} with the highest raw median advantage in the study were measured again on 2,000 other futures "
-        "(the showcase's own), and the five with the highest raw advantage *there* are listed. Raw advantage is the annual growth-rate "
-        "difference of median after-tax wealth at 80 against the good advisor; risk-adjusted is the same on certainty-equivalent wealth at risk aversion 3.",
+        f"{len(passed)} of {len(frame_all)} households pass all of them. The five with the highest raw median advantage *in the study* "
+        "are listed, in the study's order. The study ranks households on 1,000 futures each, so the best of 300 is partly lucky: "
+        f"each of the {len(candidates)} best was therefore measured again on 2,000 other futures (the showcase's own), which played no part in "
+        "choosing it. The figure measured there is the one the showcase shows, and it is not itself picked as a winner. Raw advantage is the "
+        "annual growth-rate difference of median after-tax wealth at 80 against the good advisor; risk-adjusted is the same on "
+        "certainty-equivalent wealth at risk aversion 3.",
         "",
-        "| # | Household | Type | Raw advantage (2,000 futures) | In the study | Risk-adjusted | Dollars more at 80 | Runs out of money: plan / advisor |",
+        "| # | Household | Type | Raw advantage (2,000 fresh futures) | In the study (picked on) | Risk-adjusted | Dollars more at 80 | Runs out of money: plan / advisor |",
         "|---|---|---|---|---|---|---|---|",
     ]
     top = candidates[:5]
@@ -212,8 +216,12 @@ def render(frame_all: pd.DataFrame, passed: pd.DataFrame, removed, candidates: l
         ]
     if candidates[5:]:
         lines += [
-            "Also measured, not in the top five: "
-            + ", ".join(f"The {c.name} family ({TYPES[c.row['type']].split(' (')[0].lower()}, {_pct(c.analysis.advantage.median_rate)})" for c in candidates[5:])
+            "Next in the study's order, also measured on the fresh futures (study / fresh): "
+            + ", ".join(
+                f"The {c.name} family ({TYPES[c.row['type']].split(' (')[0].lower()}, {_pct(c.row['adv_median_vs_good_ria'])} / "
+                f"{_pct(c.analysis.advantage.median_rate)})"
+                for c in candidates[5:]
+            )
             + ".",
             "",
         ]

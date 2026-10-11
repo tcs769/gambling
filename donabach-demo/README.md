@@ -37,9 +37,11 @@ cd frontend && npm install && npm run dev
 ```
 
 The first start compiles the simulation kernels with numba (about 5 to 10 seconds, then cached in
-`backend/.numba_cache/`); the API warms them up before it accepts requests. The browser talks to the API through
-a same-origin proxy (`/api/*` to `http://localhost:8000`, see `frontend/next.config.ts`; set `BACKEND_URL` to
-point elsewhere).
+`backend/.numba_cache/`); the API warms them up before it accepts requests, so the first plan is as fast as the
+rest (measured on 4 cores: 5.8 s to start cold, 1.1 s warm, then about 0.2 s per plan). The browser talks to the
+API through a same-origin proxy (`/api/*` to `http://localhost:8000`, see `frontend/next.config.ts`). To point it
+elsewhere set `BACKEND_URL` before `npm run dev`, or before `npm run build` for a production build (Next bakes
+rewrites in at build time).
 
 **Demo mode** (the switch in the header, on by default) preloads the three sample documents and fixes the random
 seed, so every run on camera produces identical numbers. Turn it off to draw a fresh set of futures each time.

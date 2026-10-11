@@ -454,3 +454,14 @@ def test_without_a_tax_form_the_missing_values_are_named_and_the_tax_picture_is_
 
 def test_a_tax_form_makes_the_tax_picture_reported_not_estimated(profile):
     assert profile["tax_estimated"] is False
+
+
+def test_starting_the_app_warms_the_simulation_kernels(monkeypatch):
+    """The first plan after a cold start must not pay for compilation: the app warms up before serving."""
+    from app import warmup
+
+    calls = []
+    monkeypatch.setattr(warmup, "warm", lambda *a, **k: calls.append(1) or 0.0)
+    with TestClient(app) as started:
+        assert started.get("/health").json() == {"status": "ok"}
+    assert calls == [1]

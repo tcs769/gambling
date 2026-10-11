@@ -280,6 +280,20 @@ measurement and the command that regenerates it).
   +0.55% a year (median) and +1.62% to +2.97% a year (risk-adjusted). The median advantage is a few tenths of a percent
   a year, not 2 to 3%: the lower fee (0.35% against 0.5 to 1.0%) and asset location are worth about 0.6% a year of median
   wealth, and the lower-risk allocation gives it back (next point) before Roth timing adds a quarter of a percent.
+* **Why not 2 to 3%, and what it would take** (`reports/equity_share.md`, `reports/path_to_2_3_percent.md`). The planner's
+  objective (risk aversion 3, a $50,000 floor) is decided by the futures in which money runs out, so it picks the lowest stock
+  share on the menu: 42.5% of the portfolio falling to 21%, against the good RIA's 80% falling to 50% (with a private credit
+  sleeve the stock share is of the money outside it). That costs median wealth; more equity buys it back at about +0.25 points a
+  year of median advantage for every 10 points of stock share and costs risk-adjusted advantage. Sample household, over the
+  good RIA (median / risk-adjusted): the app (risk aversion 3) +0.27% / +2.54%; risk aversion 2 +0.53% / +1.70%; risk aversion 1
+  +1.54% / +0.22% (85% stocks, the same 0.6% chance of running out of money as the advisor, a 10th percentile of $1.49M against
+  $0.94M); the most median wealth anything on the menu gives, +1.60% (100% stocks, 1.1% chance of running out). Donabach's tools
+  alone at the advisor's own allocation are worth +0.83% (+0.78% for the typical household of the 300): the rest of any larger
+  figure is more equity, which an advisor could hold too. **Nothing on the menu reaches 2%.** From the ceiling, 2% takes one of
+  these (each an assumption or more risk; none is in the app): an equity return of 7.0% real instead of 5.5% (9.1% for 2.5%,
+  11.1% for 3%); a fee near zero; pre-tax money at 80 taxed at a flat 32% (heirs) instead of the specified rate of about 13%
+  (+0.37 points); or an advisor holding 70% falling to 40% rather than 80% to 50%. A 0.25% fee and a 32% heirs' rate together
+  reach it. The household studies at risk aversion 3, 2 and 1 are in `reports/household_study_risk_aversion_N/`.
 * **Why the two measures differ.** Switching the decisions on one at a time from the good RIA: the lower fee and asset
   location add +0.63% a year of median wealth; moving to 50% stocks and a private credit sleeve *costs* 0.6% a year of median
   wealth but lifts the risk-adjusted advantage from +0.85% to +2.52% a year, because certainty-equivalent wealth is

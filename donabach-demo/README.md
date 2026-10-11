@@ -76,7 +76,7 @@ All dollars are **real 2026 dollars**; tax brackets are held constant in 2026 do
 | Documents | `backend/app/docs/`, `fixtures/` | `fixtures/demo_household.json` is the single source of truth for three generated PDFs (a 2026 1040 projection, a brokerage statement, a 401(k) statement). A pdfplumber parser reads them back with value, page, bounding box and rule-based confidence, plus cross-checks. |
 | Markets and income | `backend/app/sim/markets.py`, `income.py` | Correlated normal real returns (equity 5.5%/16%, bonds 1.5%/5%, private credit 3.5%/8%) from a fixed seed, shared by every strategy. Income is a **placeholder** life-cycle process until the ML forecaster plugs in. |
 | Simulator | `backend/app/sim/simulate.py` | The 11-step yearly household loop (returns, harvesting, goals, spending, conversion, goal bucket, location and rebalancing, tax, fees, contributions) as one numba kernel run over every (strategy, future). |
-| Planner | `backend/app/planner/` | Searches all **336** strategies (stock share x Roth conversions x private credit x direct indexing x goal bonds) on the same 400 futures, scoring each by certainty-equivalent after-tax wealth at 80 (CRRA, risk aversion 3, $50,000 floor). A full search takes about 0.3 s. |
+| Planner | `backend/app/planner/` | Searches all **672** strategies (stock share x Roth conversions x private credit sleeve x direct indexing x goal bonds) on the same 400 futures, scoring each by certainty-equivalent after-tax wealth at 80 (CRRA, risk aversion 3, $50,000 floor). A full search takes about 0.3 s. |
 | Baseline | `planner/baseline.py` | A "good RIA": age-based 80% to 50% glide path, same mix in every account, breakpoint fees, fund-level harvesting, goals from brokerage, no conversions, pro rata withdrawals. |
 | Explanations | `planner/explain.py` | The five-step "where the advantage comes from" (switch decisions on one at a time from the baseline, same futures) and, per year, the value of each decision found by re-running the plan with only that decision removed for that year. |
 
@@ -169,11 +169,12 @@ credits. Beyond that, choices made where the spec was silent, so they are not a 
 * **Not modeled: survivor years and heirs' taxes.** After the first spouse dies the survivor files as a single
   taxpayer with narrower brackets, and heirs pay tax on inherited pre-tax accounts. Both generally favor Roth
   conversions, so conversion strategies are, if anything, understated. The app footer says so too.
-* **Private credit.** The sleeve is 10% of long-term money, held only in the pre-tax account; the stock share is
-  applied to the remaining 90%. The bond / private-credit correlation (0.1) is assumed; the spec gives only the
-  equity pairs.
-* **Asset location.** Private credit, then bonds, fill the pre-tax account first; the Roth holds stocks; the
-  brokerage account takes the remainder (including overflow bonds).
+* **Private credit.** The sleeve is 0, 5, 10 or 15% of long-term money; the stock share is applied to the
+  rest. It goes in the pre-tax account first, overflows to the Roth, then to the taxable account, where its
+  income is taxed each year as ordinary interest (5.5%: its 3.5% real return plus the 2% of inflation the bond
+  assumptions imply). The bond / private-credit correlation (0.1) is assumed; the spec gives only the equity pairs.
+* **Asset location.** Private credit, then bonds, fill the pre-tax account first; the Roth holds stocks (after
+  any private credit); the brokerage account takes the remainder (including overflow bonds).
 * **Cash and goals.** Cash joins brokerage bonds. The goal bucket holds the next four years of goals, funded and
   released each year; without it goals are paid from brokerage pro rata.
 * **Fees** are taken pro rata from every account; gains realized to pay tax or fees are reported the next year.

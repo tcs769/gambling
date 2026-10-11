@@ -205,7 +205,7 @@ def test_models_are_reloaded_when_the_file_changes(tmp_path):
     _drop(tmp_path, "recommender.pkl", stubs.StubRecommender())
     first = load_recommender(tmp_path)
     assert load_recommender(tmp_path) is first  # cached while the file is unchanged
-    picks = {"stock_share": "70", "conversion": "fill22_low", "private_credit": "off",
+    picks = {"stock_share": "70", "conversion": "fill22_low", "private_credit": "0",
              "direct_indexing": "off", "goal_bonds": "on"}
     _drop(tmp_path, "recommender.pkl", stubs.StubRecommender(picks))
     assert load_recommender(tmp_path).recommend(make_demo_household()).option("stock_share") == "70"
@@ -228,21 +228,22 @@ def _rec(**picks):
 
 
 def test_the_recommendation_maps_to_a_strategy():
-    assert guided.strategy_from_recommendation(_rec()) == Strategy(0.90, "none", True, True, False)
+    assert guided.strategy_from_recommendation(_rec()) == Strategy(0.90, "none", 0.10, True, False)
 
 
 def test_distance_counts_option_steps():
-    a = Strategy(0.90, "none", True, True, False)
+    a = Strategy(0.90, "none", 0.10, True, False)
     assert guided.distance(a, a) == 0
-    assert guided.distance(a, Strategy(0.80, "none", True, True, False)) == 1
-    assert guided.distance(a, Strategy(0.70, "none", True, True, False)) == 2
-    assert guided.distance(a, Strategy(0.90, "fill22_low", True, True, False)) == 3
-    assert guided.distance(a, Strategy(1.00, "none", False, True, True)) == 3
+    assert guided.distance(a, Strategy(0.80, "none", 0.10, True, False)) == 1
+    assert guided.distance(a, Strategy(0.70, "none", 0.10, True, False)) == 2
+    assert guided.distance(a, Strategy(0.90, "fill22_low", 0.10, True, False)) == 3
+    assert guided.distance(a, Strategy(1.00, "none", 0.05, True, True)) == 3
+    assert guided.distance(a, Strategy(0.90, "none", 0.0, True, False)) == 2  # 10% -> 5% -> 0%
 
 
 def test_candidates_are_the_top_strategy_and_its_five_nearest_alternatives():
     top, alternatives = guided.candidates(_rec())
-    assert top == Strategy(0.90, "none", True, True, False)
+    assert top == Strategy(0.90, "none", 0.10, True, False)
     assert len(alternatives) == 5 and len(set(alternatives)) == 5 and top not in alternatives
     assert all(guided.distance(top, s) == 1 for s in alternatives)  # six neighbors exist; five are taken
 
@@ -258,8 +259,8 @@ def test_ties_between_equally_near_alternatives_follow_the_models_probabilities(
             for d in entry.distribution:
                 d.probability = 0.99 if d.option == "on" else 0.01
     top, alternatives = guided.candidates(rec)
-    assert Strategy(0.90, "none", True, True, True) in alternatives
-    assert Strategy(0.90, "none", True, False, False) not in alternatives  # the least likely neighbor
+    assert Strategy(0.90, "none", 0.10, True, True) in alternatives
+    assert Strategy(0.90, "none", 0.10, False, False) not in alternatives  # the least likely neighbor
 
 
 def test_joint_probability_multiplies_the_per_choice_probabilities():
@@ -267,7 +268,7 @@ def test_joint_probability_multiplies_the_per_choice_probabilities():
     top = guided.strategy_from_recommendation(rec)
     assert guided.joint_probability(rec, top) == pytest.approx(0.6**5)
     others = len(CHOICE_OPTIONS["stock_share"]) - 1  # the stub spreads the remaining 0.4 over the other options
-    assert guided.joint_probability(rec, Strategy(0.80, "none", True, True, False)) == pytest.approx(
+    assert guided.joint_probability(rec, Strategy(0.80, "none", 0.10, True, False)) == pytest.approx(
         0.6**4 * (0.4 / others)
     )
 

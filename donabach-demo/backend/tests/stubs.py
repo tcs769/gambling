@@ -20,7 +20,7 @@ class StubRecommender:
         self.picks = picks or {
             "stock_share": "90",
             "conversion": "none",
-            "private_credit": "on",
+            "private_credit": "10",
             "direct_indexing": "on",
             "goal_bonds": "off",
         }

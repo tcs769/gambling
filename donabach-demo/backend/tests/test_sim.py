@@ -125,7 +125,7 @@ def test_log_constants_match_column_names():
         "total_tax": sim.L_TOTALTAX, "wage_tax": sim.L_WAGETAX, "portfolio_tax": sim.L_PORTTAX,
         "fee": sim.L_FEE, "pretax": sim.L_PRETAX, "roth": sim.L_ROTH, "brokerage": sim.L_BROKERAGE,
         "wealth": sim.L_WEALTH, "unrealized_gain": sim.L_UNREALIZED,
-        "aged": sim.L_AGED, "rmd": sim.L_RMD,
+        "aged": sim.L_AGED, "rmd": sim.L_RMD, "private_credit": sim.L_PC,
     }
     assert set(expected) == set(sim.LOG_COLUMNS)
     for name, index in expected.items():
@@ -202,8 +202,52 @@ def test_asset_location_fills_pretax_with_private_credit_then_bonds():
     assert st[sim.S_BE] == pytest.approx(190_000) and st[sim.S_BB] == pytest.approx(0.0, abs=1e-6)
     assert st[sim.S_BBASIS] == pytest.approx(150_000)  # the cash bought equity at cost
     assert gain == 0.0
-    balances = [sim.S_PE, sim.S_PB, sim.S_PP, sim.S_RE, sim.S_RB, sim.S_BE, sim.S_BB]
+    balances = [sim.S_PE, sim.S_PB, sim.S_PP, sim.S_RE, sim.S_RB, sim.S_RP, sim.S_BE, sim.S_BB, sim.S_BP]
     assert sum(st[i] for i in balances) == pytest.approx(total)  # nothing lost
+
+
+def test_private_credit_overflows_from_pretax_to_roth_to_brokerage():
+    # 15% of 1,000,000 is 150,000: the pre-tax account takes 100,000, the Roth the next 30,000, brokerage the last 20,000.
+    st = state(pe=100_000, re=30_000, be=700_000, bbasis=500_000, bb=170_000)
+    gain = sim._rebalance(st, 0.70 * 0.85, 0.15, False)  # 70% stocks with a 15% sleeve
+    assert (st[sim.S_PP], st[sim.S_RP], st[sim.S_BP]) == pytest.approx((100_000, 30_000, 20_000))
+    assert st[sim.S_PE] == st[sim.S_PB] == st[sim.S_RE] == st[sim.S_RB] == 0.0
+    assert st[sim.S_BE] == pytest.approx(0.595 * 1_000_000) and st[sim.S_BB] == pytest.approx(255_000)
+    assert gain == pytest.approx(105_000 * 200_000 / 700_000)  # 105,000 of equity sold at a 200/700 embedded gain
+    accounts = {
+        "pre-tax": (st[sim.S_PE] + st[sim.S_PB] + st[sim.S_PP], 100_000),
+        "roth": (st[sim.S_RE] + st[sim.S_RB] + st[sim.S_RP], 30_000),
+        "brokerage": (st[sim.S_BE] + st[sim.S_BB] + st[sim.S_BP], 870_000),
+    }
+    for name, (after, before) in accounts.items():
+        assert after == pytest.approx(before), name  # rebalancing never moves money between accounts
+
+
+def test_private_credit_that_fits_in_the_pretax_account_stays_out_of_the_others():
+    st = state(pe=500_000, re=100_000, be=400_000, bbasis=400_000)
+    sim._rebalance(st, 0.60 * 0.90, 0.10, False)
+    assert st[sim.S_PP] == pytest.approx(100_000) and st[sim.S_RP] == 0.0 and st[sim.S_BP] == 0.0
+
+
+def test_private_credit_in_brokerage_is_taxed_each_year_as_interest():
+    st = state(bp=100_000, bb=50_000, be=200_000, bbasis=200_000)
+    tv = np.zeros((1, sim.NTV))
+    tv[0, sim.TV_AGE] = 50.0
+    ys = np.zeros(sim.NY)
+    act = np.zeros(sim.NACT)
+    sim._year_begin(st, ys, tv, 0, act, 0.0, 0.0, 0.10)
+    taxable_interest = 0.055 * 100_000 + 0.035 * 50_000  # opening balances: private credit 5.5%, bonds 3.5%
+    assert ys[sim.Y_INTEREST] == pytest.approx(taxable_interest)
+    assert st[sim.S_BP] == pytest.approx(110_000)  # the return is separate from the taxable income
+
+
+def test_conversions_move_private_credit_into_the_roth_account_in_kind():
+    st = state(pe=200_000, pb=100_000, pp=100_000, re=10_000, rb=5_000)
+    sim._convert_to_roth(st, 0.25)
+    assert (st[sim.S_PE], st[sim.S_PB], st[sim.S_PP]) == pytest.approx((150_000, 75_000, 75_000))
+    assert (st[sim.S_RE], st[sim.S_RB], st[sim.S_RP]) == pytest.approx((60_000, 30_000, 25_000))
+    total = sum(st[i] for i in (sim.S_PE, sim.S_PB, sim.S_PP, sim.S_RE, sim.S_RB, sim.S_RP))
+    assert total == pytest.approx(415_000)  # nothing lost; private credit stays private credit
 
 
 def test_asset_location_overflows_bonds_into_the_taxable_account():
@@ -649,7 +693,7 @@ def test_search_scale_batch_is_fast_and_finite():
     import time
 
     policies = [s.policy() for s in menu()]
-    assert len(policies) == 336
+    assert len(policies) == 672
     inp = build_inputs(make_demo_household(), 400, seed=1)
     run_batch(inp, policies[:2])  # make sure the kernel is compiled
     start = time.perf_counter()
@@ -686,6 +730,7 @@ def menu_policy(key: str) -> Policy:
     from app.planner.strategies import Strategy
 
     stock, conversion, pc, di, gb = key.split("|")
+    pc = {"on": "10", "off": "0"}.get(pc, pc)  # keys may say on/off for the 10% sleeve
     return Strategy.from_choices({
         "stock_share": stock, "conversion": conversion, "private_credit": pc,
         "direct_indexing": di, "goal_bonds": gb,

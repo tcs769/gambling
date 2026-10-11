@@ -21,7 +21,6 @@ from app.planner.strategies import (
     DONABACH_FLAT_FEE,
     GLIDE_DROP,
     GLIDE_START_AGE,
-    PRIVATE_CREDIT_SHARE,
     Strategy,
 )
 from app.schemas import HORIZON_AGE
@@ -236,7 +235,7 @@ def year_detail(inputs_det: SimInputs, strategy: Strategy, year_index: int) -> Y
             key="stock_share",
             label="Stock share",
             description=f"Target {share * 100:.0f}% stocks in long-term money"
-            + (f" ({PRIVATE_CREDIT_SHARE * 100:.0f}% of it set aside as private credit)." if policy.private_credit else "."),
+            + (f" ({policy.private_credit * 100:.0f}% of it set aside as private credit)." if policy.private_credit else "."),
             amount=share,
             valued=False,
         )

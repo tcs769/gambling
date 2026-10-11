@@ -249,7 +249,7 @@ def test_plan_without_a_recommender_is_the_labelled_search_planner(plan):
     assert plan["planner_label"] == "Search planner (model not connected)"
     assert plan["recommender"]["status"]["connected"] is False
     assert plan["recommender"]["recommendation"] is None and plan["recommender"]["candidates"] == []
-    assert plan["settings"]["strategies_searched"] == 336 and len(plan["searched"]) == 336
+    assert plan["settings"]["strategies_searched"] == 672 and len(plan["searched"]) == 672
     assert plan["settings"]["risk_aversion"] == 3.0 and plan["settings"]["wealth_floor"] == 50_000
     assert plan["searched"][0]["is_chosen"] and plan["searched"][0]["rank"] == 1
 
@@ -325,7 +325,7 @@ def test_a_recommender_that_fails_is_reported_and_the_full_search_runs(household
     assert plan["planner_label"] == "Search planner (model not connected)"
     assert plan["recommender"]["status"]["connected"] is False
     assert "invalid Recommendation" in plan["recommender"]["status"]["reason"]
-    assert plan["settings"]["strategies_searched"] == 336
+    assert plan["settings"]["strategies_searched"] == 672
     (models_dir / "recommender.pkl").write_bytes(pickle.dumps(stubs.RaisingRecommender()))
     again = client.post("/plan", json={"household": household_json}).json()
     assert "model blew up" in again["recommender"]["status"]["reason"]

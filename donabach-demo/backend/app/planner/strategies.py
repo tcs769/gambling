@@ -3,7 +3,7 @@
 * Stock share of long-term money: 50/60/70/80/90/100%, held until 58, then gliding down 25 points by 70
 * Roth conversions: none, or fill the 12/22/24% bracket, either in low-income years and
   retirement only, or every year (7 options)
-* Private credit sleeve: off, or 10% of long-term money (held in the pre-tax account)
+* Private credit sleeve: 0, 5, 10 or 15% of long-term money (pre-tax account first, then Roth, then taxable)
 * Direct indexing: off (fund-level harvesting) or on (harvest by stock)
 * Goal-matched bonds: off, or fund each goal fully four years ahead in bonds
 
@@ -24,7 +24,7 @@ STOCK_SHARES = (0.50, 0.60, 0.70, 0.80, 0.90, 1.00)
 PRE_REVIEW_STOCK_SHARES = (0.70, 0.80, 0.90, 1.00)  # the menu before spec A2 widened it
 GLIDE_START_AGE = 58.0
 GLIDE_DROP = 0.25
-PRIVATE_CREDIT_SHARE = 0.10
+PRIVATE_CREDIT_SHARES = (0.0, 0.05, 0.10, 0.15)
 
 # option name -> (bracket label, bracket top, every year?)
 CONVERSION_OPTIONS: dict[str, tuple[int | None, float, bool]] = {
@@ -42,7 +42,7 @@ CHOICES = ("stock_share", "conversion", "private_credit", "direct_indexing", "go
 CHOICE_OPTIONS: dict[str, tuple[str, ...]] = {
     "stock_share": tuple(f"{round(s * 100)}" for s in STOCK_SHARES),
     "conversion": tuple(CONVERSION_OPTIONS),
-    "private_credit": ("off", "on"),
+    "private_credit": tuple(f"{round(s * 100)}" for s in PRIVATE_CREDIT_SHARES),
     "direct_indexing": ("off", "on"),
     "goal_bonds": ("off", "on"),
 }
@@ -52,13 +52,15 @@ CHOICE_OPTIONS: dict[str, tuple[str, ...]] = {
 class Strategy:
     stock_share: float
     conversion: str
-    private_credit: bool
+    private_credit: float  # share of long-term money: one of PRIVATE_CREDIT_SHARES
     direct_indexing: bool
     goal_bonds: bool
 
     def __post_init__(self) -> None:
         if self.conversion not in CONVERSION_OPTIONS:
             raise ValueError(f"unknown conversion option {self.conversion!r}")
+        if not any(abs(self.private_credit - share) < 1e-9 for share in PRIVATE_CREDIT_SHARES):
+            raise ValueError(f"private credit share {self.private_credit!r} is not one of {PRIVATE_CREDIT_SHARES}")
 
     @property
     def key(self) -> str:
@@ -69,7 +71,7 @@ class Strategy:
         return {
             "stock_share": f"{round(self.stock_share * 100)}",
             "conversion": self.conversion,
-            "private_credit": "on" if self.private_credit else "off",
+            "private_credit": f"{round(self.private_credit * 100)}",
             "direct_indexing": "on" if self.direct_indexing else "off",
             "goal_bonds": "on" if self.goal_bonds else "off",
         }
@@ -79,7 +81,7 @@ class Strategy:
         return cls(
             stock_share=int(choices["stock_share"]) / 100.0,
             conversion=choices["conversion"],
-            private_credit=choices["private_credit"] == "on",
+            private_credit=int(choices["private_credit"]) / 100.0,
             direct_indexing=choices["direct_indexing"] == "on",
             goal_bonds=choices["goal_bonds"] == "on",
         )
@@ -98,7 +100,7 @@ class Strategy:
             stock_share=self.stock_share,
             glide_start_age=GLIDE_START_AGE,
             glide_drop=GLIDE_DROP,
-            private_credit=PRIVATE_CREDIT_SHARE if self.private_credit else 0.0,
+            private_credit=self.private_credit,
             direct_indexing=self.direct_indexing,
             goal_bonds=self.goal_bonds,
             donabach_location=True,
@@ -119,7 +121,7 @@ class Strategy:
             conversions = f"fill {self.conversion_bracket}% bracket ({when})"
         parts = [f"{round(self.stock_share * 100)}% stocks", conversions]
         if self.private_credit:
-            parts.append("private credit")
+            parts.append(f"{round(self.private_credit * 100)}% private credit")
         if self.direct_indexing:
             parts.append("direct indexing")
         if self.goal_bonds:
@@ -138,7 +140,10 @@ class Strategy:
             when = "every year" if self.conversion_every_year else "in low-income years and retirement"
             parts.append(f"fill the {self.conversion_bracket}% bracket with Roth conversions {when}")
         if self.private_credit:
-            parts.append("keep a 10% private credit sleeve in the pre-tax account")
+            parts.append(
+                f"keep a {round(self.private_credit * 100)}% private credit sleeve, in the pre-tax account first, "
+                "then the Roth, then the taxable account"
+            )
         if self.direct_indexing:
             parts.append("harvest losses stock by stock with direct indexing")
         else:
@@ -148,11 +153,14 @@ class Strategy:
         return "; ".join(parts) + "."
 
 
-def menu(stock_shares: tuple[float, ...] = STOCK_SHARES) -> list[Strategy]:
-    """Every strategy, in a fixed order (336 with the full stock-share menu)."""
+def menu(
+    stock_shares: tuple[float, ...] = STOCK_SHARES,
+    private_credit_shares: tuple[float, ...] = PRIVATE_CREDIT_SHARES,
+) -> list[Strategy]:
+    """Every strategy, in a fixed order (672 with the full menus)."""
     return [
         Strategy(s, conv, pc, di, gb)
         for s, conv, pc, di, gb in product(
-            stock_shares, CONVERSION_OPTIONS, (False, True), (False, True), (False, True)
+            stock_shares, CONVERSION_OPTIONS, private_credit_shares, (False, True), (False, True)
         )
     ]

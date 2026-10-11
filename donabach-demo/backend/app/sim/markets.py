@@ -25,6 +25,12 @@ CORRELATION = np.array(
 
 DIVIDEND_YIELD = 0.018  # equity dividends: qualified, taxed each year in the brokerage account
 BOND_INTEREST_YIELD = 0.035  # taxable bond interest, ordinary income, on brokerage bond balances
+# Taxable income yield of private credit held in the brokerage account, taxed as ordinary interest.
+# The model is in real dollars but taxes nominal income. Bonds show the convention: their taxable
+# yield (3.5%) exceeds their real return (1.5%) by the 2.0% of inflation that is implied. Private
+# credit's return is almost all contractual interest, so its taxable yield is its 3.5% real return
+# plus the same 2.0%: 5.5%. (Inside the pre-tax and Roth accounts it is not taxed each year.)
+PRIVATE_CREDIT_INCOME_YIELD = 0.055
 
 MIN_RETURN = -0.95  # a normal draw can never wipe out more than this in a year
 

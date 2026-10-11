@@ -28,8 +28,8 @@ from app.tax import params_2026 as P
 
 def test_menu_has_every_combination_exactly_once():
     strategies = menu()
-    assert len(strategies) == 6 * 7 * 2 * 2 * 2 == 336
-    assert len({s.key for s in strategies}) == 336
+    assert len(strategies) == 6 * 7 * 4 * 2 * 2 == 672
+    assert len({s.key for s in strategies}) == 672
     assert len(CONVERSION_OPTIONS) == 7
     assert {s.stock_share for s in strategies} == {0.50, 0.60, 0.70, 0.80, 0.90, 1.00}
 
@@ -44,30 +44,45 @@ def test_choices_round_trip_through_the_recommender_vocabulary():
 
 
 def test_strategy_maps_to_the_specified_policy():
-    s = Strategy(0.90, "fill22_low", True, True, False)
+    s = Strategy(0.90, "fill22_low", 0.10, True, False)
     p = s.policy()
     assert (p.stock_share, p.glide_start_age, p.glide_drop) == (0.90, 58.0, 0.25)
     assert p.private_credit == 0.10 and p.direct_indexing and not p.goal_bonds
     assert p.conversion_top == P.TOP_OF_22 and not p.conversion_every_year
     assert p.donabach_location and p.bracket_withdrawals and not p.breakpoint_fees
     assert p.flat_fee == 0.0035 and p.withdrawal_top == P.TOP_OF_22
-    none = Strategy(0.70, "none", False, False, True).policy()
+    none = Strategy(0.70, "none", 0.0, False, True).policy()
     assert none.conversion_top == 0.0 and none.private_credit == 0.0 and none.goal_bonds
-    assert Strategy(0.8, "fill12_every", False, False, False).policy().conversion_every_year
+    assert Strategy(0.8, "fill12_every", 0.0, False, False).policy().conversion_every_year
 
 
 def test_strategy_sentence_reflects_the_choices():
-    text = Strategy(0.90, "fill22_low", True, True, True).describe()
+    text = Strategy(0.90, "fill22_low", 0.10, True, True).describe()
     for phrase in ("90%", "22% bracket", "low-income years and retirement", "private credit", "direct indexing", "four years ahead"):
         assert phrase in text
-    plain = Strategy(0.70, "none", False, False, False).describe()
+    plain = Strategy(0.70, "none", 0.0, False, False).describe()
     assert "no Roth conversions" in plain and "fund level" in plain and "private credit" not in plain
-    assert "every year" in Strategy(0.8, "fill24_every", False, False, False).describe()
+    assert "every year" in Strategy(0.8, "fill24_every", 0.0, False, False).describe()
+
+
+def test_private_credit_is_a_four_option_sleeve():
+    assert CHOICE_OPTIONS["private_credit"] == ("0", "5", "10", "15")
+    for pct, share in (("0", 0.0), ("5", 0.05), ("10", 0.10), ("15", 0.15)):
+        choices = dict(Strategy(0.8, "none", share, False, False).choices())
+        assert choices["private_credit"] == pct
+        assert Strategy.from_choices(choices).policy().private_credit == pytest.approx(share)
+    assert {s.private_credit for s in menu()} == {0.0, 0.05, 0.10, 0.15}
+    with pytest.raises(ValueError):
+        Strategy(0.8, "none", 0.07, False, False)
+    text = Strategy(0.8, "none", 0.05, False, False).describe()
+    assert "5% private credit sleeve" in text and "pre-tax account first" in text
+    assert "15% private credit" in Strategy(0.8, "none", 0.15, False, False).short_label()
+    assert "private credit" not in Strategy(0.8, "none", 0.0, False, False).short_label()
 
 
 def test_unknown_conversion_option_is_rejected():
     with pytest.raises(ValueError):
-        Strategy(0.9, "fill99", False, False, False)
+        Strategy(0.9, "fill99", 0.0, False, False)
 
 
 # --- Score ---------------------------------------------------------------------------------
@@ -122,10 +137,10 @@ def result(futures):
 
 def test_search_ranks_every_strategy_by_score(result):
     ranked = result.ranked
-    assert len(ranked) == 336
+    assert len(ranked) == 672
     scores = [r.outcome.score for r in ranked]
     assert scores == sorted(scores, reverse=True)
-    assert [r.rank for r in ranked] == list(range(1, 337))
+    assert [r.rank for r in ranked] == list(range(1, 673))
     assert result.best is ranked[0]
     for r in ranked[:5]:
         assert r.outcome.p10 < r.outcome.median < r.outcome.p90
@@ -185,7 +200,7 @@ def test_best_strategy_beats_the_ria_baseline_for_the_demo_household(futures, re
 
 
 @pytest.mark.parametrize(
-    "key", ["90|fill22_low|on|on|on", "70|none|off|off|off", "100|fill12_every|on|off|on"]
+    "key", ["90|fill22_low|10|on|on", "70|none|0|off|off", "100|fill12_every|15|off|on"]
 )
 def test_attribution_steps_sum_to_the_total_advantage(futures, key):
     stock, conv, pc, di, gb = key.split("|")
@@ -208,7 +223,7 @@ def test_attribution_steps_sum_to_the_total_advantage(futures, key):
 
 
 def test_attribution_marks_decisions_the_strategy_does_not_use(futures):
-    plain = Strategy(0.80, "none", False, False, False)
+    plain = Strategy(0.80, "none", 0.0, False, False)
     steps = {s.label: s for s in explain.advantage_steps(futures, plain)}
     assert not steps["Direct indexing"].active and steps["Direct indexing"].delta_median == 0.0
     # No conversions, but the bracket-first withdrawal order is still a change from pro rata.
@@ -218,12 +233,12 @@ def test_attribution_marks_decisions_the_strategy_does_not_use(futures):
 
 def test_the_lower_fee_step_is_a_gain():
     futures = build_inputs(make_demo_household(), 200, seed=1)
-    steps = explain.advantage_steps(futures, Strategy(0.9, "none", True, True, True))
+    steps = explain.advantage_steps(futures, Strategy(0.9, "none", 0.10, True, True))
     assert steps[0].delta_median > 0 and steps[0].delta_p10 > 0
 
 
 def test_advantage_policies_end_on_the_chosen_policy():
-    s = Strategy(0.80, "fill24_every", True, True, True)
+    s = Strategy(0.80, "fill24_every", 0.10, True, True)
     steps = explain.advantage_policies(s)
     assert steps[0][1] == RIA_BASELINE and steps[-1][1] == s.policy()
     assert len(steps) == 6
@@ -239,7 +254,7 @@ def det(household):
 
 @pytest.fixture(scope="module")
 def conversion_strategy():
-    return Strategy(0.90, "fill22_low", True, True, True)
+    return Strategy(0.90, "fill22_low", 0.10, True, True)
 
 
 def test_year_detail_reports_decisions_tax_and_values(det, conversion_strategy):
@@ -274,7 +289,7 @@ def test_the_value_of_a_decision_is_the_wealth_change_when_it_is_removed(det, co
 
 
 def test_year_detail_for_a_plain_strategy_has_only_what_it_does(det):
-    detail = explain.year_detail(det, Strategy(0.70, "none", False, False, False), 5)
+    detail = explain.year_detail(det, Strategy(0.70, "none", 0.0, False, False), 5)
     keys = {d.key for d in detail.decisions}
     # No conversions, no bucket, no withdrawals while working; fund-level harvesting never
     # triggers on the expected-return path. Only the always-on decisions remain.
@@ -306,11 +321,11 @@ def test_goal_bond_funding_appears_in_the_years_it_happens(det, conversion_strat
 
 
 def test_headline_reason_is_computed_from_the_simulation(det, result):
-    plain = Strategy(0.70, "none", True, True, False)
+    plain = Strategy(0.70, "none", 0.10, True, False)
     text = explain.headline_reason(det, result, plain)
     assert "pre-tax balance" in text and "%" in text and "$" in text
     assert "Roth conversions" in text and "lower" in text  # compares with the best plan using them
-    with_conv = Strategy(0.90, "fill22_low", True, True, True)
+    with_conv = Strategy(0.90, "fill22_low", 0.10, True, True)
     text2 = explain.headline_reason(det, result, with_conv)
     assert text2.startswith("Without conversions your pre-tax balance reaches")
     assert "22% bracket" in text2
@@ -320,6 +335,6 @@ def test_headline_reason_is_computed_from_the_simulation(det, result):
 
 
 def test_pretax_projection_drops_with_conversions(det):
-    none = explain.pretax_projection(det, Strategy(0.9, "none", False, False, False).policy())
-    conv = explain.pretax_projection(det, Strategy(0.9, "fill22_low", False, False, False).policy())
+    none = explain.pretax_projection(det, Strategy(0.9, "none", 0.0, False, False).policy())
+    conv = explain.pretax_projection(det, Strategy(0.9, "fill22_low", 0.0, False, False).policy())
     assert conv.balance < none.balance

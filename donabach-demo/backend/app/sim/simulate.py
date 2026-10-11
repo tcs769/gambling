@@ -47,11 +47,13 @@ from app.tax.engine import marginal_rate, pretax_withdrawal_rate, tax_core
 # Layout constants shared by the kernel and the Python wrappers
 # --------------------------------------------------------------------------------------------
 
-# State vector. Indices 0..8 are balances that scale together when a fee is charged.
-(S_PE, S_PB, S_PP, S_RE, S_RB, S_BE, S_BBASIS, S_BB, S_GB) = range(9)
-S_CF, S_DGAIN, S_DDIST, S_UNFUNDED = 9, 10, 11, 12
-NSTATE = 13
-N_BALANCES = 9
+# State vector. Indices 0..10 are balances that scale together when a fee is charged (the brokerage
+# basis, a memo item, is skipped). Account letters: P pre-tax, R Roth, B brokerage; asset letters:
+# E equity, B bonds, P private credit (the brokerage bonds also hold cash); GB is the goal bucket.
+(S_PE, S_PB, S_PP, S_RE, S_RB, S_RP, S_BE, S_BBASIS, S_BB, S_BP, S_GB) = range(11)
+S_CF, S_DGAIN, S_DDIST, S_UNFUNDED, S_LOAN = 11, 12, 13, 14, 15
+NSTATE = 16
+N_BALANCES = 11
 
 # Time-varying inputs, one row per simulated year.
 (TV_AGE, TV_RETIRED, TV_SS, TV_NEED, TV_GOAL, TV_BUCKET, TV_EXPWAGE, TV_KIDS, TV_DEPS, TV_NEARN, TV_AGED) = range(11)
@@ -149,6 +151,7 @@ LOG_COLUMNS = (
     "unrealized_gain",
     "aged",
     "rmd",
+    "private_credit",
 )
 NLOG = len(LOG_COLUMNS)
 (
@@ -190,6 +193,7 @@ NLOG = len(LOG_COLUMNS)
     L_UNREALIZED,
     L_AGED,
     L_RMD,
+    L_PC,
 ) = range(NLOG)
 
 # --------------------------------------------------------------------------------------------
@@ -228,9 +232,9 @@ def _shortfall(amount):
 
 @jit
 def _sell_brokerage(st, amount):
-    """Sell `amount` pro rata across brokerage equity and bonds. Returns (sold, realized gain)."""
+    """Sell `amount` pro rata across brokerage equity, bonds and private credit. Returns (sold, realized gain)."""
     be = st[S_BE]
-    total = be + st[S_BB]
+    total = be + st[S_BB] + st[S_BP]
     if amount <= 0.0 or total <= 0.0:
         return 0.0, 0.0
     f = min(1.0, amount / total)
@@ -238,17 +242,19 @@ def _sell_brokerage(st, amount):
     st[S_BBASIS] *= 1.0 - f
     st[S_BE] = be * (1.0 - f)
     st[S_BB] *= 1.0 - f
+    st[S_BP] *= 1.0 - f
     return f * total, gain
 
 
 @jit
 def _sell_roth(st, amount):
-    total = st[S_RE] + st[S_RB]
+    total = st[S_RE] + st[S_RB] + st[S_RP]
     if amount <= 0.0 or total <= 0.0:
         return 0.0
     f = min(1.0, amount / total)
     st[S_RE] *= 1.0 - f
     st[S_RB] *= 1.0 - f
+    st[S_RP] *= 1.0 - f
     return f * total
 
 
@@ -262,6 +268,17 @@ def _sell_pretax(st, amount):
     st[S_PB] *= 1.0 - f
     st[S_PP] *= 1.0 - f
     return f * total
+
+
+@jit
+def _convert_to_roth(st, fraction):
+    """Convert `fraction` of the pre-tax account to Roth, in kind: each asset class stays what it is."""
+    st[S_RE] += fraction * st[S_PE]
+    st[S_RB] += fraction * st[S_PB]
+    st[S_RP] += fraction * st[S_PP]
+    st[S_PE] *= 1.0 - fraction
+    st[S_PB] *= 1.0 - fraction
+    st[S_PP] *= 1.0 - fraction
 
 
 @jit
@@ -309,35 +326,40 @@ def _advisory_fee(total, breakpoints, flat):
 def _rebalance(st, equity, private_credit, uniform):
     """Move every account to the target mix. Returns the capital gain realized in brokerage.
 
-    uniform: the same mix in every account (the RIA approach).
-    Otherwise Donabach asset location: private credit, then bonds, fill the pre-tax account
-    first; the Roth holds stocks; brokerage takes the remainder.
+    uniform: the same mix in every account (the RIA approach; no private credit).
+    Otherwise Donabach asset location: private credit goes in the pre-tax account first, overflowing
+    to the Roth and then to brokerage; bonds fill what is left of the pre-tax account; the Roth
+    holds stocks (after any private credit); brokerage takes the remainder.
     """
     pe, pb, pp = st[S_PE], st[S_PB], st[S_PP]
-    re, rb = st[S_RE], st[S_RB]
-    be, bb = st[S_BE], st[S_BB]
+    re, rb, rp = st[S_RE], st[S_RB], st[S_RP]
+    be, bb, bp = st[S_BE], st[S_BB], st[S_BP]
     pre = pe + pb + pp
-    ros = re + rb
-    brk = be + bb
+    ros = re + rb + rp
+    brk = be + bb + bp
     total = pre + ros + brk
     if total <= 0.0:
         return 0.0
 
     if uniform:
         pe_n, pb_n, pp_n = pre * equity, pre * (1.0 - equity), 0.0
-        re_n, rb_n = ros * equity, ros * (1.0 - equity)
+        re_n, rb_n, rp_n = ros * equity, ros * (1.0 - equity), 0.0
         be_n = brk * equity
+        bp_n = 0.0
     else:
         equity_target = equity * total
-        pp_n = min(private_credit * total, pre)
-        bonds_target = total - equity_target - pp_n
+        pc_target = private_credit * total
+        bonds_target = max(0.0, total - equity_target - pc_target)
+        pp_n = min(pc_target, pre)
+        rp_n = min(pc_target - pp_n, ros)
+        bp_n = pc_target - pp_n - rp_n
         pb_n = min(bonds_target, pre - pp_n)
         pe_n = pre - pp_n - pb_n
-        re_n = min(ros, max(equity_target - pe_n, 0.0))
-        rb_n = ros - re_n
+        re_n = min(ros - rp_n, max(equity_target - pe_n, 0.0))
+        rb_n = ros - rp_n - re_n
         be_n = equity_target - pe_n - re_n
-    be_n = min(max(be_n, 0.0), brk)  # guard against floating-point drift
-    bb_n = brk - be_n
+    be_n = min(max(be_n, 0.0), brk - bp_n)  # guard against floating-point drift
+    bb_n = brk - be_n - bp_n
 
     gain = 0.0
     if be_n < be:
@@ -346,8 +368,8 @@ def _rebalance(st, equity, private_credit, uniform):
     elif be_n > be:
         st[S_BBASIS] += be_n - be
     st[S_PE], st[S_PB], st[S_PP] = pe_n, pb_n, pp_n
-    st[S_RE], st[S_RB] = re_n, rb_n
-    st[S_BE], st[S_BB] = be_n, bb_n
+    st[S_RE], st[S_RB], st[S_RP] = re_n, rb_n, rp_n
+    st[S_BE], st[S_BB], st[S_BP] = be_n, bb_n, bp_n
     return gain
 
 
@@ -403,7 +425,7 @@ def _year_begin(st, ys, tv, t, act, r_e, r_b, r_c):
 
     # Opening balances drive this year's dividends and interest.
     dividends = markets.DIVIDEND_YIELD * st[S_BE]
-    interest = markets.BOND_INTEREST_YIELD * (st[S_BB] + st[S_GB])
+    interest = markets.BOND_INTEREST_YIELD * (st[S_BB] + st[S_GB]) + markets.PRIVATE_CREDIT_INCOME_YIELD * st[S_BP]
 
     # 1. Returns.
     st[S_PE] *= 1.0 + r_e
@@ -411,9 +433,11 @@ def _year_begin(st, ys, tv, t, act, r_e, r_b, r_c):
     st[S_PP] *= 1.0 + r_c
     st[S_RE] *= 1.0 + r_e
     st[S_RB] *= 1.0 + r_b
+    st[S_RP] *= 1.0 + r_c
     st[S_BE] *= 1.0 + r_e
     st[S_BBASIS] += dividends  # reinvested dividends are bought at cost
     st[S_BB] *= 1.0 + r_b
+    st[S_BP] *= 1.0 + r_c
     st[S_GB] *= 1.0 + r_b
 
     # 2. Harvest losses (0 = none, 1 = fund level, 2 = stock by stock).
@@ -537,8 +561,8 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
         else:
             # Pro rata across pre-tax, brokerage and Roth.
             pre = st[S_PE] + st[S_PB] + st[S_PP]
-            brk = st[S_BE] + st[S_BB]
-            ros = st[S_RE] + st[S_RB]
+            brk = st[S_BE] + st[S_BB] + st[S_BP]
+            ros = st[S_RE] + st[S_RB] + st[S_RP]
             total = pre + brk + ros
             if total > 0.0:
                 f = min(1.0, remaining / total)
@@ -559,15 +583,10 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
         room = max(0.0, conv_top + std - ordinary)
         pre = st[S_PE] + st[S_PB] + st[S_PP]
         # The tax is paid from the taxable account, never out of the converted dollars.
-        affordable = (st[S_BE] + st[S_BB]) / marginal_rate(conv_top - 1.0)
+        affordable = (st[S_BE] + st[S_BB] + st[S_BP]) / marginal_rate(conv_top - 1.0)
         conv = min(room, pre, affordable)
         if conv > 0.0:
-            f = conv / pre
-            st[S_RE] += f * st[S_PE]
-            st[S_RB] += f * (st[S_PB] + st[S_PP])
-            st[S_PE] *= 1.0 - f
-            st[S_PB] *= 1.0 - f
-            st[S_PP] *= 1.0 - f
+            _convert_to_roth(st, conv / pre)
 
     # 6. Fund or release the goal bucket (bonds held in the taxable account).
     bucket_flow = 0.0
@@ -639,11 +658,13 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
             st[S_PE] += k
     saved = BROKERAGE_SAVINGS_SHARE * w
     if saved > 0.0:
-        brk = st[S_BE] + st[S_BB]
+        brk = st[S_BE] + st[S_BB] + st[S_BP]
         to_equity = min(saved, saved * st[S_BE] / brk) if brk > 0.0 else saved
+        to_pc = saved * st[S_BP] / brk if brk > 0.0 else 0.0
         st[S_BE] += to_equity
         st[S_BBASIS] += to_equity
-        st[S_BB] += saved - to_equity
+        st[S_BP] += to_pc
+        st[S_BB] += saved - to_equity - to_pc
 
     # After-tax wealth at the end of the year.
     wealth = 0.0
@@ -655,10 +676,12 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
         wealth = (
             st[S_BE]
             + st[S_BB]
+            + st[S_BP]
             + st[S_GB]
             - _LTCG_RATE * unrealized
             + st[S_RE]
             + st[S_RB]
+            + st[S_RP]
             + pretax
             - owed
             + _LTCG_RATE * st[S_CF]
@@ -668,7 +691,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
 
     if do_log:
         equity_total = st[S_PE] + st[S_RE] + st[S_BE]
-        long_term = pretax + st[S_RE] + st[S_RB] + st[S_BE] + st[S_BB]
+        long_term = pretax + st[S_RE] + st[S_RB] + st[S_RP] + st[S_BE] + st[S_BB] + st[S_BP]
         log[t, L_AGE] = age
         log[t, L_WAGES] = w
         log[t, L_K401] = k
@@ -701,12 +724,13 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
         log[t, L_PORTTAX] = portfolio_tax
         log[t, L_FEE] = fee
         log[t, L_PRETAX] = pretax
-        log[t, L_ROTH] = st[S_RE] + st[S_RB]
-        log[t, L_BROKERAGE] = st[S_BE] + st[S_BB]
+        log[t, L_ROTH] = st[S_RE] + st[S_RB] + st[S_RP]
+        log[t, L_BROKERAGE] = st[S_BE] + st[S_BB] + st[S_BP]
         log[t, L_WEALTH] = wealth
         log[t, L_UNREALIZED] = st[S_BE] - st[S_BBASIS]
         log[t, L_AGED] = aged
         log[t, L_RMD] = rmd
+        log[t, L_PC] = st[S_PP] + st[S_RP] + st[S_BP]
     return wealth, total_tax
 
 

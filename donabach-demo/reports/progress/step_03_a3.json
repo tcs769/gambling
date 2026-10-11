@@ -1,0 +1,286 @@
+{
+  "app_seed_run": {
+    "seed": 2026,
+    "years": 42,
+    "strategy": {
+      "stock_share": "50",
+      "conversion": "none",
+      "private_credit": "15",
+      "direct_indexing": "on",
+      "goal_bonds": "off"
+    },
+    "strategy_label": "50% stocks, no conversions, 15% private credit, direct indexing",
+    "n_search": 400,
+    "n_eval": 2000,
+    "elapsed_seconds": 1.1636507890002576,
+    "baselines": {
+      "good_ria": {
+        "in_sample": {
+          "median": 0.0005208903310593982,
+          "risk_adjusted": 0.034491760743399436,
+          "median_dollars": 64783.36128561245,
+          "risk_adjusted_dollars": 1535366.5698518776,
+          "plan_median": 2994481.94652883,
+          "baseline_median": 2929698.5852432176,
+          "plan_ce": 2022064.486673883,
+          "baseline_ce": 486697.9168220053,
+          "years": 42.0
+        },
+        "held_out": {
+          "median": -7.378939763991177e-06,
+          "risk_adjusted": 0.024978983126481946,
+          "median_dollars": -901.4143414800055,
+          "risk_adjusted_dollars": 908921.1821357883,
+          "plan_median": 2908119.8869166486,
+          "baseline_median": 2909021.3012581286,
+          "plan_ce": 1408721.995227166,
+          "baseline_ce": 499800.8130913777,
+          "years": 42.0
+        }
+      }
+    }
+  },
+  "runs": [
+    {
+      "seed": 2026,
+      "years": 42,
+      "strategy": {
+        "stock_share": "50",
+        "conversion": "none",
+        "private_credit": "15",
+        "direct_indexing": "on",
+        "goal_bonds": "off"
+      },
+      "strategy_label": "50% stocks, no conversions, 15% private credit, direct indexing",
+      "n_search": 400,
+      "n_eval": 2000,
+      "elapsed_seconds": 1.1636507890002576,
+      "baselines": {
+        "good_ria": {
+          "in_sample": {
+            "median": 0.0005208903310593982,
+            "risk_adjusted": 0.034491760743399436,
+            "median_dollars": 64783.36128561245,
+            "risk_adjusted_dollars": 1535366.5698518776,
+            "plan_median": 2994481.94652883,
+            "baseline_median": 2929698.5852432176,
+            "plan_ce": 2022064.486673883,
+            "baseline_ce": 486697.9168220053,
+            "years": 42.0
+          },
+          "held_out": {
+            "median": -7.378939763991177e-06,
+            "risk_adjusted": 0.024978983126481946,
+            "median_dollars": -901.4143414800055,
+            "risk_adjusted_dollars": 908921.1821357883,
+            "plan_median": 2908119.8869166486,
+            "baseline_median": 2909021.3012581286,
+            "plan_ce": 1408721.995227166,
+            "baseline_ce": 499800.8130913777,
+            "years": 42.0
+          }
+        }
+      }
+    },
+    {
+      "seed": 2027,
+      "years": 42,
+      "strategy": {
+        "stock_share": "60",
+        "conversion": "none",
+        "private_credit": "15",
+        "direct_indexing": "on",
+        "goal_bonds": "off"
+      },
+      "strategy_label": "60% stocks, no conversions, 15% private credit, direct indexing",
+      "n_search": 400,
+      "n_eval": 2000,
+      "elapsed_seconds": 1.0064831459999368,
+      "baselines": {
+        "good_ria": {
+          "in_sample": {
+            "median": 0.0032229980254776525,
+            "risk_adjusted": 0.031020925355624618,
+            "median_dollars": 426719.885826678,
+            "risk_adjusted_dollars": 1542741.478033496,
+            "plan_median": 3375585.2508072453,
+            "baseline_median": 2948865.3649805672,
+            "plan_ce": 2134344.4768225523,
+            "baseline_ce": 591602.9987890562,
+            "years": 42.0
+          },
+          "held_out": {
+            "median": 0.003656551311359557,
+            "risk_adjusted": 0.021660357110589334,
+            "median_dollars": 461016.7636759272,
+            "risk_adjusted_dollars": 779238.1654440707,
+            "plan_median": 3243777.113171323,
+            "baseline_median": 2782760.349495396,
+            "plan_ce": 1313087.9059118407,
+            "baseline_ce": 533849.74046777,
+            "years": 42.0
+          }
+        }
+      }
+    },
+    {
+      "seed": 2028,
+      "years": 42,
+      "strategy": {
+        "stock_share": "50",
+        "conversion": "none",
+        "private_credit": "15",
+        "direct_indexing": "on",
+        "goal_bonds": "off"
+      },
+      "strategy_label": "50% stocks, no conversions, 15% private credit, direct indexing",
+      "n_search": 400,
+      "n_eval": 2000,
+      "elapsed_seconds": 0.9210586250001143,
+      "baselines": {
+        "good_ria": {
+          "in_sample": {
+            "median": 0.0005617429258517603,
+            "risk_adjusted": 0.03535686929559412,
+            "median_dollars": 65444.77780776657,
+            "risk_adjusted_dollars": 1386925.3258379877,
+            "plan_median": 2807512.7747245375,
+            "baseline_median": 2742067.996916771,
+            "plan_ce": 1806809.4374290435,
+            "baseline_ce": 419884.1115910557,
+            "years": 42.0
+          },
+          "held_out": {
+            "median": 0.0003370512632583367,
+            "risk_adjusted": 0.028075659021154165,
+            "median_dollars": 41096.45661815675,
+            "risk_adjusted_dollars": 1213467.5865420343,
+            "plan_median": 2924166.7503676605,
+            "baseline_median": 2883070.293749504,
+            "plan_ce": 1765222.5356849148,
+            "baseline_ce": 551754.9491428805,
+            "years": 42.0
+          }
+        }
+      }
+    },
+    {
+      "seed": 2029,
+      "years": 42,
+      "strategy": {
+        "stock_share": "60",
+        "conversion": "none",
+        "private_credit": "15",
+        "direct_indexing": "on",
+        "goal_bonds": "off"
+      },
+      "strategy_label": "60% stocks, no conversions, 15% private credit, direct indexing",
+      "n_search": 400,
+      "n_eval": 2000,
+      "elapsed_seconds": 1.0167810090001694,
+      "baselines": {
+        "good_ria": {
+          "in_sample": {
+            "median": 0.0032128199446519456,
+            "risk_adjusted": 0.010025146755075376,
+            "median_dollars": 397717.90325194504,
+            "risk_adjusted_dollars": 309473.77491767926,
+            "plan_median": 3155457.533222937,
+            "baseline_median": 2757739.629970992,
+            "plan_ce": 904182.296845643,
+            "baseline_ce": 594708.5219279637,
+            "years": 42.0
+          },
+          "held_out": {
+            "median": 0.0038569363169649318,
+            "risk_adjusted": 0.023472444432584894,
+            "median_dollars": 488505.71527736215,
+            "risk_adjusted_dollars": 777014.6386500525,
+            "plan_median": 3272272.4518701434,
+            "baseline_median": 2783766.7365927813,
+            "plan_ce": 1248015.1407393415,
+            "baseline_ce": 471000.5020892891,
+            "years": 42.0
+          }
+        }
+      }
+    },
+    {
+      "seed": 2030,
+      "years": 42,
+      "strategy": {
+        "stock_share": "50",
+        "conversion": "none",
+        "private_credit": "15",
+        "direct_indexing": "on",
+        "goal_bonds": "on"
+      },
+      "strategy_label": "50% stocks, no conversions, 15% private credit, direct indexing, goal bonds",
+      "n_search": 400,
+      "n_eval": 2000,
+      "elapsed_seconds": 0.9496972530000676,
+      "baselines": {
+        "good_ria": {
+          "in_sample": {
+            "median": 0.00042867274960323165,
+            "risk_adjusted": 0.035906298154124494,
+            "median_dollars": 52520.27578533394,
+            "risk_adjusted_dollars": 1427419.5250723623,
+            "plan_median": 2944067.5663511143,
+            "baseline_median": 2891547.2905657804,
+            "plan_ce": 1847239.7756555157,
+            "baseline_ce": 419820.25058315333,
+            "years": 42.0
+          },
+          "held_out": {
+            "median": 0.00013551448824800083,
+            "risk_adjusted": 0.03307030435007219,
+            "median_dollars": 16334.104166113306,
+            "risk_adjusted_dollars": 1483028.9715521554,
+            "plan_median": 2878226.53843913,
+            "baseline_median": 2861892.4342730166,
+            "plan_ce": 1990650.6766914506,
+            "baseline_ce": 507621.7051392953,
+            "years": 42.0
+          }
+        }
+      }
+    }
+  ],
+  "mean": {
+    "good_ria": {
+      "in_sample": {
+        "median": 0.0015894247953287977,
+        "risk_adjusted": 0.02936020006076361
+      },
+      "held_out": {
+        "median": 0.001595734888013367,
+        "risk_adjusted": 0.026251549608176505
+      }
+    }
+  },
+  "choices_by_seed": [
+    [
+      2026,
+      "50% stocks, no conversions, 15% private credit, direct indexing"
+    ],
+    [
+      2027,
+      "60% stocks, no conversions, 15% private credit, direct indexing"
+    ],
+    [
+      2028,
+      "50% stocks, no conversions, 15% private credit, direct indexing"
+    ],
+    [
+      2029,
+      "60% stocks, no conversions, 15% private credit, direct indexing"
+    ],
+    [
+      2030,
+      "50% stocks, no conversions, 15% private credit, direct indexing, goal bonds"
+    ]
+  ],
+  "label": "A3: private credit sleeve 0/5/10/15%",
+  "git": "d2bdeaa"
+}

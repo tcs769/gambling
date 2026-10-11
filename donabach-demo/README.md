@@ -349,7 +349,7 @@ measurement and the command that regenerates it).
 * **Why the two measures differ.** Switching the decisions on one at a time from the good RIA (equity-first plan, sample
   household): the lower fee and asset location add +0.64% a year of median wealth (+0.85% risk-adjusted); the order tax lots are
   sold in adds +0.01 points; the spending reserve, private credit and everything else in stocks adds 0.64 points of median
-  advantage and *costs* 0.92 points of risk-adjusted advantage (to +1.29% and -0.07%), because certainty-equivalent wealth is
+  advantage and *costs* 0.91 points of risk-adjusted advantage (to +1.29% and -0.07%), because certainty-equivalent wealth is
   dominated by the few futures in which money runs out and the plan holds more equity than the advisor; Roth timing and
   withdrawal order then add +0.33% and +0.20% (to +1.62% and +0.13%). So the median advantage is the fee, the tax tools and extra
   equity, and the risk-adjusted one has been spent on that equity. The balanced style did the opposite (it gave up 0.6% a year of

@@ -13,14 +13,14 @@ every design that was considered is in the table.
 
 | Design | Departs | Mean gain per decision | Mean gain when it departs | Harmful | Helpful | Seconds per 100 paths |
 |---|---|---|---|---|---|---|
-| K=32, change if the best candidate is 1 standard error better (the search as first built) | 26.2% | -29.3 bp | -111.9 bp | 55% | 40% | 3.4 |
-| K=32, take the best-scoring candidate whatever the margin | 85.4% | -90.0 bp | -105.5 bp | 53% | 44% | 4.1 |
-| K=32, change only if 2 standard errors better | 4.0% | -1.6 bp | -40.2 bp | 34% | 51% | 3.4 |
-| K=32, importance-sampled toward bad markets, 1 standard error | 16.7% | -6.2 bp | -37.0 bp | 38% | 56% | 5.0 |
-| K=32 tilted, take the best, keep a change only if it wins 1.645 SE on 64 fresh futures | 4.0% | +2.6 bp | +66.0 bp | 9% | 76% | 4.9 |
-| K=32 tilted, 1 SE screen, keep a change only if it wins 1.645 SE on 64 fresh futures (the planner's default) | 2.9% | +2.3 bp | +81.8 bp | 5% | 76% | 3.3 |
-| K=128 tilted, 1 standard error, no confirmation | 22.0% | +1.4 bp | +6.3 bp | 25% | 71% | 11.8 |
-| K=256 tilted, 1 standard error, no confirmation | 40.1% | +7.7 bp | +19.1 bp | 14% | 83% | 22.1 |
+| K=32, change if the best candidate is 1 standard error better (the search as first built) | 26.2% | -29.3 bp | -111.9 bp | 55% | 40% | 3.5 |
+| K=32, take the best-scoring candidate whatever the margin | 85.4% | -90.0 bp | -105.5 bp | 53% | 44% | 4.5 |
+| K=32, change only if 2 standard errors better | 4.0% | -1.6 bp | -40.2 bp | 34% | 51% | 3.0 |
+| K=32, importance-sampled toward bad markets, 1 standard error | 16.7% | -6.2 bp | -37.0 bp | 38% | 56% | 3.0 |
+| K=32 tilted, take the best, keep a change only if it wins 1.645 SE on 64 fresh futures | 4.0% | +2.6 bp | +66.0 bp | 9% | 76% | 5.8 |
+| K=32 tilted, 1 SE screen, keep a change only if it wins 1.645 SE on 64 fresh futures (the planner's default) | 2.9% | +2.3 bp | +81.8 bp | 5% | 76% | 5.4 |
+| K=128 tilted, 1 standard error, no confirmation | 22.0% | +1.4 bp | +6.3 bp | 25% | 71% | 16.7 |
+| K=256 tilted, 1 standard error, no confirmation | 40.1% | +7.7 bp | +19.1 bp | 14% | 83% | 26.9 |
 
 ## Where the gains and losses come from
 
@@ -43,7 +43,24 @@ Mean gain (bp) of the decisions that changed each dimension, with the number of 
 * Importance-sampling the rollouts toward bad markets (the weights keep every estimate unbiased) and re-testing each proposed change on fresh futures remove most of that harm. The default design ends at +2.3 bp per decision, with 5% of its changes harmful, and it changes 2.9% of decisions.
 * What the default still does is mostly Roth conversions (73 decisions, +107 bp each): their value is in the bulk of outcomes and is easy to measure. Stock-share and private-credit changes are tail effects; they are rare under the default.
 * Taking the best candidate whatever the margin is far worse (-90.0 bp); demanding two standard errors on the same rollouts (-1.6 bp) removes most changes but still lets bad ones through.
-* More rollouts per candidate find more of the real gains: +7.7 bp per decision at K=256 against +2.3 bp for the default at about 7 times the cost; K=128 without the confirmation step (+1.4 bp) is no better than the default. At K=256 the stock-share changes the planner makes are on average mildly positive (+13 bp) and private-credit changes negative (-31 bp).
+* More rollouts per candidate find more of the real gains: +7.7 bp per decision at K=256 against +2.3 bp for the default at about 5 times the cost; K=128 without the confirmation step (+1.4 bp) is no better than the default. At K=256 the stock-share changes the planner makes are on average mildly positive (+13 bp) and private-credit changes negative (-31 bp).
 * The reference is itself a Monte Carlo estimate (a tilted sample of 1,024 futures): far more accurate than the search's 32 rollouts, not exact. A decision worth less than about 1 bp cannot be told from zero.
 * This table is about single decisions measured against the fixed strategy's continuation. What they add up to on whole paths, against the same futures the other strategies are measured on, is in `reports/adaptive_evaluation.md`.
+
+## The same designs applied to whole paths
+
+Each design applied for real (its choices followed, year after year) to 2,000 held-out futures, against the best fixed strategy it continues, on the same futures.
+Annualized growth-rate differences with the 90% range over resamples of the futures. A design that lowers the objective per decision can still raise the median:
+taking more risk lifts the middle of the distribution and thickens the bad tail.
+
+| Design | Median advantage over best fixed | Risk-adjusted advantage over best fixed | Decision-years it changes | Seconds per 100 paths |
+|---|---|---|---|---|
+| K=32, change if the best candidate is 1 standard error better (the search as first built) | +0.15% (+0.11% to +0.19%) | -0.91% (-1.58% to -0.23%) | 27.1% | 4.5 |
+| K=32, take the best-scoring candidate whatever the margin | +0.57% (+0.52% to +0.62%) | -1.34% (-2.08% to -0.58%) | 82.3% | 5.4 |
+| K=32, change only if 2 standard errors better | +0.03% (+0.01% to +0.06%) | -0.35% (-0.97% to +0.06%) | 4.5% | 4.9 |
+| K=32, importance-sampled toward bad markets, 1 standard error | +0.07% (+0.05% to +0.11%) | -0.06% (-0.19% to +0.05%) | 17.0% | 3.9 |
+| K=32 tilted, take the best, keep a change only if it wins 1.645 SE on 64 fresh futures | +0.01% (+0.01% to +0.03%) | +0.01% (-0.05% to +0.07%) | 4.7% | 6.4 |
+| K=32 tilted, 1 SE screen, keep a change only if it wins 1.645 SE on 64 fresh futures (the planner's default) | +0.01% (+0.00% to +0.03%) | +0.06% (+0.01% to +0.17%) | 3.6% | 4.4 |
+| K=128 tilted, 1 standard error, no confirmation | +0.11% (+0.08% to +0.14%) | +0.07% (+0.01% to +0.17%) | 22.0% | 16.6 |
+| K=256 tilted, 1 standard error, no confirmation | +0.20% (+0.17% to +0.24%) | +0.05% (-0.05% to +0.19%) | 38.6% | 28.2 |
 

@@ -69,11 +69,13 @@ _DIM_INDEX = {name: i for i, name in enumerate(ad.DIM_NAMES)}
 
 
 def _money(x: float) -> str:
-    if abs(x) >= 1e6:
-        return f"${x / 1e6:.2f}M".replace(".00M", "M")
-    if abs(x) >= 1e4:
-        return f"${x / 1e3:,.0f}k"
-    return f"${x:,.0f}"
+    sign = "-" if x < 0 else ""
+    x = abs(x)
+    if x >= 1e6:
+        return f"{sign}${x / 1e6:.2f}M".replace(".00M", "M")
+    if x >= 1e4:
+        return f"{sign}${x / 1e3:,.0f}k"
+    return f"{sign}${x:,.0f}"
 
 
 def _bracket(top: float) -> int | None:

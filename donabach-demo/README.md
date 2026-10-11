@@ -261,8 +261,9 @@ credits. Beyond that, choices made where the spec was silent, so they are not a 
   "Refining plan…" state until it lands. The demo household's plan is computed at startup (set `DONABACH_NO_PRECOMPUTE=1` to
   skip it), so on camera the Plan screen has it at once. What-ifs re-plan the same way. Measured on 4 cores: the fixed plan takes
   1.2 s; a full year-by-year plan (K = 32, 200 evaluation paths) takes **8.6 s**, of which the 200 evaluation paths take 7.4 s
-  (0.037 s a path) and the single plan path 1.1 s, against the 10 s target (100 paths: 5.0 s; 400 paths: 15.6 s). The first
-  start on a machine also compiles the year-by-year kernels, in the background, about a minute once and cached afterwards.
+  (0.037 s a path) and the single plan path 1.1 s, against the 10 s target (100 paths: 5.0 s; 400 paths: 15.6 s). A cold start (no numba cache)
+  compiles the fixed kernels before the API answers (about 13 s here, on a loaded machine) and the year-by-year kernels in
+  the background (about 40 s more); both are cached afterwards.
 
 **What the numbers say** is whatever the engine produces; nothing is tuned toward a target (`reports/` has every
 measurement and the command that regenerates it).
@@ -289,8 +290,9 @@ measurement and the command that regenerates it).
   early retirees, whose low-income years are what judgment over time can use (`reports/household_study.md`). The fixed strategy
   already uses the main tools every year, returns do not mean-revert in the model, and the action space is the six decisions in
   the spec: stock share, Roth conversion, private credit, 401(k) type, how a goal is paid and realizing gains. The search matters: a plain
-  rollout search lowers the planner's own objective, which is why importance sampling and re-testing on fresh futures are in
-  (`reports/adaptive_decision_quality.md`).
+  rollout search raises the median (+0.15% a year) while lowering the planner's own objective (-0.91%), which is why importance
+  sampling and re-testing on fresh futures are in (`reports/adaptive_decision_quality.md` has every variant, per decision and
+  on whole paths).
 * **After a 30% market fall** (the what-if preset) the fixed search's recommendation changes (it adds goal bonds ahead of the
   home purchase) and the year-by-year plan changes with it; the planner's own year-by-year choices do not change systematically.
 

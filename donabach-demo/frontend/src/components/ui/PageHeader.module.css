@@ -6,6 +6,28 @@
   margin-bottom: 24px;
 }
 
+.eyebrow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  max-width: 62ch;
+}
+/* A small gold diamond, the mark in the brand, ahead of the line. */
+.eyebrow::before {
+  content: "";
+  flex-shrink: 0;
+  align-self: center;
+  width: 8px;
+  height: 8px;
+  background: var(--gold);
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+
 .titleRow {
   display: flex;
   flex-wrap: wrap;

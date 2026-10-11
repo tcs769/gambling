@@ -1,0 +1,30 @@
+.flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 24px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  color: var(--brown);
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 6px;
+}
+.back:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* The same arrow the buttons use, turned to point back. */
+.backArrow {
+  transform: scaleX(-1);
+}

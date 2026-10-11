@@ -212,6 +212,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/showcase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Showcase
+         * @description The showcase household: its summary card, and its plan measured against the advisor with every strategy on.
+         */
+        get: operations["get_showcase_showcase_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/showcase/analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Showcase Analysis
+         * @description The strategy waterfall, headline and wealth lines with only the strategies in `enabled` switched on.
+         */
+        post: operations["showcase_analysis_showcase_analysis_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -580,6 +620,49 @@ export interface components {
             /** Files */
             files: string[];
         };
+        /** CardAccount */
+        CardAccount: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "taxable" | "pretax" | "roth" | "cash";
+            /** Label */
+            label: string;
+            /** Value */
+            value: number;
+            /** Share */
+            share: number;
+            /** Basis */
+            basis?: number | null;
+            /** Unrealized Gain */
+            unrealized_gain?: number | null;
+        };
+        /** CardGoal */
+        CardGoal: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "home" | "college" | "retirement" | "social_security";
+            /** Label */
+            label: string;
+            /** Detail */
+            detail: string;
+            /** Years From Now */
+            years_from_now?: number | null;
+            /** Amount */
+            amount?: number | null;
+        };
+        /** CardPerson */
+        CardPerson: {
+            /** Label */
+            label: string;
+            /** Age */
+            age: number;
+            /** Wages */
+            wages: number;
+        };
         /** Change */
         Change: {
             /** Field */
@@ -788,6 +871,26 @@ export interface components {
              * @description Inputs that are estimates, not read from documents
              */
             estimated?: string[];
+        };
+        /**
+         * HouseholdCard
+         * @description Everything the summary card shows, computed from the household.
+         */
+        HouseholdCard: {
+            /** People */
+            people: components["schemas"]["CardPerson"][];
+            /** Children Ages */
+            children_ages: number[];
+            /** Annual Income */
+            annual_income: number;
+            /** Total Savings */
+            total_savings: number;
+            /** Accounts */
+            accounts: components["schemas"]["CardAccount"][];
+            /** Goals */
+            goals: components["schemas"]["CardGoal"][];
+            /** Notes */
+            notes: string[];
         };
         /**
          * HouseholdEdits
@@ -1268,6 +1371,101 @@ export interface components {
             /** Candidates */
             candidates?: components["schemas"]["RankedRow"][];
         };
+        /** ShowcaseAdvantage */
+        ShowcaseAdvantage: {
+            /** Median Rate */
+            median_rate: number;
+            /** Median Dollars */
+            median_dollars: number;
+            /** Median Low */
+            median_low: number;
+            /** Median High */
+            median_high: number;
+            /** Risk Adjusted Rate */
+            risk_adjusted_rate: number;
+            /** Risk Adjusted Dollars */
+            risk_adjusted_dollars: number;
+            /** Plan Median At Horizon */
+            plan_median_at_horizon: number;
+            /** Advisor Median At Horizon */
+            advisor_median_at_horizon: number;
+            /** Plan P10 At Horizon */
+            plan_p10_at_horizon: number;
+            /** Advisor P10 At Horizon */
+            advisor_p10_at_horizon: number;
+            /** Plan Shortfall */
+            plan_shortfall: number;
+            /** Advisor Shortfall */
+            advisor_shortfall: number;
+        };
+        /** ShowcaseAnalysis */
+        ShowcaseAnalysis: {
+            /** Enabled */
+            enabled: string[];
+            /** Bars */
+            bars: components["schemas"]["ShowcaseBar"][];
+            advantage: components["schemas"]["ShowcaseAdvantage"];
+            wealth: components["schemas"]["WealthLines"];
+            /** Risk Adjusted Label */
+            risk_adjusted_label: string;
+            /** Risk Adjusted Explanation */
+            risk_adjusted_explanation: string;
+            /** N Paths */
+            n_paths: number;
+            /** Years */
+            years: number;
+            /** Horizon Age */
+            horizon_age: number;
+            /** Risk Aversion */
+            risk_aversion: number;
+            /** Advisor Label */
+            advisor_label: string;
+            /** Plan Label */
+            plan_label: string;
+            /** Plan Sentence */
+            plan_sentence: string;
+        };
+        /**
+         * ShowcaseBar
+         * @description One strategy of the waterfall.
+         */
+        ShowcaseBar: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Detail */
+            detail: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Delta Rate */
+            delta_rate: number;
+            /** Delta Dollars */
+            delta_dollars: number;
+            /** Cumulative Rate */
+            cumulative_rate: number;
+            /** Cumulative Dollars */
+            cumulative_dollars: number;
+        };
+        /** ShowcaseRequest */
+        ShowcaseRequest: {
+            /** Enabled */
+            enabled?: string[] | null;
+        };
+        /** ShowcaseResponse */
+        ShowcaseResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Type Label */
+            type_label: string;
+            /** Tagline */
+            tagline: string;
+            household: components["schemas"]["Household"];
+            card: components["schemas"]["HouseholdCard"];
+            analysis: components["schemas"]["ShowcaseAnalysis"];
+        };
         /** SocialSecurity */
         SocialSecurity: {
             /**
@@ -1366,6 +1564,8 @@ export interface components {
             capital_gain_input: number;
             /** Capital Gain Line */
             capital_gain_line: number;
+            /** Short Term Gain Ordinary */
+            short_term_gain_ordinary: number;
             /** Retirement Distributions */
             retirement_distributions: number;
             /** Roth Conversions */
@@ -1435,6 +1635,19 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** WealthLines */
+        WealthLines: {
+            /** Ages */
+            ages: number[];
+            /** Plan Median */
+            plan_median: number[];
+            /** Plan P10 */
+            plan_p10: number[];
+            /** Advisor Median */
+            advisor_median: number[];
+            /** Advisor P10 */
+            advisor_p10: number[];
         };
         /** WhatIfRequest */
         WhatIfRequest: {
@@ -1931,6 +2144,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WhatIfResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_showcase_showcase_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShowcaseResponse"];
+                };
+            };
+        };
+    };
+    showcase_analysis_showcase_analysis_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShowcaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShowcaseAnalysis"];
                 };
             };
             /** @description Validation Error */

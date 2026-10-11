@@ -1,0 +1,155 @@
+.wrap {
+  container-type: inline-size;
+  display: grid;
+  gap: 0;
+}
+
+/* ---- The line: today at the left end, the age the plan runs to at the right ---- */
+.map {
+  position: relative;
+  height: 84px;
+}
+
+.end {
+  position: absolute;
+  top: 0;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.end[data-side="start"] {
+  left: 0;
+}
+.end[data-side="end"] {
+  right: 0;
+}
+
+.line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 31px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--muted);
+}
+/* Short ticks close the line at both ends. */
+.line::before,
+.line::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  width: 2px;
+  height: 12px;
+  border-radius: 1px;
+  background: var(--muted);
+}
+.line::before {
+  left: 0;
+}
+.line::after {
+  right: 0;
+}
+
+/* From each mark down to the middle of its text column. The strokes keep their width as the line stretches. */
+.fan {
+  position: absolute;
+  left: 0;
+  top: 36px;
+  width: 100%;
+  height: 48px;
+  overflow: visible;
+}
+.fan polyline {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+}
+
+/* A marker is 12px with a 2px ring in the surface colour, so it stays clean where it crosses the line. */
+.marker {
+  position: absolute;
+  top: 32px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--brown);
+  box-shadow: 0 0 0 2px var(--panel);
+  transform: translate(-50%, -50%);
+}
+
+/* ---- The goals, in the order they happen ---- */
+.goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+}
+
+.goal {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  padding: 0 10px;
+}
+
+.age {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.title {
+  color: var(--brown);
+  font-family: var(--font-serif);
+  font-size: 1.1875rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.detail {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.undated {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+/* ---- A narrow card: no line, the goals stacked down a rail ---- */
+@container (max-width: 680px) {
+  .map {
+    display: none;
+  }
+  .goals {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    padding-left: 22px;
+    border-left: 2px solid var(--muted);
+    margin-left: 5px;
+  }
+  .goal {
+    position: relative;
+    padding: 0 0 0 4px;
+  }
+  .goal::before {
+    content: "";
+    position: absolute;
+    left: -30px;
+    top: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--brown);
+    box-shadow: 0 0 0 2px var(--panel);
+  }
+}

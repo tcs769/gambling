@@ -57,6 +57,17 @@ export type YearDecisionView = S["YearDecisionView"];
 export type StrategyOutcome = S["StrategyOutcome"];
 export type StrategyKey = StrategyOutcome["key"];
 
+// The showcase flow (/showcase): a household card, the waterfall from the advisor to Donabach, and wealth over time.
+export type ShowcaseResponse = S["ShowcaseResponse"];
+export type ShowcaseAnalysis = S["ShowcaseAnalysis"];
+export type ShowcaseBar = S["ShowcaseBar"];
+export type ShowcaseAdvantage = S["ShowcaseAdvantage"];
+export type WealthLines = S["WealthLines"];
+export type HouseholdCard = S["HouseholdCard"];
+export type CardPerson = S["CardPerson"];
+export type CardAccount = S["CardAccount"];
+export type CardGoal = S["CardGoal"];
+
 /** The choices that make up a strategy, in display order, with plain-language names. */
 export const CHOICE_LABELS: Record<string, string> = {
   stock_share: "Stock share",

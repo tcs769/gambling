@@ -13,6 +13,8 @@ import type {
   ParseResponse,
   PlanResponse,
   Preset,
+  ShowcaseAnalysis,
+  ShowcaseResponse,
   WhatIfResponse,
   YearDetail,
 } from "./types";
@@ -53,11 +55,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-const post = <T>(path: string, body?: unknown) =>
+const post = <T>(path: string, body?: unknown, signal?: AbortSignal) =>
   request<T>(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
+    signal,
   });
 
 export const NO_EDITS: HouseholdEdits = {
@@ -118,6 +121,16 @@ export const api = {
 
   yearDetail: (household: Household, choices: Record<string, string>, yearIndex: number, shock: MarketShock | null = null) =>
     post<YearDetail>("/plan/year-detail", { household, choices, year_index: yearIndex, shock }),
+
+  /** The showcase household: its card and its analysis with every strategy switched on (/showcase). */
+  showcase: (signal?: AbortSignal) => request<ShowcaseResponse>("/showcase", { signal }),
+
+  /**
+   * The waterfall, headline and wealth lines with only the strategies in `enabled` switched on (null: all of them).
+   * About half a second for a combination the API has not measured yet. Pass a signal to drop an answer nobody wants.
+   */
+  showcaseAnalysis: (enabled: readonly string[] | null, signal?: AbortSignal) =>
+    post<ShowcaseAnalysis>("/showcase/analysis", { enabled }, signal),
 
   whatIf: (
     household: Household,

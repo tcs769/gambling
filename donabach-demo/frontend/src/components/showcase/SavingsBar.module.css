@@ -1,0 +1,125 @@
+.wrap {
+  display: grid;
+  gap: 16px;
+}
+
+.bar {
+  display: grid;
+  gap: 4px;
+}
+
+/* Share labels above the segments they belong to: text colours, never the segment's colour. */
+.labels {
+  position: relative;
+  height: 22px;
+}
+
+.share {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* A thin bar (24px), the segments held apart by a 2px gap of the surface, square at the baseline and rounded at the far end. */
+.segments {
+  display: flex;
+  gap: 2px;
+  height: 24px;
+}
+
+.segment {
+  min-width: 0;
+  background: var(--segment-color);
+}
+.segment:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.wrap [data-account="taxable"] {
+  --segment-color: var(--account-taxable);
+}
+.wrap [data-account="pretax"] {
+  --segment-color: var(--account-pretax);
+}
+.wrap [data-account="roth"] {
+  --segment-color: var(--account-roth);
+}
+.wrap [data-account="cash"] {
+  --segment-color: var(--account-cash);
+}
+
+/* ---- Legend: swatch, name, dollars, share ---- */
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px 24px;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 0;
+  align-items: baseline;
+  line-height: 1.4;
+}
+
+.swatch {
+  width: 14px;
+  height: 14px;
+  align-self: center;
+  border-radius: 3px;
+  background: var(--segment-color);
+}
+
+.name {
+  font-weight: 600;
+  min-width: 0;
+}
+
+.value {
+  grid-column: 2;
+  font-size: 1.375rem;
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--espresso);
+}
+
+.pct {
+  grid-column: 2;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+
+/* The taxable account's cost basis and unrealized gain, called out under the legend. */
+.callout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 28px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--segment-color);
+  border-radius: var(--radius-sm);
+  background: var(--cream);
+  line-height: 1.5;
+}
+
+.calloutTitle {
+  font-weight: 650;
+  color: var(--brown);
+}
+
+.callout strong {
+  font-weight: 650;
+  color: var(--espresso);
+}

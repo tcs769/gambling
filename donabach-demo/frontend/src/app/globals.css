@@ -63,6 +63,25 @@
   --series-typical: #822a57;
   --series-adaptive: #476500;
 
+  /* Savings by account on the showcase household card: a stacked bar, so neighbours sit side by side. It reuses the
+     validated series colours instead of adding a palette of its own, in the one order (plum, amber, blue, then the
+     de-emphasis gray for cash) whose neighbouring pairs clear the gates in both themes: amber next to plum and blue
+     next to gray are fine, while plum next to the gray (and amber next to it, in light) are not. On the later showcase
+     charts amber and blue name Donabach and the advisor, and every chart's legend says which is which. --series-adaptive
+     (whose olive must not stand in for a status) is not used as a fill. `npm run check:colors` checks each
+     neighbouring pair, in both themes. */
+  --account-taxable: var(--series-typical);
+  --account-pretax: var(--series-donabach);
+  --account-roth: var(--series-ria);
+  --account-cash: var(--muted);
+
+  /* Colours the dark theme (below) has to change on its own: text on the gold and brown fills, the primary button
+     when hovered, the switch's thumb, the tooltip's shadow. */
+  --on-gold: #2b2418;
+  --brown-hover: #473617;
+  --switch-thumb: #fbf7ee;
+  --tooltip-shadow: 0 6px 20px rgba(90, 69, 33, 0.18);
+
   --font-serif: Cambria, Georgia, "Times New Roman", serif;
   --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
@@ -70,6 +89,64 @@
   --radius-sm: 9px;
   --shadow: 0 1px 2px rgba(90, 69, 33, 0.06), 0 6px 18px rgba(90, 69, 33, 0.05);
   --content-width: 1280px;
+}
+
+/* ---- Dark theme: the showcase flow only ----------------------------------------------------------------------------
+   The seven-step demo is light only. The layout of /showcase renders an element with `data-showcase`, and while that
+   element is on the page `:root:has(...)` re-declares the tokens for a system that asks for a dark colour scheme
+   (prefers-color-scheme: dark): the header, the page and every shared component follow, and leaving the flow brings the
+   light tokens back with nothing else changed. (Chrome 105, Safari 15.4 and Firefox 121 or later: older browsers keep
+   the light theme.)
+
+   Surfaces are the light theme's warm hue (OKLCH hue 82) stepped down: page L 0.185, panel 0.225, deeper panel 0.275,
+   hairline 0.325. Text is stepped up the same way: primary #f1ece3 is 14.6:1 on the panel, the quieter text #b6ab97
+   7.6:1 (light theme: 12.6:1 and 5.1:1), headings and the primary button's fill take the light tan --brown. --muted
+   (control outlines, icons) stays at 4.1:1 on the panel.
+
+   The series are not the light colours inverted: each is the same hue family (79, 254, 352, 127) restepped for the dark
+   panel, OKLCH lightness 0.51 to 0.67 and chroma 0.11 to 0.14 (the validator's dark band is 0.48 to 0.67), chosen by
+   searching the lightness / chroma grid for the colours that clear the same gates as the light set against each other.
+   Amber is the lightest (it is the entity the pages are about) and olive the darkest, since both turn yellowish to a
+   colour-blind reader and the lightness gap separates them:
+     #b88e2f  amber  L 0.67  5.7:1 on the panel   #478ece  blue   L 0.63  4.9:1
+     #bf5883  rose   L 0.60  4.0:1                #487500  olive  L 0.51  3.1:1
+   Worst pair, normal vision 19.2 (floor 15), worst colour-blind pair 10.1 (target 8): `npm run check:colors` re-runs
+   every gate on these tokens as well. The dashed and dotted line styles that carry identity beside colour are
+   unchanged. */
+@media (prefers-color-scheme: dark) {
+  :root:has([data-showcase]) {
+    color-scheme: dark;
+
+    --cream: #15120d;
+    --panel: #1f1b13;
+    --espresso: #f1ece3;
+    --brown: #e7d2a0;
+    --gold: #ddab46;
+    --muted: #877a65;
+    --line: #3a3327;
+
+    --muted-text: #b6ab97;
+    --panel-deep: #2c271d;
+    --gold-wash: rgba(221, 171, 70, 0.16);
+
+    --good: #60c385;
+    --warn: #e5974c;
+    --bad: #ed7666;
+    --good-wash: rgba(96, 195, 133, 0.14);
+    --warn-wash: rgba(229, 151, 76, 0.14);
+    --bad-wash: rgba(237, 118, 102, 0.14);
+
+    --series-donabach: #b88e2f;
+    --series-ria: #478ece;
+    --series-typical: #bf5883;
+    --series-adaptive: #487500;
+
+    --on-gold: #15120d;
+    --brown-hover: #f4e6c0;
+    --switch-thumb: #f1ece3;
+    --tooltip-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.28);
+  }
 }
 
 *,

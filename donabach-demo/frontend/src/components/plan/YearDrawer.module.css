@@ -266,6 +266,17 @@
   padding-right: 10px;
 }
 
+/* A line already counted in the one above it (the short-term part of the capital gain). */
+.tax tr[data-kind="note"] th,
+.tax tr[data-kind="note"] td {
+  color: var(--muted-text);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+.tax tr[data-kind="note"] th {
+  padding-left: 18px;
+}
+
 .tax tr[data-kind="rate"] th,
 .tax tr[data-kind="rate"] td {
   color: var(--muted-text);

@@ -2,8 +2,9 @@
 
 When the recommender is connected the planner scores the model's top recommendation plus its
 five nearest alternatives with the search engine, instead of searching the whole menu. The
-alternatives are the five strategies closest to the recommendation (fewest and smallest option
-changes); ties are broken by the model's own joint probability, then menu order.
+alternatives are the five strategies of the planning style's menu closest to the recommendation
+(fewest and smallest option changes); ties are broken by the model's own joint probability, then
+menu order.
 """
 
 from __future__ import annotations
@@ -39,10 +40,10 @@ def joint_probability(rec: Recommendation, strategy: Strategy) -> float:
     return total
 
 
-def candidates(rec: Recommendation, k: int = N_ALTERNATIVES) -> tuple[Strategy, list[Strategy]]:
-    """The model's top strategy and its `k` nearest alternatives."""
+def candidates(rec: Recommendation, k: int = N_ALTERNATIVES, style: str = "balanced") -> tuple[Strategy, list[Strategy]]:
+    """The model's top strategy and its `k` nearest alternatives from the planning style's menu."""
     top = strategy_from_recommendation(rec)
-    others = [s for s in menu() if s != top]
+    others = [s for s in menu(style=style) if s != top]
     order = {s: i for i, s in enumerate(others)}
     others.sort(key=lambda s: (distance(top, s), -joint_probability(rec, s), order[s]))
     return top, others[:k]

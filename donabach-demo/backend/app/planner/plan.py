@@ -138,9 +138,11 @@ def fan_series(path_wealth: np.ndarray, start_wealth: float, current_age: int) -
 
 
 def _recommender_panel(
-    household: Household, futures: SimInputs
+    household: Household, futures: SimInputs, style: str
 ) -> tuple[RecommenderPanel, SearchResult | None, Strategy | None]:
-    """Consult the recommender if connected. Returns the panel and, if it produced candidates, their search."""
+    """Consult the recommender if connected. Returns the panel and, if it produced candidates, their search.
+
+    The model's own pick is scored as it is; the five alternatives come from the planning style's menu."""
     model = adapters.load_recommender()
     if isinstance(model, NotConnected):
         status = ModelStatusView(model="recommender", connected=False, reason=model.reason, expected_path=model.expected_path)
@@ -152,7 +154,7 @@ def _recommender_panel(
     except Exception as exc:  # a model that crashes is reported, not papered over
         failure = adapters.not_connected("recommender", f"The recommender failed: {type(exc).__name__}: {exc}")
     else:
-        top, alternatives = guided.candidates(recommendation)
+        top, alternatives = guided.candidates(recommendation, style=style)
         result = search(futures, strategies=[top, *alternatives])
         model_outcome = result.outcome_of(top)
         verified = result.best
@@ -200,7 +202,7 @@ def build_plan(
     evaluation = build_inputs(household, n_paths=n_eval_paths, seed=eval_seed, shock=shock)
     det = build_inputs(household, deterministic=True, shock=shock)
 
-    panel, guided_result, model_pick = _recommender_panel(household, futures)
+    panel, guided_result, model_pick = _recommender_panel(household, futures, style)
     if guided_result is not None:
         result, label = guided_result, GUIDED_LABEL
     else:

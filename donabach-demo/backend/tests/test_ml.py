@@ -256,6 +256,33 @@ def test_candidates_are_the_top_strategy_and_its_five_nearest_alternatives():
     assert all(guided.distance(top, s) == 1 for s in alternatives)  # six neighbors exist; five are taken
 
 
+def test_candidates_come_from_the_planning_styles_menu():
+    top, alternatives = guided.candidates(_rec(), style="equity_first")
+    assert top == Strategy(0.90, "none", 0.10, True, False)  # the model's own pick is scored as it is
+    assert len(alternatives) == 5 and len(set(alternatives)) == 5 and top not in alternatives
+    reserve_menu = set(menu(style="equity_first"))
+    assert all(s in reserve_menu and s.reserve_years > 0 for s in alternatives)
+    assert guided.candidates(_rec())[1] == guided.candidates(_rec(), style="balanced")[1]  # balanced stays the default
+
+
+def test_a_reserve_recommendation_must_be_a_strategy_the_engine_can_run():
+    household = make_demo_household()
+    picks = dict(stubs.StubRecommender().picks, reserve="4")  # the stub's stock share is 90 and a reserve needs 100
+    with pytest.raises(ValidationError, match="spending reserve"):
+        stubs.StubRecommender(picks).recommend(household)
+    runnable = dict(picks, stock_share="100")
+    top = guided.strategy_from_recommendation(stubs.StubRecommender(runnable).recommend(household))
+    assert top.reserve_years == 4 and top.stock_share == 1.0
+    with pytest.raises(ValidationError, match="spending reserve"):
+        stubs.StubRecommender(dict(runnable, goal_bonds="on")).recommend(household)
+
+
+def test_a_recommender_without_the_reserve_choice_is_reported_not_connected(tmp_path):
+    _drop(tmp_path, "recommender.pkl", stubs.SevenChoiceRecommender())
+    with pytest.raises(ModelContractError, match="reserve"):
+        load_recommender(tmp_path).recommend(make_demo_household())
+
+
 def test_ties_between_equally_near_alternatives_follow_the_models_probabilities():
     rec = stubs.StubRecommender(with_distribution=True).recommend(make_demo_household())
     # Make 'goal bonds on' very likely and 'direct indexing off' very unlikely.
@@ -329,6 +356,15 @@ def test_export_labels_are_the_searchs_best_strategy():
     futures = build_inputs(household, n_paths=40, seed=int(rng.integers(1, 2**31 - 1)))
     best = search(futures).best.strategy
     assert {c: frame.loc[0, f"label_{c}"] for c in CHOICES} == best.choices()
+
+
+def test_export_can_label_households_from_the_equity_first_menu():
+    frame = export_mod.export(k=2, paths=40, seed=3, style="equity_first")
+    assert set(frame["label_reserve"]) <= {"2", "4", "6"}
+    assert set(frame["label_stock_share"]) == {"100"} and set(frame["label_goal_bonds"]) == {"off"}
+    for choice in CHOICES:
+        assert set(frame[f"label_{choice}"]) <= set(CHOICE_OPTIONS[choice])
+    assert set(export_mod.export(k=2, paths=40, seed=3)["label_reserve"]) == {"off"}  # balanced is the default here
 
 
 def test_export_is_reproducible():

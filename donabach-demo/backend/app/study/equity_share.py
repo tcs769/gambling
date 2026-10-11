@@ -489,7 +489,7 @@ def render(study: Study, sensitivity: list[tuple[str, list[Result]]] | None = No
         "",
         "* Household: the demo household (two earners aged 38 and 37; a home purchase in 3 years, college in 10, retirement at 62). Horizon: age 80.",
         f"* Plans are chosen on {study.n_design:,} futures and scored on {study.n_eval:,} other futures they never saw; the good advisor is on the same futures as every plan.",
-        f"* The balanced planning style's recommendation (the app's earlier default; risk aversion 3, 400 futures, seed 2026): **{study.chosen.describe()}**. "
+        f"* The balanced planning style's recommendation (the app's earlier default; risk aversion 3, 400 futures, seed 2026): **{study.chosen.describe()}** "
         "The app now plans in the equity-first style by default; section 7 has it.",
         "* *Raw advantage*: the growth-rate difference between median after-tax wealth at 80 and the advisor's, annualized over the 42 years. "
         "*Risk-adjusted advantage*: the same on certainty-equivalent wealth at risk aversion 3 with a $50,000 floor. 'Stocks' is the share of the "

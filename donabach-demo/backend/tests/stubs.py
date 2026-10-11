@@ -78,6 +78,14 @@ class DictRecommender:
         }
 
 
+class SevenChoiceRecommender:
+    """A model written before the spending reserve was a choice: it names the first seven only."""
+
+    def recommend(self, household):
+        full = StubRecommender().recommend(household)
+        return {"choices": [c.model_dump() for c in full.choices if c.choice != "reserve"], "top_factors": []}
+
+
 class RaisingRecommender:
     def recommend(self, household):
         raise RuntimeError("model blew up")

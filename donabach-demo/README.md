@@ -120,6 +120,11 @@ The measurements behind the numbers are scripts, not hand-typed tables (run from
 | Is the plan holding too little equity? (`equity_share.md`) | `python -m app.study.equity_share --out ../reports/equity_share.md` |
 | What would have to change to reach 2 to 3% a year (`path_to_2_3_percent.md`) | `python -m app.study.reach --out ../reports/path_to_2_3_percent.md` |
 | The 300 households when the planner searches at risk aversion 3, 2 and 1, with each plan's tools alone at the advisor's allocation and a heirs'-tax sensitivity (`household_study_risk_aversion_N/`) | `python -m app.study.household_study --per-type 50 --risk-aversion 1 --measure-risk-aversion 3 --skill --heirs-rates 0.24 0.32 --out-dir ../reports/household_study_risk_aversion_1` |
+| The same studies for the equity-first planning style, the app's default (`household_study_equity_first/`, `adaptive_evaluation_equity_first.md`) | `python -m app.study.household_study --per-type 50 --n-eval 1000 --style equity_first --skill --heirs-rates 0.24 0.32 --adaptive-paths 200 --checkpoint /tmp/study_ef.csv --out-dir ../reports/household_study_equity_first`; `python -m app.study.adaptive_evaluation --paths 2000 --style equity_first --out ../reports/adaptive_evaluation_equity_first.md` |
+
+The studies are written so that their committed reports regenerate as committed: `--style` defaults to `balanced` (the
+strategy menu the reports from the first rows down to the risk-aversion ones were produced with), while the app itself
+defaults to `equity_first`. `equity_share.md` and `path_to_2_3_percent.md` search both menus.
 
 ## Regenerating things
 
@@ -282,47 +287,62 @@ credits. Beyond that, choices made where the spec was silent, so they are not a 
 **What the numbers say** is whatever the engine produces; nothing is tuned toward a target (`reports/` has every
 measurement and the command that regenerates it).
 
-* **The advantage.** For the sample household the planner recommends the lowest stock share on the menu (50%, gliding
-  down to 25% by age 70), a Roth conversion filling the 24% bracket every year and a 15% private credit sleeve. On 2,000
-  futures it never saw it is ahead of a good RIA by **+0.27% a year in median wealth and +2.54% a year in
-  certainty-equivalent wealth** (+0.40% and +2.60% over a typical advisor); the year-by-year planner on top makes it +0.29%
-  and +2.60%. Across the 300-household study the typical household of each type is ahead of the good RIA by +0.14% to
-  +0.55% a year (median) and +1.62% to +2.97% a year (risk-adjusted). The median advantage is a few tenths of a percent
-  a year, not 2 to 3%: the lower fee (0.35% against 0.5 to 1.0%) and asset location are worth about 0.6% a year of median
-  wealth, and the lower-risk allocation gives it back (next point) before Roth timing adds a quarter of a percent.
-* **Why not 2 to 3%, and what it would take** (`reports/equity_share.md`, `reports/path_to_2_3_percent.md`). The planner's
-  objective (risk aversion 3, a $50,000 floor) is decided by the futures in which money runs out, so it picks the lowest stock
-  share on the menu: 42.5% of the portfolio falling to 21%, against the good RIA's 80% falling to 50% (with a private credit
-  sleeve the stock share is of the money outside it). That costs median wealth; more equity buys it back at about +0.25 points a
-  year of median advantage for every 10 points of stock share and costs risk-adjusted advantage. Sample household, over the
-  good RIA (median / risk-adjusted): the app (risk aversion 3) +0.27% / +2.54%; risk aversion 2 +0.53% / +1.70%; risk aversion 1
-  +1.54% / +0.22% (85% stocks, the same 0.6% chance of running out of money as the advisor, a 10th percentile of $1.49M against
-  $0.94M); the most median wealth anything on the menu gives, +1.60% (100% stocks, 1.1% chance of running out). Donabach's tools
-  alone at the advisor's own allocation are worth +0.83% (+0.78% for the typical household of the 300): the rest of any larger
-  figure is more equity, which an advisor could hold too. **Nothing on the menu reaches 2%.** From the ceiling, 2% takes one of
-  these (each an assumption or more risk; none is in the app): an equity return of 7.0% real instead of 5.5% (9.1% for 2.5%,
-  11.1% for 3%); a fee near zero; pre-tax money at 80 taxed at a flat 32% (heirs) instead of the specified rate of about 13%
-  (+0.37 points); or an advisor holding 70% falling to 40% rather than 80% to 50%. A 0.25% fee and a 32% heirs' rate together
-  reach it. The household studies at risk aversion 3, 2 and 1 are in `reports/household_study_risk_aversion_N/`.
-* **Why the two measures differ.** Switching the decisions on one at a time from the good RIA: the lower fee and asset
-  location add +0.63% a year of median wealth; moving to 50% stocks and a private credit sleeve *costs* 0.6% a year of median
-  wealth but lifts the risk-adjusted advantage from +0.85% to +2.52% a year, because certainty-equivalent wealth is
-  dominated by the few futures in which money runs out (the plan runs out in 0.1% of futures, the good RIA in 0.6%); Roth
-  timing then adds +0.24% a year of median wealth. So most of the risk-adjusted advantage is risk reduction, not extra return,
-  and it rests on the private credit assumption (3.5% real net of fees, 8% volatility, no defaults), which the research review calls
-  generous in its tails: with no private credit the sample household's figures are -0.09% and +1.51%
-  (`reports/sensitivity.md`, `reports/assumption_review.md`).
+* **The advantage.** The app plans in the equity-first style (the default; `planning_style: "balanced"` is the other). For
+  the sample household it recommends a 6-year spending reserve with everything else in stocks, a Roth conversion filling the
+  24% bracket every year and a 15% private credit sleeve: 82% of the portfolio in stocks today and 85% from retirement. On
+  2,000 futures it never saw it is ahead of a good RIA by **+1.61% a year in median wealth and +0.14% a year in
+  certainty-equivalent wealth** (+1.74% and +0.20% over a typical advisor; the average of five seeds is +1.66% and +0.04%).
+  It runs out of money in 0.8% of futures against the RIA's 0.6%, with a 10th percentile of $1.30M against $0.94M; the
+  year-by-year planner on top makes it +1.62% and +0.14%. Across the 300-household study the typical household is ahead of
+  the good RIA by **+1.62% a year (median) and +0.46% (risk-adjusted)**: +1.37% to +1.87% by type (median) and +0.16% to
+  +0.89% (risk-adjusted); every household is ahead on the median and 81% on the risk-adjusted measure, and the typical
+  household runs out of money in 1.8% of futures against the RIA's 2.2% (`reports/household_study_equity_first/`).
+  **That is short of 2 to 3% a year, and nothing the engine can do under the specified assumptions gets there** (next
+  point). The balanced style (a stock share held to 58 and then gliding down, the default until the spending reserve was
+  added) gave +0.27% and +2.54% for the sample household and +0.35% and +2.19% for the typical household of the 300
+  (`reports/final_report.md`, `reports/household_study.md`): the equity-first style trades most of the risk-adjusted
+  margin for a median one six times larger.
+* **Why not 2 to 3%, and what it would take** (`reports/path_to_2_3_percent.md`, `reports/equity_share.md`). The most median
+  wealth any plan on either menu produces for the sample household is **+1.72% a year** over the good RIA: a 2-year reserve
+  with everything else in stocks, 100% stocks today and 98% from 70 against the advisor's 80% falling to 50%. It runs out of
+  money in 1.1% of futures against 0.6% and its risk-adjusted advantage is -0.61%. About +0.83% of it is Donabach's tools (fee,
+  asset location, conversions, withdrawal order, goal funding; +0.79% for the typical household of the 300); the rest is only a
+  larger stock share than the advisor's, which an advisor could hold too. **No choice on the menus reaches 2%**; borrowing to
+  hold more than 100% stocks is not among the strategies. From the ceiling, 2% takes one of these (each an assumption or more
+  risk; none is in the app): an equity return of 6.3% real instead of 5.5% (7.8% for 2.5%, 9.3% for 3%); a fee of zero
+  (+2.08%; 0.15% gives +1.92%); pre-tax money at 80 taxed at a flat 32% (heirs, +2.09%) instead of the specified rate of about
+  13%; or an advisor holding 70% falling to 40% rather than 80% to 50% (+2.07%). A 0.25% fee and heirs taxed at 24% reach 2%
+  together, and with them an equity return of 7.0% reaches 2.5% and 8.7% reaches 3%. The app's own plan (+1.61%) sits a little
+  below the ceiling because the planner's objective (risk aversion 3, a $50,000 floor) keeps the 15% private credit sleeve and
+  a longer reserve, so it holds 82 to 85% in stocks rather than 100%; at risk aversion 1 it picks +1.68% (-0.04%
+  risk-adjusted, 0.9% running out). In the balanced style the planner chose the lowest stock share on the menu (42.5% of the
+  portfolio falling to 21%) and the same measurements gave +0.25 points a year of median advantage for every 10 points of stock
+  share (`reports/equity_share.md`, sections 1 to 6). The 300-household studies of that style at risk aversion 3, 2 and 1 are in
+  `reports/household_study_risk_aversion_N/`.
+* **Why the two measures differ.** Switching the decisions on one at a time from the good RIA (equity-first plan, sample
+  household): the lower fee and asset location add +0.63% a year of median wealth (+0.85% risk-adjusted); the spending reserve,
+  private credit and everything else in stocks adds 0.64 points of median advantage and *costs* 0.91 points of risk-adjusted
+  advantage (to +1.28% and -0.06%), because certainty-equivalent wealth is dominated by the few futures in which money runs out
+  and the plan holds more equity than the advisor; Roth timing and withdrawal order then add +0.33% and +0.20% (to +1.61%
+  and +0.14%). So the median advantage is the fee, the tax tools and extra equity, and the risk-adjusted one has been spent on
+  that equity. The balanced style did the opposite (it gave up 0.6% a year of median wealth for +2.5% risk-adjusted) and rested
+  on the private credit assumption (3.5% real net of fees, 8% volatility, no defaults), which the research review calls generous
+  in its tails; `reports/sensitivity.md` and `reports/assumption_review.md` were measured on that style (with no private credit
+  its figures are -0.09% and +1.51%) and have not been rerun for the equity-first one.
 * **What judgment over time adds.** Not much on top of a well-chosen fixed plan. For the sample household the year-by-year
-  planner adds +0.01% a year (median) and +0.06% (risk-adjusted), indistinguishable from nothing in the first and small in
-  the second; for the typical household of each type +0.01% to +0.11% (median) and +0.02% to +0.11% (risk-adjusted), most for
-  early retirees, whose low-income years are what judgment over time can use (`reports/household_study.md`). The fixed strategy
-  already uses the main tools every year, returns do not mean-revert in the model, and the action space is the six decisions in
-  the spec: stock share, Roth conversion, private credit, 401(k) type, how a goal is paid and realizing gains. The search matters: a plain
-  rollout search raises the median (+0.15% a year) while lowering the planner's own objective (-0.91%), which is why importance
-  sampling and re-testing on fresh futures are in (`reports/adaptive_decision_quality.md` has every variant, per decision and
-  on whole paths).
-* **After a 30% market fall** (the what-if preset) the fixed search's recommendation changes (it adds goal bonds ahead of the
-  home purchase) and the year-by-year plan changes with it; the planner's own year-by-year choices do not change systematically.
+  planner adds +0.01% a year (median) and +0.01% (risk-adjusted); for the typical household of each type +0.00% to +0.15%
+  (median) and +0.00% to +0.19% (risk-adjusted), most for early retirees, whose low-income years are what judgment over time can
+  use, and +0.04% and +0.04% across the 300 (`reports/household_study_equity_first/`, `reports/adaptive_evaluation_equity_first.md`;
+  the balanced style gave +0.01% and +0.06% for the sample household). The fixed strategy already uses the main tools every
+  year, returns do not mean-revert in the model, and the action space is the six decisions in the spec: stock share, Roth
+  conversion, private credit, 401(k) type, how a goal is paid and realizing gains (a reserve strategy leaves nothing to choose in
+  the stock share, so only the private credit sleeve is searched). The search matters: a plain rollout search raises the median (+0.15% a year) while
+  lowering the planner's own objective (-0.91%), which is why importance sampling and re-testing on fresh futures are in
+  (`reports/adaptive_decision_quality.md`, balanced style, has every variant, per decision and on whole paths).
+* **After a 30% market fall** (the what-if preset) the year-by-year plan changes with the new balance. In the balanced style the
+  fixed search's recommendation changes too (it adds goal bonds ahead of the home purchase); goal bonds are not a choice in the
+  equity-first style, whose reserve already holds the goals of the next years, and its response was not measured separately. The
+  planner's own year-by-year choices do not change systematically.
 
 ## Layout
 

@@ -37,6 +37,14 @@ Python path (for example `backend/app/ml/my_models.py`) and pickle an instance o
   | `goal_bonds` | `off`, `on` |
   | `k401` | `pretax`, `roth`, `roth_low` |
   | `goal_funding` | `sell`, `borrow` |
+  | `reserve` | `off`, `2`, `4`, `6` |
+
+  `reserve` is the spending reserve: years of what the household will need to take out of the portfolio, held in
+  bonds and private credit with everything else in stocks. The options are chosen one by one but must together be a
+  strategy the engine can run: with a reserve (`2`, `4` or `6`) `stock_share` must be `100` and `goal_bonds` `off`
+  (a reserve already pays for goals and holds every other dollar in stocks). A recommendation that breaks this, or
+  that leaves out `reserve` (a model written before it existed), is reported in the UI as "not connected" with the
+  reason.
 
 * **Forecaster output**: `ages` and per-year quantiles `p10 <= p25 <= p50 <= p75 <= p90` of household income
   in real 2026 dollars for the next `years` years (one value per age), plus `top_factors`.
@@ -47,9 +55,11 @@ Python path (for example `backend/app/ml/my_models.py`) and pickle an instance o
 
 With a recommender connected, `/plan` scores the model's top recommendation plus its **five nearest
 alternatives** (fewest and smallest option changes, ties broken by your joint probability) with the search
-engine and shows **"Model recommended"** next to **"Verified by the engine"** with both scores. Without
-one it searches all 4,032 strategies (a screening pass on 100 simulated futures, the best 150 scored on 400)
-and labels the result "Search planner (model not connected)".
+engine and shows **"Model recommended"** next to **"Verified by the engine"** with both scores. The alternatives
+come from the menu of the planning style the request asks for (`planning_style`: `equity_first`, the default, has
+1,008 strategies, every one with a spending reserve; `balanced` has 4,032); the model's own pick is scored as it is,
+whatever its style. Without a recommender it searches the whole menu of the style (a screening pass on 100 simulated
+futures, the best 150 scored on 400) and labels the result "Search planner (model not connected)".
 
 ## Training data: the household recommender
 
@@ -63,6 +73,12 @@ features, `label_*` columns for the engine's best strategy, and `best_score`, `r
 `score_gap_to_second` (how far the best *different* result trailed the winner; near zero means the label is
 soft). Exact ties are labelled with the first strategy in menu order (for example "low-income years only"
 rather than "every year").
+
+`--style` chooses the menu the labels come from: `balanced` (the default here, so earlier exports reproduce; the
+`label_reserve` column is always `off`) or `equity_first`, which is what the app plans in by default (every label has
+a spending reserve of 2, 4 or 6 years and `label_stock_share` is `100`). Train on the style the app will run in.
+The policy and value models' data (`--decisions`, below) searches each household's continuation strategy on the
+balanced menu, since the year-by-year planner has no spending-reserve decision.
 
 ---
 

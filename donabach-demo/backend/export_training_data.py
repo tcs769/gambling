@@ -7,7 +7,9 @@ Strategy recommender (one row per household):
 For each of K synthetic households (ranges configurable, see `SamplingRanges`) this runs the
 search planner on a reduced number of futures and writes one row: the exact feature vector the
 app builds (`app.ml.interfaces.household_features`) plus the best strategy's choices as
-`label_*` columns. The recommender is trained elsewhere; this script trains nothing.
+`label_*` columns. The recommender is trained elsewhere; this script trains nothing. `--style` picks the
+planning style whose menu is searched: "balanced" (the default here, so existing exports reproduce) or
+"equity_first" (what the app plans in by default; every label then has a spending reserve and stock_share "100").
 
 Extra columns for weighting or filtering examples: the engine's score for the best strategy and
 for the RIA baseline, and how far the best strategy with a different result trailed the winner
@@ -24,7 +26,8 @@ decision, the action the rollout search chose, the score of every candidate it f
 outcome at the horizon are written as `households.parquet`, `decisions.parquet` and `candidates.parquet`
 (format: backend/models/README.md; builder: `app.planner.decision_data`). The rollout search is exactly the
 data a learned policy (state -> chosen action) and a learned value model (state, action -> score) train on.
-Nothing is trained here.
+Nothing is trained here. The continuation strategy of each household is searched on the balanced menu: the
+year-by-year planner's action space has no spending-reserve decision.
 """
 
 from __future__ import annotations
@@ -42,7 +45,7 @@ from app.ml.interfaces import FEATURE_NAMES, STATE_FEATURE_NAMES, household_feat
 from app.planner.baseline import RIA_BASELINE
 from app.planner.decision_data import ACTION_COLUMNS, DecisionTables, export_decisions
 from app.planner.search import Outcome, search
-from app.planner.strategies import CHOICES
+from app.planner.strategies import CHOICES, menu
 from app.schemas import Accounts, Goals, Household, Person, SocialSecurity
 from app.sim import adaptive
 from app.sim.simulate import build_inputs, run_batch
@@ -129,15 +132,17 @@ def export(
     out: Path | None = None,
     ranges: SamplingRanges | None = None,
     progress: bool = False,
+    style: str = "balanced",
 ) -> pd.DataFrame:
     ranges = ranges or SamplingRanges()
     rng = np.random.default_rng(seed)
+    strategies = menu(style=style)
     rows = []
     started = time.perf_counter()
     for i in range(k):
         household = sample_household(rng, ranges)
         futures = build_inputs(household, n_paths=paths, seed=int(rng.integers(1, 2**31 - 1)))
-        result = search(futures)
+        result = search(futures, strategies=strategies)
         best = result.best
         ria = Outcome.of(run_batch(futures, [RIA_BASELINE]).wealth[0])
         # Exact ties (e.g. "fill 12% every year" vs "low-income years only" when no bracket room
@@ -194,6 +199,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--k", type=int, default=500, help="number of synthetic households")
     parser.add_argument("--paths", type=int, default=150, help="simulated futures per household")
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--style", choices=("balanced", "equity_first"), default="balanced",
+                        help="the planning style whose strategy menu labels the households (the app plans in equity_first by default)")
     parser.add_argument("--out", type=Path, default=Path("data/training_data.parquet"))
     parser.add_argument("--decisions", action="store_true", help="export the year-by-year planner's decisions instead")
     parser.add_argument("--decision-paths", type=int, default=4, help="futures planned per household with --decisions")
@@ -211,7 +218,7 @@ def main(argv: list[str] | None = None) -> None:
         print(f"  decisions.parquet   {len(tables.decisions)} rows ({len(STATE_FEATURE_NAMES)} state features, {len(ACTION_COLUMNS)} chosen-action columns, outcome)")
         print(f"  candidates.parquet  {len(tables.candidates)} rows (every candidate scored: action columns and certainty-equivalent score)")
         return
-    frame = export(args.k, args.paths, args.seed, args.out, progress=True)
+    frame = export(args.k, args.paths, args.seed, args.out, progress=True, style=args.style)
     print(f"Wrote {len(frame)} rows x {len(frame.columns)} columns to {args.out}")
     print(f"Features ({len(FEATURE_NAMES)}): see app.ml.interfaces.FEATURE_NAMES")
     print(f"Labels: {', '.join('label_' + c for c in CHOICES)}")

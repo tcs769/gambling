@@ -347,6 +347,34 @@ def test_a_connected_recommender_is_scored_next_to_the_engine(household_json, mo
     assert plan["settings"]["strategies_searched"] == 6
 
 
+def test_a_connected_recommenders_alternatives_come_from_the_planning_styles_menu(household_json, models_dir):
+    (models_dir / "recommender.pkl").write_bytes(pickle.dumps(stubs.StubRecommender(with_distribution=True)))
+    default = client.post("/plan", json={"household": household_json}).json()  # the equity-first style
+    near = [c for c in default["recommender"]["candidates"] if not c["is_model_pick"]]
+    assert len(near) == 5 and all(c["choices"]["reserve"] != "off" for c in near)
+    assert default["recommender"]["model_strategy"]["choices"]["reserve"] == "off"  # the model's own pick is scored as given
+    balanced = client.post("/plan", json={"household": household_json, "planning_style": "balanced"}).json()
+    assert all(c["choices"]["reserve"] == "off" for c in balanced["recommender"]["candidates"])
+
+
+def test_a_model_that_recommends_a_spending_reserve_is_scored_with_it(household_json, models_dir):
+    picks = dict(stubs.StubRecommender().picks, stock_share="100", private_credit="15", conversion="fill24_every", reserve="6")
+    (models_dir / "recommender.pkl").write_bytes(pickle.dumps(stubs.StubRecommender(picks)))
+    panel = client.post("/plan", json={"household": household_json}).json()["recommender"]
+    assert panel["status"]["connected"] is True
+    assert panel["model_strategy"]["choices"]["reserve"] == "6" and panel["model_strategy"]["choices"]["stock_share"] == "100"
+    assert "6-year spending reserve" in panel["model_strategy"]["label"]
+
+
+def test_a_recommender_that_proposes_an_impossible_reserve_is_reported_not_connected(household_json, models_dir):
+    picks = dict(stubs.StubRecommender().picks, reserve="6")  # its stock share is 90, and a reserve needs 100
+    (models_dir / "recommender.pkl").write_bytes(pickle.dumps(stubs.StubRecommender(picks)))
+    plan = client.post("/plan", json={"household": household_json}).json()
+    assert plan["recommender"]["status"]["connected"] is False
+    assert "spending reserve" in plan["recommender"]["status"]["reason"]
+    assert plan["planner_label"] == "Search planner (model not connected)" and plan["settings"]["strategies_searched"] == 1008
+
+
 def test_a_recommender_that_fails_is_reported_and_the_full_search_runs(household_json, models_dir):
     (models_dir / "recommender.pkl").write_bytes(pickle.dumps(stubs.BadOptionRecommender()))
     plan = client.post("/plan", json={"household": household_json}).json()

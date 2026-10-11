@@ -8,7 +8,9 @@ Strategy recommender
     `recommend(household) -> Recommendation`
     For each of the eight strategy choices (`CHOICES`): the option it recommends, the
     probability it assigns that option (0 to 1), optionally the full distribution over options,
-    plus `top_factors` for the explanation. Options must come from `CHOICE_OPTIONS`.
+    plus `top_factors` for the explanation. Options must come from `CHOICE_OPTIONS`, and the
+    recommended options together must be a strategy the engine can run (a spending reserve other
+    than "off" needs `stock_share` "100" and `goal_bonds` "off").
 
 Income forecaster
     `forecast(household, years) -> IncomeForecast`
@@ -38,7 +40,7 @@ from typing import Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.planner.strategies import CHOICE_OPTIONS, CHOICES, PRIVATE_CREDIT_SHARES, STOCK_SHARES
+from app.planner.strategies import CHOICE_OPTIONS, CHOICES, PRIVATE_CREDIT_SHARES, STOCK_SHARES, Strategy
 from app.schemas import Household
 from app.tax.picture import children_under_17, current_tax_return
 
@@ -94,6 +96,16 @@ class Recommendation(BaseModel):
         if sorted(c.choice for c in choices) != sorted(CHOICES):
             raise ValueError(f"expected exactly one entry for each of {CHOICES}")
         return choices
+
+    @model_validator(mode="after")
+    def _a_strategy_the_engine_can_run(self) -> Recommendation:
+        # The options are chosen one by one, but not every combination is a strategy: a spending reserve holds
+        # everything outside it in stocks and already pays for goals, so it needs stock_share 100 and goal_bonds off.
+        try:
+            Strategy.from_choices({c.choice: c.option for c in self.choices})
+        except ValueError as exc:
+            raise ValueError(f"the recommended options are not a strategy the engine can run: {exc}") from exc
+        return self
 
     def option(self, choice: str) -> str:
         return next(c.option for c in self.choices if c.choice == choice)

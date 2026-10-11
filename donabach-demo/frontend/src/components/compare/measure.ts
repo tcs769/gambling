@@ -1,5 +1,5 @@
-import { count } from "@/lib/format";
-import type { PlanResponse } from "@/lib/types";
+import { count, dollars } from "@/lib/format";
+import type { PlanResponse, PlanSettings } from "@/lib/types";
 
 /**
  * How many futures the search screens the whole menu on before it scores the best few on all of them.
@@ -27,4 +27,20 @@ export function searchedCaption(plan: PlanResponse): string {
     return `Best ${count(listed)} of ${count(menu)} strategies: every strategy was screened on ${count(SCREEN_FUTURES)} futures and the best ${count(listed)} were scored on all ${searchPaths}.`;
   }
   return `${count(listed)} strategies, all scored on the same ${searchPaths} futures.`;
+}
+
+/**
+ * What a certainty equivalent is, in the words the Comparison screen uses: the guaranteed amount that would feel as good
+ * as the uncertain outcome, with the risk aversion and the floor behind it.
+ */
+export function scoreDefinition(settings: Pick<PlanSettings, "risk_aversion" | "wealth_floor">): string {
+  return `the guaranteed amount that would feel as good as the uncertain outcome; risk aversion ${settings.risk_aversion}, with a ${dollars(settings.wealth_floor)} floor`;
+}
+
+/**
+ * What a score is, in the words the Comparison screen uses wherever one appears (the ranked table): certainty-equivalent
+ * wealth at the horizon, with its definition.
+ */
+export function scoreWords(settings: Pick<PlanSettings, "horizon_age" | "risk_aversion" | "wealth_floor">): string {
+  return `certainty-equivalent wealth at ${settings.horizon_age} (${scoreDefinition(settings)})`;
 }

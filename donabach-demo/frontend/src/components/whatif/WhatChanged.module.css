@@ -1,0 +1,146 @@
+.panel {
+  display: grid;
+  gap: 4px;
+}
+
+.part {
+  padding-top: 16px;
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+}
+.part:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.part h3 {
+  font-size: 1.15rem;
+}
+
+.lead {
+  color: var(--espresso);
+  font-size: 1rem;
+  line-height: 1.55;
+  max-width: 100ch;
+}
+.lead strong {
+  color: var(--brown);
+}
+
+.quiet {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  max-width: 100ch;
+}
+
+/* Where the comparison will appear. It keeps the room the two parts take once they are there (the years that differ with
+   the action in each folded away, and the table of rates, measured on the demo household), so the page does not jump
+   when they arrive. */
+.part[data-waiting="true"] {
+  align-content: start;
+  min-height: 476px;
+}
+@media (max-width: 800px) {
+  .part[data-waiting="true"] {
+    min-height: 520px;
+  }
+}
+.waiting {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  color: var(--espresso);
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.fold {
+  margin-top: 2px;
+}
+
+.years {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0 6px;
+  max-height: 290px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) var(--line);
+  display: grid;
+  gap: 8px;
+}
+.years li {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--cream);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+.yearAge {
+  color: var(--brown);
+  font-weight: 650;
+}
+.yearLabels {
+  display: grid;
+  gap: 2px;
+  color: var(--espresso);
+}
+.yearNote {
+  color: var(--muted-text);
+  font-weight: 600;
+}
+
+.rates {
+  width: 100%;
+  max-width: 760px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.rates th,
+.rates td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-weight: 400;
+  line-height: 1.4;
+  vertical-align: baseline;
+}
+.rates thead th {
+  color: var(--brown);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  border-bottom: 1px solid var(--muted);
+}
+.rates thead th:not(:first-child),
+.rates td {
+  text-align: right;
+  white-space: nowrap;
+}
+.rates tbody th {
+  color: var(--espresso);
+  font-weight: 600;
+}
+.rates td {
+  color: var(--espresso);
+  font-size: 1.0625rem;
+  font-weight: 650;
+}
+.rowNote {
+  display: block;
+  color: var(--muted-text);
+  font-size: 0.875rem;
+  font-weight: 400;
+}

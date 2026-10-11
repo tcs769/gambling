@@ -157,6 +157,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/plan/adaptive/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Adaptive Job */
+        get: operations["adaptive_job_plan_adaptive__job_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Cancel Adaptive Job
+         * @description The caller no longer wants this job (its plan was replaced). It stops once nobody else is waiting for it.
+         */
+        delete: operations["cancel_adaptive_job_plan_adaptive__job_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/plan/year-detail": {
         parameters: {
             query?: never;
@@ -246,6 +267,167 @@ export interface components {
              */
             cash: number;
         };
+        /**
+         * ActionView
+         * @description One year's decisions.
+         */
+        ActionView: {
+            /** Stock Share */
+            stock_share: number;
+            /** Conversion Bracket */
+            conversion_bracket: number | null;
+            /** Private Credit */
+            private_credit: number;
+            /**
+             * K401
+             * @enum {string}
+             */
+            k401: "pretax" | "roth";
+            /** Goal Funding */
+            goal_funding: ("sell" | "borrow") | null;
+            /** Realize Gains */
+            realize_gains: boolean;
+            /** Label */
+            label: string;
+        };
+        /** AdaptiveJob */
+        AdaptiveJob: {
+            /** Id */
+            id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "done" | "error" | "cancelled";
+            /** Progress */
+            progress: number;
+            /** Error */
+            error?: string | null;
+            result?: components["schemas"]["AdaptiveSection"] | null;
+        };
+        /** AdaptivePlanRow */
+        AdaptivePlanRow: {
+            /** Year Index */
+            year_index: number;
+            /** Age */
+            age: number;
+            /** Income */
+            income: number;
+            /** Wages */
+            wages: number;
+            /** Roth Conversion */
+            roth_conversion: number;
+            /** Losses Harvested */
+            losses_harvested: number;
+            /** Goal Bonds Balance */
+            goal_bonds_balance: number;
+            /** Goal Bonds Flow */
+            goal_bonds_flow: number;
+            /** Goal Paid */
+            goal_paid: number;
+            /** Goal Label */
+            goal_label?: string | null;
+            /** Stock Share */
+            stock_share: number;
+            /** Total Tax */
+            total_tax: number;
+            /** Federal Tax */
+            federal_tax: number;
+            /** Illinois Tax */
+            illinois_tax: number;
+            /** Wealth */
+            wealth: number;
+            /**
+             * Required Distribution
+             * @default 0
+             */
+            required_distribution: number;
+            /**
+             * Private Credit Balance
+             * @default 0
+             */
+            private_credit_balance: number;
+            /**
+             * Roth 401K Contribution
+             * @default 0
+             */
+            roth_401k_contribution: number;
+            /**
+             * Borrowed
+             * @default 0
+             */
+            borrowed: number;
+            /**
+             * Loan Balance
+             * @default 0
+             */
+            loan_balance: number;
+            /**
+             * Gains Realized Tax Free
+             * @default 0
+             */
+            gains_realized_tax_free: number;
+            /**
+             * Departs
+             * @default false
+             */
+            departs: boolean;
+            /** Departures */
+            departures?: string[];
+        };
+        /** AdaptiveSection */
+        AdaptiveSection: {
+            /** K */
+            k: number;
+            /** N Eval Paths */
+            n_eval_paths: number;
+            /** Z Min */
+            z_min: number;
+            /** Confirm K */
+            confirm_k: number;
+            /** Confirm Z */
+            confirm_z: number;
+            /** Tilt */
+            tilt: number;
+            /** Plan Path K */
+            plan_path_k: number;
+            /** Plan Path Confirm K */
+            plan_path_confirm_k: number;
+            /** Risk Aversion */
+            risk_aversion: number;
+            /** Elapsed Seconds */
+            elapsed_seconds: number;
+            /** Seconds Per Path */
+            seconds_per_path: number;
+            /** Search */
+            search: string;
+            /** Rows */
+            rows: components["schemas"]["AdaptivePlanRow"][];
+            /** Year Details */
+            year_details: components["schemas"]["YearDetail"][];
+            /** Decisions */
+            decisions: components["schemas"]["YearDecisionView"][];
+            /** Strategies */
+            strategies: components["schemas"]["StrategyOutcome"][];
+            value_of_judgment: components["schemas"]["AdvantageView"];
+            /** Departure Share */
+            departure_share: number;
+            /** Departure By Decision */
+            departure_by_decision: {
+                [key: string]: number;
+            };
+            /** Departure By Year */
+            departure_by_year: number[];
+            /** Departure By Year And Decision */
+            departure_by_year_and_decision: {
+                [key: string]: number[];
+            };
+            /**
+             * From Cache
+             * @default false
+             */
+            from_cache: boolean;
+        };
         /** AdvantageStep */
         AdvantageStep: {
             /** Label */
@@ -285,6 +467,16 @@ export interface components {
             risk_adjusted_low: number;
             /** Risk Adjusted High */
             risk_adjusted_high: number;
+        };
+        /** AlternativeView */
+        AlternativeView: {
+            action: components["schemas"]["ActionView"];
+            /** Ce */
+            ce: number;
+            /** Ce Gap */
+            ce_gap: number;
+            /** Differs In */
+            differs_in: string[];
         };
         /**
          * Answers
@@ -739,7 +931,7 @@ export interface components {
              * Model
              * @enum {string}
              */
-            model: "recommender" | "forecaster";
+            model: "recommender" | "forecaster" | "policy" | "value";
             /** Connected */
             connected: boolean;
             /** Reason */
@@ -751,6 +943,8 @@ export interface components {
         ModelsStatus: {
             recommender: components["schemas"]["ModelStatus"];
             forecaster: components["schemas"]["ModelStatus"];
+            policy: components["schemas"]["ModelStatus"];
+            value: components["schemas"]["ModelStatus"];
         };
         /** OptionProbability */
         OptionProbability: {
@@ -882,6 +1076,18 @@ export interface components {
              * @default 3
              */
             risk_aversion: number;
+            /**
+             * Adaptive
+             * @description Also compute the year-by-year adaptive plan (in the background)
+             * @default true
+             */
+            adaptive: boolean;
+            /**
+             * Adaptive Rollouts
+             * @description Rollouts (fresh futures) scored per candidate action
+             * @default 32
+             */
+            adaptive_rollouts: number;
         };
         /** PlanResponse */
         PlanResponse: {
@@ -904,6 +1110,9 @@ export interface components {
             /** Searched */
             searched: components["schemas"]["RankedRow"][];
             settings: components["schemas"]["PlanSettings"];
+            adaptive?: components["schemas"]["AdaptiveSection"] | null;
+            /** Adaptive Job */
+            adaptive_job?: string | null;
         };
         /**
          * PlanRow
@@ -940,6 +1149,36 @@ export interface components {
             illinois_tax: number;
             /** Wealth */
             wealth: number;
+            /**
+             * Required Distribution
+             * @default 0
+             */
+            required_distribution: number;
+            /**
+             * Private Credit Balance
+             * @default 0
+             */
+            private_credit_balance: number;
+            /**
+             * Roth 401K Contribution
+             * @default 0
+             */
+            roth_401k_contribution: number;
+            /**
+             * Borrowed
+             * @default 0
+             */
+            borrowed: number;
+            /**
+             * Loan Balance
+             * @default 0
+             */
+            loan_balance: number;
+            /**
+             * Gains Realized Tax Free
+             * @default 0
+             */
+            gains_realized_tax_free: number;
         };
         /** PlanSettings */
         PlanSettings: {
@@ -1047,6 +1286,29 @@ export interface components {
             /** Shortfall Chance */
             shortfall_chance: number;
             advantage: components["schemas"]["AdvantageView"];
+        };
+        /**
+         * StrategyOutcome
+         * @description One of the four strategies, measured on the same evaluation futures.
+         */
+        StrategyOutcome: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "typical_advisor" | "good_ria" | "best_fixed" | "adaptive";
+            /** Label */
+            label: string;
+            /** Definition */
+            definition: string;
+            outcome: components["schemas"]["OutcomeView"];
+            /** Lifetime Taxes */
+            lifetime_taxes: number;
+            /** Shortfall Chance */
+            shortfall_chance: number;
+            fan: components["schemas"]["FanSeries"];
+            advantage_vs_typical?: components["schemas"]["AdvantageView"] | null;
+            advantage_vs_ria?: components["schemas"]["AdvantageView"] | null;
         };
         /** StrategyView */
         StrategyView: {
@@ -1189,6 +1451,16 @@ export interface components {
              * @default 3
              */
             risk_aversion: number;
+            /**
+             * Adaptive
+             * @default true
+             */
+            adaptive: boolean;
+            /**
+             * Adaptive Rollouts
+             * @default 32
+             */
+            adaptive_rollouts: number;
             shock?: components["schemas"]["MarketShock"] | null;
         };
         /** WhatIfResponse */
@@ -1198,6 +1470,44 @@ export interface components {
             household: components["schemas"]["Household"];
             shock: components["schemas"]["MarketShock"] | null;
             plan: components["schemas"]["PlanResponse"];
+        };
+        /**
+         * YearDecisionView
+         * @description Why this year: what the adaptive planner chose along the plan path, and what it weighed.
+         */
+        YearDecisionView: {
+            /** Year Index */
+            year_index: number;
+            /** Age */
+            age: number;
+            chosen: components["schemas"]["ActionView"];
+            fixed: components["schemas"]["ActionView"];
+            /** Departs */
+            departs: boolean;
+            /** Departures */
+            departures: string[];
+            /** Alternatives */
+            alternatives: components["schemas"]["AlternativeView"][];
+            /** Ce Chosen */
+            ce_chosen: number;
+            /** Ce Fixed */
+            ce_fixed: number;
+            /** Candidates Scored */
+            candidates_scored: number;
+            /** Changes Proposed */
+            changes_proposed: number;
+            /** Changes Kept */
+            changes_kept: number;
+            /** Ce Chosen Fresh */
+            ce_chosen_fresh: number;
+            /** Ce Fixed Fresh */
+            ce_fixed_fresh: number;
+            /** Why */
+            why: string;
+            /** Facts */
+            facts: {
+                [key: string]: number;
+            };
         };
         /** YearDetail */
         YearDetail: {
@@ -1477,6 +1787,66 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlanResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    adaptive_job_plan_adaptive__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdaptiveJob"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_adaptive_job_plan_adaptive__job_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

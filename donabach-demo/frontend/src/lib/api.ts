@@ -1,5 +1,6 @@
 // Typed client for the Donabach API (proxied at /api, see next.config.ts).
 import type {
+  AdaptiveJob,
   Answers,
   DocumentInfo,
   ForecastResponse,
@@ -94,8 +95,26 @@ export const api = {
   forecast: (household: Household, demoMode: boolean) =>
     post<ForecastResponse>("/forecast", { household, n_paths: 2000, demo_mode: demoMode }),
 
+  /**
+   * The fixed-strategy plan, at once. `adaptive` is the year-by-year plan when the API already has it; otherwise
+   * `adaptive_job` is the id to poll with `adaptiveJob`. (The request asks for the API's defaults for both.)
+   */
   plan: (household: Household, demoMode: boolean, nPaths = 400, shock: MarketShock | null = null) =>
     post<PlanResponse>("/plan", { household, n_paths: nPaths, demo_mode: demoMode, shock }),
+
+  /** One poll of the background job that computes a plan's year-by-year (adaptive) part. */
+  adaptiveJob: (id: string) => request<AdaptiveJob>(`/plan/adaptive/${encodeURIComponent(id)}`),
+
+  /**
+   * Tell the API this client no longer wants a year-by-year job (the plan on screen was replaced). The job stops once
+   * nobody else is waiting for it, so abandoned work does not make the plan on screen wait behind it. Best effort:
+   * a failure changes nothing for the person, so it is not reported.
+   */
+  cancelAdaptiveJob: (id: string): Promise<void> =>
+    fetch(`${BASE}/plan/adaptive/${encodeURIComponent(id)}`, { method: "DELETE", keepalive: true }).then(
+      () => undefined,
+      () => undefined,
+    ),
 
   yearDetail: (household: Household, choices: Record<string, string>, yearIndex: number, shock: MarketShock | null = null) =>
     post<YearDetail>("/plan/year-detail", { household, choices, year_index: yearIndex, shock }),

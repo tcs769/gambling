@@ -21,11 +21,24 @@ export function scaleFor(ranges: readonly { low: number; high: number }[]): Rang
  * One advantage as a point with its 90% range on a shared axis, zero marked. It repeats what the
  * text beside it says (the numbers are all written out), so it is hidden from screen readers.
  */
-export function RangeBar({ value, low, high, scale }: { value: number; low: number; high: number; scale: RangeScale }) {
+export function RangeBar({
+  value,
+  low,
+  high,
+  scale,
+  compact = false,
+}: {
+  value: number;
+  low: number;
+  high: number;
+  scale: RangeScale;
+  /** A shorter bar, for a table cell. */
+  compact?: boolean;
+}) {
   const span = scale.max - scale.min || 1;
   const at = (x: number) => `${((x - scale.min) / span) * 100}%`;
   return (
-    <div className={styles.rangeBar} aria-hidden="true">
+    <div className={styles.rangeBar} data-compact={compact || undefined} aria-hidden="true">
       <span className={styles.rangeTrack} />
       <span className={styles.rangeSpan} style={{ left: at(low), width: `${((high - low) / span) * 100}%` }} />
       <span className={styles.rangeZero} style={{ left: at(0) }} />

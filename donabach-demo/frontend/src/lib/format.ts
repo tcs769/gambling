@@ -45,6 +45,14 @@ export function signedPercent(fraction: number, digits = 2): string {
   return `${rounded > 0 ? "+" : "−"}${Math.abs(rounded).toFixed(digits)}%`;
 }
 
+/**
+ * How many decimals of a percent a yearly rate needs to show two significant figures: two for a rate of 0.1% a year
+ * or more (+0.27%), three below it (+0.016%). One cell uses one setting for its figure and both ends of its range.
+ */
+export function rateDigits(...fractions: number[]): number {
+  return Math.max(...fractions.map((f) => Math.abs(f))) < 0.001 ? 3 : 2;
+}
+
 /** A change between two percentages, in percentage points: 0.0012 -> "0.12 percentage points". */
 export function percentagePoints(fraction: number, digits = 2): string {
   const points = Number((Math.abs(fraction) * 100).toFixed(digits));

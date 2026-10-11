@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Drawer, Icon, Pill, Spinner } from "@/components/ui";
 import { api } from "@/lib/api";
 import { dollars, money, percent } from "@/lib/format";
-import type { Decision, Household, PlanResponse, TaxLine, YearDetail } from "@/lib/types";
+import type { AdaptiveSection, Decision, Household, PlanResponse, TaxLine, YearDetail } from "@/lib/types";
+import { WhyThisYear } from "./WhyThisYear";
 import styles from "./YearDrawer.module.css";
 
 /** What a decision is worth: the change in after-tax wealth at the horizon if it is removed for this year. */
@@ -42,35 +43,50 @@ interface YearDrawerProps {
   plan: PlanResponse;
   /** The household the plan on screen was made for (a what-if's, if one is active). */
   household: Household;
+  /**
+   * The year-by-year plan, when that is the view on screen: the drawer then shows the planner's own year (what it
+   * did, why, and the tax return of that year) from it. Without it the drawer shows the fixed strategy's year.
+   */
+  adaptive?: AdaptiveSection;
   /** The selected row's year_index, or null for closed. */
   selected: number | null;
   onSelect: (yearIndex: number | null) => void;
 }
 
 /**
- * One year of the plan, opened from a table row: the decisions taken and what each is worth, then
- * the full tax return line by line. Details are fetched on demand and kept per plan, so going back
- * to a year is instant; a new plan (a what-if) starts a fresh set.
+ * One year of the plan, opened from a table row. For the fixed strategy: the decisions taken and what each is
+ * worth, then the full tax return line by line (fetched on demand and kept per plan, so going back to a year is
+ * instant; a new plan, from a what-if, starts a fresh set). For the year-by-year plan: "Why this year", then what
+ * was done and the tax return, all from the plan the API already sent.
  */
-export function YearDrawer({ plan, household, selected, onSelect }: YearDrawerProps) {
-  const row = selected === null ? undefined : plan.rows.find((r) => r.year_index === selected);
+export function YearDrawer({ plan, household, adaptive, selected, onSelect }: YearDrawerProps) {
+  const rows = adaptive ? adaptive.rows : plan.rows;
+  const row = selected === null ? undefined : rows.find((r) => r.year_index === selected);
   const [cache, setCache] = useState<{ plan: PlanResponse; byYear: Record<number, YearDetail> }>({ plan, byYear: {} });
   const [failure, setFailure] = useState<{ plan: PlanResponse; year: number; message: string } | null>(null);
   const [attempt, setAttempt] = useState(0);
   const body = useRef<HTMLDivElement>(null);
 
-  const detail = selected !== null && cache.plan === plan ? cache.byYear[selected] : undefined;
-  const failed = failure && failure.plan === plan && failure.year === selected ? failure.message : undefined;
+  const adaptiveDetail = adaptive && selected !== null ? adaptive.year_details.find((d) => d.year_index === selected) : undefined;
+  const decision = adaptive && selected !== null ? adaptive.decisions.find((d) => d.year_index === selected) : undefined;
+  const fetched = selected !== null && cache.plan === plan ? cache.byYear[selected] : undefined;
+  const detail = adaptive ? adaptiveDetail : fetched;
+  const failed =
+    failure && failure.plan === plan && failure.year === selected
+      ? failure.message
+      : adaptive && selected !== null && !adaptiveDetail
+        ? "This year is not in the year-by-year plan."
+        : undefined;
 
   useEffect(() => {
-    if (selected === null || detail || failed) return;
+    if (adaptive || selected === null || detail || failed) return;
     api
       .yearDetail(household, plan.strategy.choices, selected, plan.settings.market_shock ?? null)
       .then((result) =>
         setCache((prev) => ({ plan, byYear: { ...(prev.plan === plan ? prev.byYear : {}), [selected]: result } })),
       )
       .catch((e: Error) => setFailure({ plan, year: selected, message: e.message }));
-  }, [selected, detail, failed, household, plan, attempt]);
+  }, [adaptive, selected, detail, failed, household, plan, attempt]);
 
   // A different year starts at the top of the panel.
   useEffect(() => {
@@ -79,15 +95,15 @@ export function YearDrawer({ plan, household, selected, onSelect }: YearDrawerPr
 
   if (!row) return null;
   const horizon = plan.settings.horizon_age;
-  const index = plan.rows.findIndex((r) => r.year_index === row.year_index);
-  const previous = plan.rows[index - 1];
-  const next = plan.rows[index + 1];
+  const index = rows.findIndex((r) => r.year_index === row.year_index);
+  const previous = rows[index - 1];
+  const next = rows[index + 1];
 
   return (
     <Drawer
       open
       onClose={() => onSelect(null)}
-      eyebrow={`Year ${index + 1} of ${plan.rows.length}`}
+      eyebrow={`Year ${index + 1} of ${rows.length}${adaptive ? ", year-by-year plan" : ""}`}
       title={`Age ${row.age}`}
       restoreFocus={() => document.querySelector<HTMLElement>(`tr[data-row-key="${row.year_index}"]`)}
       actions={
@@ -134,15 +150,17 @@ export function YearDrawer({ plan, household, selected, onSelect }: YearDrawerPr
             <Icon name="alert" size={20} />
             <div>
               <p>{failed}</p>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setFailure(null);
-                  setAttempt((n) => n + 1);
-                }}
-              >
-                Try again
-              </Button>
+              {!adaptive && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setFailure(null);
+                    setAttempt((n) => n + 1);
+                  }}
+                >
+                  Try again
+                </Button>
+              )}
             </div>
           </div>
         ) : !detail ? (
@@ -151,19 +169,23 @@ export function YearDrawer({ plan, household, selected, onSelect }: YearDrawerPr
           </div>
         ) : (
           <>
+            {adaptive && decision && <WhyThisYear decision={decision} section={adaptive} plan={plan} />}
+
             <section className={styles.section} aria-labelledby="year-decisions">
-              <h3 id="year-decisions">Decisions this year</h3>
+              <h3 id="year-decisions">{adaptive ? "What the plan does this year" : "Decisions this year"}</h3>
               <p className={styles.caption}>
-                Each value is how much after-tax wealth at {horizon} changes if that one decision is removed for this year.
+                {adaptive
+                  ? "What the year-by-year plan does in this year, in words. Unlike the fixed strategy's view, these decisions are not valued one by one."
+                  : `Each value is how much after-tax wealth at ${horizon} changes if that one decision is removed for this year.`}
               </p>
               <ul className={styles.decisions}>
-                {detail.decisions.map((decision) => (
-                  <li key={decision.key} className={styles.decision}>
+                {detail.decisions.map((item) => (
+                  <li key={item.key} className={styles.decision}>
                     <div className={styles.decisionHead}>
-                      <strong>{decision.label}</strong>
-                      <Worth decision={decision} horizon={horizon} />
+                      <strong>{item.label}</strong>
+                      {!adaptive && <Worth decision={item} horizon={horizon} />}
                     </div>
-                    <p>{decision.description}</p>
+                    <p>{item.description}</p>
                   </li>
                 ))}
               </ul>

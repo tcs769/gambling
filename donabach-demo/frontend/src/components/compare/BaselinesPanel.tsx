@@ -1,5 +1,5 @@
 import { Swatch } from "@/components/charts/ChartLegend";
-import { SERIES_DONABACH, SERIES_RIA, SERIES_TYPICAL } from "@/components/charts/chartTheme";
+import { SERIES_DONABACH, SERIES_RIA, SERIES_TYPICAL, type LineStyle } from "@/components/charts/chartTheme";
 import { Icon, Panel, PanelTitle, Pill } from "@/components/ui";
 import { count, money, percentagePoints, percentTrim } from "@/lib/format";
 import type { BaselineView, PlanResponse } from "@/lib/types";
@@ -22,7 +22,7 @@ interface Card {
   /** Who chose it, for the plan (the API's planner label). */
   chosenBy?: string;
   color: string;
-  dashed: boolean;
+  lineStyle: LineStyle;
   tone: "accent" | "default";
   figures: Figures;
   /** The base plan's figures, when a what-if is on screen (only the plan's own column moves with a what-if). */
@@ -90,7 +90,7 @@ export function BaselinesPanel({ plan, base }: { plan: PlanResponse; base?: Plan
       definition: `The recommended strategy: ${plan.strategy.label}.`,
       chosenBy: plan.planner_label,
       color: SERIES_DONABACH,
-      dashed: false,
+      lineStyle: "solid",
       tone: "accent",
       figures: planFigures(plan),
       before: base && planFigures(base),
@@ -101,7 +101,7 @@ export function BaselinesPanel({ plan, base }: { plan: PlanResponse; base?: Plan
         name: b.label,
         definition: b.definition,
         color: SERIES_BY_KEY[b.key] ?? SERIES_RIA,
-        dashed: b.key === "typical_advisor",
+        lineStyle: b.key === "typical_advisor" ? "dashed" : "solid",
         tone: "default",
         figures: advisorFigures(b),
       }),
@@ -118,7 +118,7 @@ export function BaselinesPanel({ plan, base }: { plan: PlanResponse; base?: Plan
           {cards.map((card) => (
             <article key={card.key} className={styles.card} data-tone={card.tone} aria-labelledby={`baseline-${card.key}`}>
               <header className={styles.head}>
-                <Swatch color={card.color} kind="line" dashed={card.dashed} />
+                <Swatch color={card.color} kind="line" lineStyle={card.lineStyle} />
                 <h3 id={`baseline-${card.key}`}>{card.name}</h3>
               </header>
               <div className={styles.definition}>

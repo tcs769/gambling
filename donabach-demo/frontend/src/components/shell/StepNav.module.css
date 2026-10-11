@@ -92,3 +92,18 @@ a.step:hover {
     padding: 6px 8px;
   }
 }
+
+/* A tablet-width window: the seven steps still have to fit in one row without widening the page. */
+@media (max-width: 820px) {
+  .list {
+    gap: 2px;
+  }
+  .item:not(:last-child)::after {
+    width: 4px;
+    margin-left: 2px;
+  }
+  .step {
+    gap: 6px;
+    padding: 6px;
+  }
+}

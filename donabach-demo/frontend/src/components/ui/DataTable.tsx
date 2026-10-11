@@ -27,11 +27,16 @@ interface DataTableProps<T> {
   maxHeight?: number | string;
   /** Exact height: the table scrolls inside it. Used where a table stands in for a chart. */
   height?: number | string;
+  /** The table never gets narrower than this; below it the table scrolls sideways inside its own box. */
+  minWidth?: number | string;
   /** Rows become focusable buttons (Enter or Space), with Up and Down moving between them. */
   onRowActivate?: (row: T, index: number) => void;
   selectedKey?: RowKey | null;
-  /** A quiet mark for rows worth noticing, or a stronger highlight for the row the page is about. */
-  rowTone?: (row: T) => "marked" | "highlight" | undefined;
+  /**
+   * A quiet mark for rows worth noticing, a stronger highlight for the row the page is about, or "changed" for a
+   * row where something differs from the usual (a tint and an edge, never the only sign: the row says so in text).
+   */
+  rowTone?: (row: T) => "marked" | "highlight" | "changed" | undefined;
   /** Read out for interactive rows, e.g. "Press Enter to see this year's decisions". */
   rowHint?: string;
   /** What sits under the fade when more rows are scrolled out of view. */
@@ -50,6 +55,7 @@ export function DataTable<T>({
   caption,
   maxHeight,
   height,
+  minWidth,
   onRowActivate,
   selectedKey = null,
   rowTone,
@@ -104,7 +110,7 @@ export function DataTable<T>({
         role={interactive ? undefined : "region"}
         aria-label={interactive ? undefined : caption}
       >
-        <table className={styles.table} data-dense={dense}>
+        <table className={styles.table} data-dense={dense} style={minWidth === undefined ? undefined : { minWidth }}>
           <caption className="sr-only">{caption}</caption>
           <colgroup>
             {columns.map((col) => (

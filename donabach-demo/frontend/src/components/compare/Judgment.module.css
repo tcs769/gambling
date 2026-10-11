@@ -1,0 +1,63 @@
+.cells {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.definition {
+  margin-bottom: 8px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.verdict {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.how {
+  margin-top: 18px;
+}
+
+.howBody {
+  display: grid;
+  gap: 14px;
+  padding: 2px 4px 8px;
+}
+
+.search {
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  max-width: 100ch;
+}
+
+.settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px 24px;
+  margin: 0;
+}
+.settings dt {
+  color: var(--brown);
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+.settings dd {
+  margin: 0;
+  color: var(--espresso);
+  font-size: 1.0625rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.settings dd span {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  font-weight: 400;
+}

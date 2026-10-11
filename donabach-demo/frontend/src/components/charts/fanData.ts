@@ -1,4 +1,5 @@
 import type { FanSeries } from "@/lib/types";
+import type { LineStyle } from "./chartTheme";
 
 /** Quantiles of one quantity by age: the shape of FanSeries and IncomeForecast alike. */
 export type Quantiles = Pick<FanSeries, "ages" | "p10" | "p25" | "p50" | "p75" | "p90">;
@@ -26,8 +27,8 @@ export interface FanLineSpec {
   innerBand?: boolean;
   /** Opacity of the 10th-to-90th percentile band; 0 draws no band. Defaults to the standard wash. */
   bandOpacity?: number;
-  /** Draw the median as a dashed line (and its keys dashed), so the series is told apart by more than colour. */
-  dashed?: boolean;
+  /** Draw the median dashed or dotted (and its keys the same), so the series is told apart by more than colour. */
+  lineStyle?: LineStyle;
   /**
    * Drawing order: a higher layer is drawn later, on top. By default the first line in the list is on top
    * (it is the one the page is about), the second under it, and so on.

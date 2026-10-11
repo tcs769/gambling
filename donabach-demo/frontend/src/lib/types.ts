@@ -47,6 +47,16 @@ export type Preset = NonNullable<S["WhatIfRequest"]["presets"]>[number];
 export type MarketShock = S["MarketShock"];
 export type ModelsStatus = S["ModelsStatus"];
 
+// The adaptive (year-by-year) planner, spec part B.
+export type AdaptiveSection = S["AdaptiveSection"];
+export type AdaptiveJob = S["AdaptiveJob"];
+export type AdaptivePlanRow = S["AdaptivePlanRow"];
+export type ActionView = S["ActionView"];
+export type AlternativeView = S["AlternativeView"];
+export type YearDecisionView = S["YearDecisionView"];
+export type StrategyOutcome = S["StrategyOutcome"];
+export type StrategyKey = StrategyOutcome["key"];
+
 /** The choices that make up a strategy, in display order, with plain-language names. */
 export const CHOICE_LABELS: Record<string, string> = {
   stock_share: "Stock share",

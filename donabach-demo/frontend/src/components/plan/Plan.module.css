@@ -1,5 +1,7 @@
 .stack {
   display: grid;
+  /* One column that may be narrower than its widest panel's content: a wide table scrolls inside its panel. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 
@@ -70,6 +72,21 @@
   color: var(--muted-text);
 }
 
+/* A choice a what-if changed: a firm outline, and the old value in words. */
+.choice[data-changed="true"] {
+  border-color: var(--brown);
+  border-width: 2px;
+  padding: 6px 13px;
+  background: linear-gradient(0deg, var(--gold-wash), var(--gold-wash)), var(--cream);
+}
+.choiceWas {
+  padding-left: 8px;
+  border-left: 1px solid var(--muted);
+  color: var(--brown);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
 .next {
   display: flex;
   justify-content: flex-end;
@@ -84,10 +101,23 @@
 }
 
 .age {
+  display: grid;
+  gap: 2px;
+}
+
+.ageLine {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 12px;
-  white-space: nowrap;
+  gap: 0 12px;
+}
+
+/* The text marker on a year the planner changed. It carries the meaning; the row's tint and edge only echo it. */
+.changedTag {
+  color: var(--brown);
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .ageNote {
@@ -98,4 +128,49 @@
 
 .zero {
   color: var(--muted-text);
+}
+
+/* The switch between the year-by-year plan and the fixed strategy, with a line on what the year-by-year plan did. */
+.viewBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 24px;
+  margin-bottom: 14px;
+}
+
+.viewBar :global(button) {
+  padding: 7px 16px;
+  font-size: 0.9375rem;
+}
+
+.viewStatus {
+  flex: 1 1 340px;
+  min-width: 0;
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  max-width: 78ch;
+}
+
+/* Wordings stacked in one cell: the tallest sets the height, the one that applies is shown. */
+.stacked {
+  display: grid;
+}
+.stacked > * {
+  grid-area: 1 / 1;
+}
+.stacked > [data-active="false"] {
+  visibility: hidden;
+}
+.viewStatus strong {
+  color: var(--brown);
+}
+
+.notice {
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  border: 1px solid rgba(174, 58, 46, 0.35);
+  border-radius: var(--radius-sm);
+  background: var(--bad-wash);
 }

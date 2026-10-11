@@ -1,5 +1,7 @@
 .stack {
   display: grid;
+  /* One column that may be narrower than its widest panel's content: a wide table scrolls inside its panel. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 
@@ -43,6 +45,18 @@
   color: var(--muted-text);
   font-size: 0.9375rem;
   max-width: 62ch;
+}
+
+/* Wordings stacked in one cell: the tallest sets the height, the one that applies is shown, so nothing moves when the
+   year-by-year plan arrives and the text changes. */
+.stacked {
+  display: grid;
+}
+.stacked > * {
+  grid-area: 1 / 1;
+}
+.stacked > [data-active="false"] {
+  visibility: hidden;
 }
 
 /* ---- Advantage ---- */

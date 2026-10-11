@@ -5,22 +5,36 @@ import styles from "./Plan.module.css";
 /**
  * A strategy's choices as small labelled chips: "Stock share · 70% stocks", "401(k) contributions · Roth".
  * Every choice the API sends is shown (a key this app has no name for keeps its raw name), in the order
- * of CHOICE_LABELS.
+ * of CHOICE_LABELS. With `changed` (a choice mapped to the option it had before) those chips are marked, in words
+ * as well as in look: "was Off".
  */
-export function ChoiceChips({ choices, label }: { choices: Record<string, string>; label: string }) {
+export function ChoiceChips({
+  choices,
+  label,
+  changed,
+}: {
+  choices: Record<string, string>;
+  label: string;
+  changed?: Record<string, string | undefined>;
+}) {
   const known = Object.keys(CHOICE_LABELS).filter((choice) => choices[choice] !== undefined);
   const unknown = Object.keys(choices).filter((choice) => !(choice in CHOICE_LABELS));
   return (
     <ul className={styles.choices} aria-label={label}>
       {[...known, ...unknown].map((choice) => {
         const option = choices[choice];
+        const isChanged = !!changed && choice in changed;
+        const was = changed?.[choice];
         return (
-          <li key={choice} className={styles.choice} data-off={optionIsOff(choice, option)}>
+          <li key={choice} className={styles.choice} data-off={optionIsOff(choice, option)} data-changed={isChanged || undefined}>
             <span className={styles.choiceLabel}>{CHOICE_LABELS[choice] ?? choice}</span>
             <span className={styles.choiceValue}>
               {option === "on" && <Icon name="check" size={15} strokeWidth={2.8} />}
               {optionLabel(choice, option)}
             </span>
+            {isChanged && (
+              <span className={styles.choiceWas}>{was === undefined ? "Changed" : `Changed, was ${optionLabel(choice, was)}`}</span>
+            )}
           </li>
         );
       })}

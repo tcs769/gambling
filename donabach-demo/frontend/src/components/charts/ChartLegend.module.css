@@ -19,3 +19,8 @@
 .swatch {
   flex-shrink: 0;
 }
+
+/* Room kept for a series that is still being worked out: it takes its place in the row but is not drawn. */
+.item[data-reserved="true"] {
+  visibility: hidden;
+}

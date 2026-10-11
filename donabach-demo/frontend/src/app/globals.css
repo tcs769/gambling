@@ -40,9 +40,28 @@
      Worst case is deutan against blue at 15.2: above the validator's 8 target for CVD and its 15 floor for
      normal vision. `npm run check:colors` re-runs these gates on the tokens in this file (the dataviz
      validator, `validate_palette.js "#a87a1f,#3570b5,#822a57" --surface "#f1e8d4" --pairs all`, passes too). */
+  /* --series-adaptive is the fourth series (the adaptive, year-by-year planner). It is ALWAYS drawn dotted as well
+     (round dots, a little thicker than the other lines) in the chart, its end key, the tooltip and every legend
+     swatch, so the line style carries identity and colour never has to (the typical advisor is dashed, the other two
+     are solid). With amber, blue and plum placed, the gates leave few colours: scanning OKLCH L 0.43 to 0.70 and
+     C 0.10 to 0.30 at every degree of hue, keeping colours >= 3:1 on the panel, normal-vision Delta E >= 15 and every
+     colour-blind Delta E >= 8 against all three, the survivors are the greens and olives (hue 114 to 146), a royal
+     violet only at chroma about 0.2 (hue 264 to 311) and hot pink-reds at chroma about 0.2 or more (hue 339 to 35).
+     The violet sits at plum's lightness 58 degrees of hue away (one purple family at a glance) and the pink-reds sit
+     beside plum and the bad-status red, so the olive was taken; hue 127 has the best margin on both gates:
+       #476500  OKLCH L 0.466, C 0.120, hue 127 (48 degrees from amber, 127 from blue, 135 from plum)
+       contrast  5.51:1 on the panel, 6.28:1 on cream, 4.85:1 on the 13% amber band, 5.08:1 on the 7% blue band
+       Delta E vs amber / blue / plum: normal 17.4 / 23.1 / 23.3, protan 10.6 / 22.7 / 17.2,
+                                       deutan 15.2 / 22.3 / 10.3, tritan 19.1 / 10.8 / 17.0
+       lightness gap (OKLab L x100) vs amber / blue / plum: normal 14.5 / 7.4 / 3.5
+     Worst colour-blind pair is deutan against plum at 10.3 (target 8) and worst normal-vision pair is amber at 17.4
+     (floor 15). Against plum it differs by hue only, which is why the dotted style is not optional. It sits about 6
+     Delta E from the status green (--good), so it is used for the adaptive line, its keys and swatches only: never
+     for a fill, a row tint or text, where it could read as "good". */
   --series-donabach: #a87a1f;
   --series-ria: #3570b5;
   --series-typical: #822a57;
+  --series-adaptive: #476500;
 
   --font-serif: Cambria, Georgia, "Times New Roman", serif;
   --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;

@@ -1,6 +1,6 @@
 import type { TooltipContentProps } from "recharts";
 import { money } from "@/lib/format";
-import { DASH_KEY } from "./chartTheme";
+import { lineStroke } from "./chartTheme";
 import { quantileKey, type FanLineSpec, type FanRow, type QuantileValues } from "./fanData";
 import styles from "./FanTooltip.module.css";
 
@@ -25,10 +25,10 @@ export function FanTooltip({
           if (!q) return null;
           return (
             <li key={line.id} className={styles.row}>
-              {line.dashed ? (
-                // A dashed series gets a dashed key, so the tooltip tells lines apart by more than colour too.
+              {line.lineStyle === "dashed" || line.lineStyle === "dotted" ? (
+                // A dashed or dotted series gets the same key, so the tooltip tells lines apart by more than colour too.
                 <svg className={styles.key} width="16" height="2" viewBox="0 0 16 2" aria-hidden="true">
-                  <line x1="0" y1="1" x2="16" y2="1" stroke={line.color} strokeWidth="2" strokeDasharray={DASH_KEY} />
+                  <line x1="0" y1="1" x2="16" y2="1" stroke={line.color} {...lineStroke(line.lineStyle, "key")} />
                 </svg>
               ) : (
                 <span className={styles.key} style={{ background: line.color }} aria-hidden="true" />

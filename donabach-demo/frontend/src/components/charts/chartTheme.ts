@@ -20,6 +20,8 @@ export const SERIES_DONABACH = "var(--series-donabach)";
 export const SERIES_RIA = "var(--series-ria)";
 /** The third series, the typical advisor: always drawn dashed too, so colour never carries it alone. */
 export const SERIES_TYPICAL = "var(--series-typical)";
+/** The fourth series, the adaptive (year-by-year) planner: always drawn dotted too, for the same reason. */
+export const SERIES_ADAPTIVE = "var(--series-adaptive)";
 
 /** Wash for the wide band (10th to 90th percentile) and the darker one inside it (25th to 75th). */
 export const OUTER_BAND_OPACITY = 0.13;
@@ -27,10 +29,32 @@ export const INNER_BAND_OPACITY = 0.2;
 /** A lighter wash for a secondary series' band, so two bands can overlap and both stay readable. */
 export const LIGHT_BAND_OPACITY = 0.07;
 
-/** Dash patterns for a dashed series, sized for the chart line, the short key beside a label and the legend swatch. */
-export const DASH_LINE = "7 5";
-export const DASH_KEY = "5 3.5";
-export const DASH_SWATCH = "6 4";
+/**
+ * How a series' line is drawn. Colour never carries a series alone: the typical advisor is dashed and the adaptive
+ * planner is dotted (the other two are solid), in the chart, the end-label key, the tooltip key and the legend swatch.
+ */
+export type LineStyle = "solid" | "dashed" | "dotted";
+
+/** Where a line is drawn: the chart itself, the short key beside an end label or in a tooltip, the legend swatch. */
+export type LineSize = "line" | "key" | "swatch";
+
+const DASH: Record<LineSize, string> = { line: "7 5", key: "5 3.5", swatch: "6 4" };
+/** A dash of almost no length with round caps is a dot: spaced a little over twice the line's width apart. */
+const DOT: Record<LineSize, string> = { line: "0.1 6.5", key: "0.1 5.5", swatch: "0.1 6" };
+/** Dots read better a touch thicker than a solid line's 2px. */
+const DOT_WIDTH = 3;
+
+/** The SVG stroke attributes for a series' line style at a size. */
+export function lineStroke(style: LineStyle | undefined, size: LineSize) {
+  switch (style) {
+    case "dashed":
+      return { strokeDasharray: DASH[size], strokeLinecap: "butt" as const, strokeWidth: 2 };
+    case "dotted":
+      return { strokeDasharray: DOT[size], strokeLinecap: "round" as const, strokeWidth: DOT_WIDTH };
+    default:
+      return { strokeDasharray: undefined, strokeLinecap: "round" as const, strokeWidth: 2 };
+  }
+}
 
 /**
  * Clean y-axis ticks from zero: steps of 1, 2, 2.5 or 5 times a power of ten, the smallest step

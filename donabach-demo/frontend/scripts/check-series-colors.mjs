@@ -9,7 +9,8 @@
 //   - distance between two series (OKLab Delta E x 100) under protanopia, deuteranopia and
 //     tritanopia, simulated with Machado, Oliveira and Fernandes (2009) at severity 1.0: at least 8
 //   - the same distance with normal vision: at least 15
-// The third series (the typical advisor) is also drawn dashed, so line style carries it as well as colour.
+// The third series (the typical advisor) is also drawn dashed and the fourth (the adaptive planner) dotted, so
+// line style carries them as well as colour. With four series every pair is checked: six pairs.
 // Exits 1 if any gate fails.
 
 import { readFileSync } from "node:fs";
@@ -21,7 +22,12 @@ const token = (name) => {
   return match[1].toLowerCase();
 };
 
-const SERIES = { donabach: token("series-donabach"), ria: token("series-ria"), typical: token("series-typical") };
+const SERIES = {
+  donabach: token("series-donabach"),
+  ria: token("series-ria"),
+  typical: token("series-typical"),
+  adaptive: token("series-adaptive"),
+};
 const SURFACES = { panel: token("panel"), cream: token("cream") };
 const MIN_CONTRAST = 3;
 const LIGHTNESS = [0.43, 0.77];

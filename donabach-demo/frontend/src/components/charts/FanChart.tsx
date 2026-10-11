@@ -15,14 +15,13 @@ import {
 import { money } from "@/lib/format";
 import {
   ANIMATION_MS,
-  DASH_KEY,
-  DASH_LINE,
   GRID_STROKE,
   INNER_BAND_OPACITY,
   OUTER_BAND_OPACITY,
   SURFACE,
   TICK_STYLE,
   ageTicks,
+  lineStroke,
   niceScale,
 } from "./chartTheme";
 import {
@@ -90,16 +89,7 @@ function EndLabels({ lines, last }: { lines: readonly FanLineSpec[]; last: FanRo
           key={line.id}
           style={{ transform: `translate(${x}px, ${ys[i]}px)`, transition: `transform ${ANIMATION_MS}ms ease-in-out` }}
         >
-          <line
-            x1="9"
-            y1="0"
-            x2="23"
-            y2="0"
-            stroke={line.color}
-            strokeWidth="2"
-            strokeLinecap={line.dashed ? "butt" : "round"}
-            strokeDasharray={line.dashed ? DASH_KEY : undefined}
-          />
+          <line x1="9" y1="0" x2="23" y2="0" stroke={line.color} {...lineStroke(line.lineStyle, "key")} />
           <text x="30" y="0" dy="0.35em" fontSize="14" fill="var(--muted-text)">
             <tspan fontWeight="700" fill="var(--espresso)">
               {money(q.p50)}
@@ -124,7 +114,7 @@ interface FanChartProps {
 
 /**
  * Median lines with shaded bands (10th to 90th percentile, optionally 25th to 75th), by age. A
- * line can carry a lighter band, no band, or be dashed. A crosshair follows the cursor and the
+ * line can carry a lighter band, no band, or be dashed or dotted. A crosshair follows the cursor and the
  * tooltip lists every line at that age. Use inside a ChartFrame, which supplies the legend and
  * the table twin.
  */
@@ -209,10 +199,8 @@ export function FanChart({ lines, rows, height, endLabelRoom = DEFAULT_END_LABEL
             type="monotone"
             dataKey={medianKey(line.id)}
             stroke={line.color}
-            strokeWidth={2}
             strokeLinejoin="round"
-            strokeLinecap={line.dashed ? "butt" : "round"}
-            strokeDasharray={line.dashed ? DASH_LINE : undefined}
+            {...lineStroke(line.lineStyle, "line")}
             dot={false}
             activeDot={{ r: 5, fill: line.color, stroke: SURFACE, strokeWidth: 2 }}
             isAnimationActive="auto"

@@ -6,6 +6,13 @@
   margin-bottom: 24px;
 }
 
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+}
+
 .subtitle {
   margin-top: 6px;
   color: var(--muted-text);

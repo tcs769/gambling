@@ -156,3 +156,30 @@
   border-radius: 50%;
   background: var(--brown);
 }
+
+/* A shorter bar for a table cell: the same parts, closer together. */
+.rangeBar[data-compact="true"] {
+  height: 34px;
+  margin: 4px 8px 0;
+}
+.rangeBar[data-compact="true"] .rangeTrack {
+  top: 8px;
+}
+.rangeBar[data-compact="true"] .rangeSpan {
+  top: 5px;
+  height: 8px;
+}
+.rangeBar[data-compact="true"] .rangeZero {
+  top: 0;
+  height: 18px;
+}
+.rangeBar[data-compact="true"] .rangeZeroLabel {
+  top: 17px;
+}
+.rangeBar[data-compact="true"] .rangePoint {
+  top: 1px;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  border-width: 2.5px;
+}

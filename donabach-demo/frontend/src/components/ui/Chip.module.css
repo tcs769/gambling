@@ -30,3 +30,12 @@
 .chip:active {
   transform: scale(0.98);
 }
+
+.chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.chip:disabled:hover {
+  border-color: var(--muted);
+  background: var(--cream);
+}

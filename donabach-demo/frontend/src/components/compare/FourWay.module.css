@@ -1,0 +1,117 @@
+.intro {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  max-width: 100ch;
+  margin: -4px 0 16px;
+}
+.intro strong {
+  color: var(--brown);
+}
+
+/* The line style above the name, right-aligned like the figures below it: the same at every width. */
+.colHead {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  line-height: 1.25;
+}
+
+/* The figures in a row are right-aligned under their column's heading. */
+.cell {
+  display: block;
+  color: var(--espresso);
+  font-size: 1.125rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.advantage {
+  display: grid;
+  gap: 0;
+  text-align: right;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.advFigure {
+  font-size: 1.125rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.unit {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.advRange {
+  color: var(--muted-text);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.advDollars {
+  color: var(--espresso);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+.advDollars strong {
+  font-weight: 650;
+}
+
+/* The dagger that marks an advantage whose 90% range includes zero; the sentence under the table says what it means. */
+.flag {
+  color: var(--brown);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.zeroNote {
+  margin-top: 12px;
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.zeroNote strong {
+  color: var(--brown);
+}
+
+/* Wordings stacked in one cell: the tallest sets the height, the one that applies is shown. */
+.stacked {
+  display: grid;
+}
+.stacked > * {
+  grid-area: 1 / 1;
+}
+.stacked > [data-active="false"] {
+  visibility: hidden;
+}
+
+.notApplicable {
+  display: block;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.4;
+}
+
+.glossary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px 24px;
+  margin: 16px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.glossary dt {
+  color: var(--brown);
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+.glossary dd {
+  margin: 0;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}

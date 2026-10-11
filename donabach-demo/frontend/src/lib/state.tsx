@@ -15,6 +15,7 @@ import {
 } from "react";
 import { ApiError, api } from "./api";
 import type {
+  AdaptiveSection,
   Answers,
   DocumentInfo,
   ForecastResponse,
@@ -45,6 +46,10 @@ export const DEFAULT_ANSWERS: Answers = {
 
 /** Each upload/reading stage stays on screen at least this long so it is legible on a recording. */
 const STAGE_MS = 450;
+/** How often a year-by-year job is asked how far it has got. */
+const POLL_MS = 700;
+/** Network failures in a row before a job is reported as lost (a job the API no longer knows is lost at once). */
+const POLL_FAILURES = 4;
 const DEMO_KEY = "donabach-demo-mode";
 /** What the viewer typed survives an accidental reload (everything computed is rebuilt from it). */
 const SESSION_KEY = "donabach-session";
@@ -64,10 +69,34 @@ export interface DocState {
   error?: string;
 }
 
+/**
+ * Where a plan's year-by-year (adaptive) part stands. The fixed-strategy plan arrives at once; the year-by-year part
+ * is either in the same response (the API already had it), or a background job that is followed until it ends.
+ */
+export type AdaptiveState =
+  | { status: "ready"; section: AdaptiveSection }
+  | { status: "refining"; jobId: string; progress: number }
+  | { status: "failed"; message: string }
+  /** The response held neither a year-by-year plan nor a job to follow. */
+  | { status: "unavailable" };
+
+/** The year-by-year plan itself, once there is one. */
+export const adaptiveSection = (adaptive: AdaptiveState | undefined): AdaptiveSection | undefined =>
+  adaptive?.status === "ready" ? adaptive.section : undefined;
+
+const startAdaptive = (plan: PlanResponse): AdaptiveState =>
+  plan.adaptive
+    ? { status: "ready", section: plan.adaptive }
+    : plan.adaptive_job
+      ? { status: "refining", jobId: plan.adaptive_job, progress: 0 }
+      : { status: "unavailable" };
+
 export interface WhatIfState {
   presets: Preset[];
   edits: Partial<HouseholdEdits>;
   response: WhatIfResponse;
+  /** The year-by-year part of this what-if's plan: its own, never the base plan's. */
+  adaptive: AdaptiveState;
 }
 
 export interface AppState {
@@ -83,6 +112,12 @@ export interface AppState {
   profile?: HouseholdProfile;
   forecast?: ForecastResponse;
   plan?: PlanResponse;
+  /**
+   * The base plan's year-by-year part, kept with the plan it belongs to: once that plan is replaced (a new
+   * household, answers or mode) this no longer matches `plan` and is ignored, so a stale year-by-year plan is
+   * never shown against a newer fixed plan.
+   */
+  adaptive?: { plan: PlanResponse; state: AdaptiveState };
   whatIf?: WhatIfState;
   loading: { docs: boolean; household: boolean; forecast: boolean; plan: boolean; whatIf: boolean };
   error?: string;
@@ -219,6 +254,10 @@ interface AppContextValue {
   plan?: PlanResponse;
   /** The base plan, untouched by any what-if (for before/after comparisons). */
   basePlan?: PlanResponse;
+  /** The year-by-year part of the plan on screen (the what-if's if one is active). */
+  adaptive?: AdaptiveState;
+  /** The year-by-year part of the base plan, kept while a what-if is on screen. */
+  baseAdaptive?: AdaptiveState;
   whatIfActive: boolean;
 }
 
@@ -250,6 +289,76 @@ export function AppProvider({ children }: { children: ReactNode }) {
       patch((s) => ({ docs: s.docs.map((d) => (d.info.id === id ? { ...d, ...change } : d)) }));
     const invalidateResults = () =>
       patch({ profile: undefined, forecast: undefined, plan: undefined, whatIf: undefined });
+
+    /**
+     * Follows a year-by-year job until it ends, writing its progress and result through `set`. It stops quietly
+     * the moment `isCurrent` says the plan it belongs to is no longer on screen (a re-plan, a reset, new answers):
+     * an old job is never polled for a plan that has been replaced, and its result is never shown. It also asks the
+     * API to drop the job, so a newer plan does not queue behind work nobody wants.
+     */
+    async function followAdaptive(jobId: string, isCurrent: () => boolean, set: (state: AdaptiveState) => void) {
+      let failures = 0;
+      let progress = 0;
+      // Walking away from a job that is still running tells the API, which stops it once no one else waits for it.
+      const walkAway = () => void api.cancelAdaptiveJob(jobId);
+      for (;;) {
+        await sleep(POLL_MS);
+        if (!isCurrent()) return walkAway();
+        try {
+          const job = await api.adaptiveJob(jobId);
+          if (!isCurrent()) return walkAway();
+          failures = 0;
+          if (job.status === "done") {
+            set(
+              job.result
+                ? { status: "ready", section: job.result }
+                : { status: "failed", message: "The year-by-year plan finished without a result." },
+            );
+            return;
+          }
+          if (job.status === "error") {
+            set({ status: "failed", message: job.error || "The year-by-year plan could not be computed." });
+            return;
+          }
+          if (job.progress !== progress) {
+            progress = job.progress;
+            set({ status: "refining", jobId, progress });
+          }
+        } catch (e) {
+          if (!isCurrent()) return walkAway();
+          const lost = e instanceof ApiError && e.status === 404;
+          if (lost || ++failures >= POLL_FAILURES) {
+            set({
+              status: "failed",
+              message: lost
+                ? "The year-by-year plan is no longer on the server (it may have restarted)."
+                : `The year-by-year plan could not be fetched: ${(e as Error).message}`,
+            });
+            return;
+          }
+        }
+      }
+    }
+
+    /** Follow the base plan's year-by-year job, if it has one still running (`plan` is the object stored in `state.plan`). */
+    const followBase = (plan: PlanResponse, start: AdaptiveState) => {
+      if (start.status !== "refining") return;
+      void followAdaptive(
+        start.jobId,
+        () => current().plan === plan,
+        (next) => patch((s) => (s.plan === plan ? { adaptive: { plan, state: next } } : {})),
+      );
+    };
+
+    /** The same for a what-if's plan: `response` is the object stored in `state.whatIf`, which stands in for its identity. */
+    const followWhatIf = (response: WhatIfResponse, start: AdaptiveState) => {
+      if (start.status !== "refining") return;
+      void followAdaptive(
+        start.jobId,
+        () => current().whatIf?.response === response,
+        (next) => patch((s) => (s.whatIf?.response === response ? { whatIf: { ...s.whatIf, adaptive: next } } : {})),
+      );
+    };
 
     async function readDocument(id: string, animate: boolean) {
       if (animate) await sleep(STAGE_MS);
@@ -397,7 +506,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await once("plan", async () => {
           setLoading("plan", true);
           try {
-            patch({ plan: await api.plan(household, current().demoMode), whatIf: undefined });
+            const plan = await api.plan(household, current().demoMode);
+            // One update: the fixed plan and where its year-by-year part stands, so no screen sees one without the other.
+            const adaptive = startAdaptive(plan);
+            patch({ plan, whatIf: undefined, adaptive: { plan, state: adaptive } });
+            followBase(plan, adaptive);
           } catch (e) {
             patch({ error: (e as Error).message });
           } finally {
@@ -420,7 +533,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         try {
           const response = await api.whatIf(base, presets, edits, current().demoMode);
           if (!store.isLatestWhatIf(ticket)) return; // a newer request or a reset superseded this one
-          patch({ whatIf: { presets, edits, response }, error: undefined });
+          // The fixed plan is on screen at once; its year-by-year part follows (a new job, or the finished plan).
+          const adaptive = startAdaptive(response.plan);
+          patch({ whatIf: { presets, edits, response, adaptive }, error: undefined });
+          followWhatIf(response, adaptive);
         } catch (e) {
           if (store.isLatestWhatIf(ticket)) patch({ error: (e as Error).message });
         } finally {
@@ -465,17 +581,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return a;
   }, [store]);
 
-  const value = useMemo<AppContextValue>(
-    () => ({
+  const value = useMemo<AppContextValue>(() => {
+    // The base plan's year-by-year part counts only while it belongs to the base plan on hand.
+    const baseAdaptive = state.adaptive && state.adaptive.plan === state.plan ? state.adaptive.state : undefined;
+    return {
       state,
       actions,
       household: state.whatIf?.response.household ?? state.profile?.household,
       plan: state.whatIf?.response.plan ?? state.plan,
       basePlan: state.plan,
+      adaptive: state.whatIf ? state.whatIf.adaptive : baseAdaptive,
+      baseAdaptive,
       whatIfActive: !!state.whatIf,
-    }),
-    [state, actions],
-  );
+    };
+  }, [state, actions]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

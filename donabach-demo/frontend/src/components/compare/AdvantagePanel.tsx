@@ -12,7 +12,7 @@ const AGAINST: Record<BaselineView["key"], string> = {
 };
 const against = (baseline: BaselineView): string => AGAINST[baseline.key] ?? baseline.label;
 
-interface Measure {
+export interface Measure {
   id: "median" | "risk_adjusted";
   label: string;
   definition: (horizon: number, riskAversion: number) => string;
@@ -23,7 +23,7 @@ interface Measure {
 }
 
 /** The two ways the advantage is measured. Each is defined once, in words, beside its row. */
-const MEASURES: Measure[] = [
+export const MEASURES: Measure[] = [
   {
     id: "median",
     label: "Median advantage",

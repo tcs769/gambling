@@ -57,6 +57,127 @@
   margin-bottom: 12px;
 }
 
+/* ---- Why this year ---- */
+.marketNote {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  border: 1px solid rgba(174, 58, 46, 0.35);
+  border-radius: var(--radius-sm);
+  background: var(--bad-wash);
+  color: var(--espresso);
+  font-weight: 600;
+}
+.marketNote svg {
+  flex-shrink: 0;
+  color: var(--bad);
+}
+
+.quietNote {
+  margin: 0 0 12px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.actions {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.action {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px 12px;
+}
+.action[data-kind="chosen"] {
+  border-color: var(--gold);
+  background: linear-gradient(0deg, var(--gold-wash), var(--gold-wash)), var(--panel);
+}
+
+.actionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-bottom: 4px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.actionLabel {
+  color: var(--espresso);
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.why {
+  margin-bottom: 14px;
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+.subheading {
+  margin: 4px 0 8px;
+  font-size: 1rem;
+}
+
+.alternatives {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.alternative {
+  display: grid;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--cream);
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.gap {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.differs {
+  color: var(--muted-text);
+}
+
+.small {
+  margin: 0 0 10px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.retest {
+  margin: 0 0 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.retest strong {
+  color: var(--brown);
+}
+
 /* ---- Decisions ---- */
 .decisions {
   list-style: none;

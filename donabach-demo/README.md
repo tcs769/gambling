@@ -37,9 +37,9 @@ uvicorn app.main:app --reload --reload-dir app --port 8000
 cd frontend && npm install && npm run dev
 ```
 
-The first start compiles the simulation kernels with numba (about 5 to 10 seconds, then cached in
+The first start compiles the simulation kernels with numba (about 10 seconds, then cached in
 `backend/.numba_cache/`); the API warms them up before it accepts requests, so the first plan is as fast as the
-rest (measured on 4 cores: 5.8 s to start cold, 1.1 s warm, then about 0.2 s per plan). The browser talks to the
+rest (measured on 4 cores: 10.6 s to start with an empty cache, 1.0 s with it, then about 1.3 s per plan). The browser talks to the
 API through a same-origin proxy (`/api/*` to `http://localhost:8000`, see `frontend/next.config.ts`). To point it
 elsewhere set `BACKEND_URL` before `npm run dev`, or before `npm run build` for a production build (Next bakes
 rewrites in at build time).
@@ -262,8 +262,8 @@ credits. Beyond that, choices made where the spec was silent, so they are not a 
   skip it), so on camera the Plan screen has it at once. What-ifs re-plan the same way. Measured on 4 cores: the fixed plan takes
   1.2 s; a full year-by-year plan (K = 32, 200 evaluation paths) takes **8.6 s**, of which the 200 evaluation paths take 7.4 s
   (0.037 s a path) and the single plan path 1.1 s, against the 10 s target (100 paths: 5.0 s; 400 paths: 15.6 s). A cold start (no numba cache)
-  compiles the fixed kernels before the API answers (about 13 s here, on a loaded machine) and the year-by-year kernels in
-  the background (about 40 s more); both are cached afterwards.
+  compiles the fixed kernels before the API answers (the 10.6 s above) and the year-by-year kernels in the background
+  (about 40 s more, measured on a loaded machine); both are cached afterwards.
 
 **What the numbers say** is whatever the engine produces; nothing is tuned toward a target (`reports/` has every
 measurement and the command that regenerates it).

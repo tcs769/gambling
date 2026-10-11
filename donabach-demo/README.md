@@ -178,7 +178,11 @@ credits. Beyond that, choices made where the spec was silent, so they are not a 
 * **Cash and goals.** Cash joins brokerage bonds. The goal bucket holds the next four years of goals, funded and
   released each year; without it goals are paid from brokerage pro rata.
 * **Fees** are taken pro rata from every account; gains realized to pay tax or fees are reported the next year.
-* **Conversions** are limited to what the taxable account can pay in tax.
+* **Conversions** can be paid for from the taxable account (cash included) and from that year's spare wages:
+  wages after the tax on them, 401(k) saving, the 10% brokerage saving and normal spending. The documents do not say
+  what the household spends today, so normal spending before retirement is taken to be its planned retirement
+  spending. The tax is never paid out of the converted dollars. Spare wages are used only for conversion tax;
+  as before, wages not saved are consumed.
 * **"Advantage" figures** are differences of medians (so the stat cards, the outcome cards and the attribution
   bars always agree).
 

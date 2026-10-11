@@ -126,6 +126,7 @@ def test_log_constants_match_column_names():
         "fee": sim.L_FEE, "pretax": sim.L_PRETAX, "roth": sim.L_ROTH, "brokerage": sim.L_BROKERAGE,
         "wealth": sim.L_WEALTH, "unrealized_gain": sim.L_UNREALIZED,
         "aged": sim.L_AGED, "rmd": sim.L_RMD, "private_credit": sim.L_PC,
+        "free_cash": sim.L_FREECASH, "conv_cash": sim.L_CONVCASH,
     }
     assert set(expected) == set(sim.LOG_COLUMNS)
     for name, index in expected.items():
@@ -377,6 +378,76 @@ def test_a_job_loss_year_triggers_a_low_income_conversion():
     assert r.ordinary_taxable_income == pytest.approx(P.TOP_OF_22, abs=0.5) or low["conv"][t] > 0
 
 
+def no_wage_household(brokerage, pretax, age=60, retirement_age=61, spending=0.0):
+    return make_demo_household(
+        people=[Person(name="Pat", age=age, wages=0)],
+        children_ages=[],
+        accounts=Accounts(
+            brokerage_value=brokerage, brokerage_basis=brokerage, pretax_balance=pretax, roth_balance=0, cash=0
+        ),
+        goals=Goals(
+            home_purchase_in_years=None, college_starts_in_years=None,
+            retirement_age=retirement_age, retirement_spending=spending,
+        ),
+        social_security=SocialSecurity(annual_benefit=0, start_age=67),
+        snapshot=None,
+    )
+
+
+def test_normal_spending_before_retirement_is_what_the_household_plans_to_spend_in_retirement():
+    tv = deterministic().tv
+    assert np.all(tv[:24, sim.TV_SPEND] == 110_000.0) and np.all(tv[24:, sim.TV_SPEND] == 0.0)
+
+
+def test_spare_wages_are_wages_after_tax_401k_saving_and_normal_spending():
+    log = detail(menu_policy("90|fill22_every|off|off|off")).log
+    for t in (0, 5, 10, 23):
+        w = log["wages"][t]
+        expected = max(0.0, w - log["wage_tax"][t] - log["k401"][t] - sim.BROKERAGE_SAVINGS_SHARE * w - 110_000)
+        assert log["free_cash"][t] == pytest.approx(expected)
+    assert log["free_cash"][0] > 20_000 and np.all(log["free_cash"][24:] == 0.0)  # nothing spare once retired
+
+
+def test_conversion_tax_is_paid_from_spare_wages_when_the_taxable_account_is_nearly_empty():
+    poor_in_cash = make_demo_household(
+        accounts=Accounts(brokerage_value=1_000, brokerage_basis=1_000, pretax_balance=1_000_000, roth_balance=0, cash=0)
+    )
+    log = detail(menu_policy("90|fill22_every|off|off|off"), poor_in_cash).log
+    old_cap = 1_000 / 0.22  # what the taxable account alone could have funded
+    assert log["conv"][0] > 5 * old_cap
+    assert log["conv_cash"][0] > 0
+    assert log["conv_cash"][0] == pytest.approx(log["portfolio_tax"][0], abs=100)  # the whole bill, wages paid it
+    assert log["conv_cash"][0] <= log["free_cash"][0] + 1e-9
+
+
+def test_the_tax_on_a_conversion_is_never_paid_out_of_the_converted_dollars():
+    # Retired, no wages, no taxable account: nothing can pay the tax, so nothing is converted.
+    log = run_detail(deterministic(no_wage_household(0.0, 2_000_000.0)), menu_policy("90|fill24_every|off|off|off")).log
+    early = log["age"] < 75  # RMDs would later put cash in the taxable account
+    assert np.all(log["conv"][early] == 0.0) and np.all(log["roth"][early] == 0.0)
+
+
+def test_a_conversion_is_capped_by_what_the_taxable_account_can_pay_without_wages():
+    log = run_detail(deterministic(no_wage_household(20_000.0, 1_000_000.0)), menu_policy("90|fill22_every|off|off|off")).log
+    after_returns = 20_000 * (1 + markets.MEANS[markets.EQUITY])  # conversions come after the year's return
+    assert log["conv"][0] == pytest.approx(after_returns / 0.22, rel=1e-6)
+    # every converted dollar is still in the Roth, less only the flat 0.35% fee: none paid the tax
+    assert log["roth"][0] == pytest.approx(log["conv"][0] * (1 - 0.0035), rel=1e-9)
+    assert log["conv_cash"][0] == 0.0
+
+
+def test_paying_tax_from_the_portfolio_never_touches_the_roth_dollars_just_converted():
+    st = state(be=10_000, bbasis=10_000, re=100_000, pe=500_000)
+    sim._pay_tax(st, 50_000.0, 80_000.0)  # 80,000 of the Roth was converted this year
+    assert st[sim.S_BE] == pytest.approx(0.0)
+    assert st[sim.S_RE] == pytest.approx(80_000.0)  # only the 20,000 that was not converted was available
+    assert st[sim.S_DDIST] == pytest.approx(20_000.0)  # the rest came from pre-tax (taxed next year)
+    assert st[sim.S_UNFUNDED] == 0.0
+    free = state(be=10_000, bbasis=10_000, re=100_000, pe=500_000)
+    sim._pay_tax(free, 50_000.0, 0.0)  # with nothing converted the Roth can pay
+    assert free[sim.S_RE] == pytest.approx(60_000.0) and free[sim.S_DDIST] == 0.0
+
+
 def test_roth_conversion_tax_is_paid_from_the_taxable_account():
     log = detail(menu_policy("90|fill22_low|off|off|off")).log
     t = 24
@@ -577,7 +648,8 @@ def test_assets_are_conserved_with_zero_returns():
         for t in range(len(total)):
             flows = (
                 log["k401"][t] + sim.BROKERAGE_SAVINGS_SHARE * log["wages"][t]
-                - log["goal_paid"][t] - log["spend_need"][t] - log["portfolio_tax"][t] - log["fee"][t]
+                - log["goal_paid"][t] - log["spend_need"][t] - log["fee"][t]
+                - (log["portfolio_tax"][t] - log["conv_cash"][t])  # conversion tax paid from wages leaves no hole
             )
             assert total[t] - previous == pytest.approx(flows, abs=1e-6), (policy, t)
             previous = total[t]

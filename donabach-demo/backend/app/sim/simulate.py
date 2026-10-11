@@ -56,8 +56,8 @@ NSTATE = 16
 N_BALANCES = 11
 
 # Time-varying inputs, one row per simulated year.
-(TV_AGE, TV_RETIRED, TV_SS, TV_NEED, TV_GOAL, TV_BUCKET, TV_EXPWAGE, TV_KIDS, TV_DEPS, TV_NEARN, TV_AGED) = range(11)
-NTV = 11
+(TV_AGE, TV_RETIRED, TV_SS, TV_NEED, TV_GOAL, TV_BUCKET, TV_EXPWAGE, TV_KIDS, TV_DEPS, TV_NEARN, TV_AGED, TV_SPEND) = range(12)
+NTV = 12
 
 # Policy columns.
 (
@@ -152,6 +152,8 @@ LOG_COLUMNS = (
     "aged",
     "rmd",
     "private_credit",
+    "free_cash",
+    "conv_cash",
 )
 NLOG = len(LOG_COLUMNS)
 (
@@ -194,6 +196,8 @@ NLOG = len(LOG_COLUMNS)
     L_AGED,
     L_RMD,
     L_PC,
+    L_FREECASH,
+    L_CONVCASH,
 ) = range(NLOG)
 
 # --------------------------------------------------------------------------------------------
@@ -279,6 +283,27 @@ def _convert_to_roth(st, fraction):
     st[S_PE] *= 1.0 - fraction
     st[S_PB] *= 1.0 - fraction
     st[S_PP] *= 1.0 - fraction
+
+
+@jit
+def _pay_tax(st, due, protected_roth):
+    """Pay `due` of income tax from the portfolio: brokerage, then Roth, then pre-tax.
+
+    Roth dollars converted this year (`protected_roth`) are never used: conversion tax is not paid
+    out of the converted amount. Gains realized by selling to pay it are taxed next year; so are
+    pre-tax withdrawals. Whatever no account can fund is recorded as unfunded.
+    """
+    sold, gain = _sell_brokerage(st, due)
+    st[S_DGAIN] += gain
+    due -= sold
+    if due > 0.0:
+        roth = st[S_RE] + st[S_RB] + st[S_RP]
+        due -= _sell_roth(st, min(due, max(0.0, roth - protected_roth)))
+    if due > 0.0:
+        taken = _sell_pretax(st, due)
+        st[S_DDIST] += taken
+        due -= taken
+    st[S_UNFUNDED] += _shortfall(due)
 
 
 @jit
@@ -576,14 +601,19 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
     if rmd_cash > 0.0:
         st[S_BB] += rmd_cash  # an RMD that exceeds spending is reinvested in the taxable account
 
-    # 5. Roth conversion: fill the chosen bracket, if the action asks for it.
+    # 5. Roth conversion: fill the chosen bracket, if the action asks for it. The tax on it can be
+    # paid from the taxable account (cash included) and from this year's wages once taxes, 401(k),
+    # brokerage savings and normal spending are covered, but never out of the converted dollars.
+    # Before retirement normal spending is taken to be what the household plans to spend in
+    # retirement; the documents do not say what it spends today.
+    free_cash = max(0.0, w - wage_tax_t - k - BROKERAGE_SAVINGS_SHARE * w - tv[t, TV_SPEND])
     conv = 0.0
     if conv_top > 0.0:
         ordinary = _ordinary_income(wages_taxable, interest, taxable_ss, ret_dist, 0.0, realized, cf_in)
         room = max(0.0, conv_top + std - ordinary)
         pre = st[S_PE] + st[S_PB] + st[S_PP]
-        # The tax is paid from the taxable account, never out of the converted dollars.
-        affordable = (st[S_BE] + st[S_BB] + st[S_BP]) / marginal_rate(conv_top - 1.0)
+        funds = st[S_BE] + st[S_BB] + st[S_BP] + free_cash
+        affordable = funds / marginal_rate(conv_top - 1.0)
         conv = min(room, pre, affordable)
         if conv > 0.0:
             _convert_to_roth(st, conv / pre)
@@ -620,17 +650,14 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
     # 9. Pay the portfolio-caused tax from the brokerage account. Gains realized by selling
     # to pay it are taxed next year; a negative amount (tax saved) is added to the account.
     due = portfolio_tax
+    conv_cash = 0.0
+    if conv > 0.0 and due > 0.0 and free_cash > 0.0:
+        # The part of the bill caused by the conversion comes out of this year's spare wages first.
+        no_conversion = tax_core(wages_taxable, interest, dividends, dividends, realized, ret_dist, 0.0, ss, early_base, kids, deps, cf_in, aged)
+        conv_cash = min(max(0.0, total_tax - no_conversion.total_tax), free_cash, due)
+        due -= conv_cash
     if due > 0.0:
-        sold, gain = _sell_brokerage(st, due)
-        st[S_DGAIN] += gain
-        due -= sold
-        if due > 0.0:
-            due -= _sell_roth(st, due)
-        if due > 0.0:
-            taken = _sell_pretax(st, due)
-            st[S_DDIST] += taken
-            due -= taken
-        st[S_UNFUNDED] += _shortfall(due)
+        _pay_tax(st, due, conv)
     elif due < 0.0:
         st[S_BB] -= due
 
@@ -731,6 +758,8 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_l
         log[t, L_AGED] = aged
         log[t, L_RMD] = rmd
         log[t, L_PC] = st[S_PP] + st[S_RP] + st[S_BP]
+        log[t, L_FREECASH] = free_cash
+        log[t, L_CONVCASH] = conv_cash
     return wealth, total_tax
 
 
@@ -890,6 +919,7 @@ def _time_table(household: Household, n_years: int, expected_wages: np.ndarray) 
         tv[t, TV_DEPS] = sum(1 for c in household.children_ages if c + t < 23)
         tv[t, TV_NEARN] = 0.0 if retired else sum(1 for person in household.people if person.wages > 0)
         tv[t, TV_AGED] = sum(1 for person in household.people if person.age + t >= P.AGED_AGE)
+        tv[t, TV_SPEND] = 0.0 if retired else g.retirement_spending
     return tv
 
 

@@ -1,0 +1,182 @@
+# Donabach demo
+
+A clickable demo of **Donabach**, a wealth-management platform that gives every household private-bank
+strategies and better judgment about when to use them. It is built to be screen-recorded for investors.
+
+The flow: upload a household's documents, read the numbers off them, forecast income, recommend a strategy
+with a year-by-year plan, compare it with a typical advisor, and run what-ifs.
+
+> **Everything is fictional.** The household, documents, names, SSNs (`000-00-0000`) and accounts (`XXXX-1234`)
+> are invented. The market is simulated. This is a prototype for illustration, not investment or tax advice.
+
+Two machine-learning models (a strategy recommender and an income forecaster) are built separately and plug in
+through the interfaces in `backend/app/ml/`. **Until they are connected the UI says "Model not connected" and
+never shows a stand-in prediction.** Every other number on screen (tax, simulation, planner, comparison) is
+computed by the code, not typed into the UI.
+
+## Run it
+
+Needs Python 3.11+ and Node 20+ (developed on Python 3.13, Node 22).
+
+```bash
+make install     # backend virtualenv + dependencies, frontend npm install
+make backend     # API on http://localhost:8000   (interactive docs at /docs)
+make frontend    # app on http://localhost:3000
+```
+
+Without `make`:
+
+```bash
+# backend
+cd backend && python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+
+# frontend (second terminal)
+cd frontend && npm install && npm run dev
+```
+
+The first start compiles the simulation kernels with numba (about 5 to 10 seconds, then cached in
+`backend/.numba_cache/`); the API warms them up before it accepts requests. The browser talks to the API through
+a same-origin proxy (`/api/*` to `http://localhost:8000`, see `frontend/next.config.ts`; set `BACKEND_URL` to
+point elsewhere).
+
+**Demo mode** (the switch in the header, on by default) preloads the three sample documents and fixes the random
+seed, so every run on camera produces identical numbers. Turn it off to draw a fresh set of futures each time.
+
+## The seven screens
+
+1. **Upload**: drop zone, plus "Use sample documents" so recording is reliable. Each file shows its upload and
+   reading state.
+2. **Review**: the extracted numbers grouped by document with confidence badges, next to the PDF. Click a field
+   and the viewer jumps to its page and highlights the value. One field is deliberately flagged (the brokerage
+   statement's holdings add up to $149,999 against a stated total of $150,000) so the demo can show a correction.
+3. **A few questions**: tap-to-select chips for goals, with sensible defaults. Values the documents do not
+   contain (Roth balance, cash, Social Security) are labelled *Estimated*.
+4. **Household profile**: balances by account, this year's computed tax picture, goals.
+5. **Forecast**: income fan chart (p10 to p90 band, median line). While the forecaster model is not connected
+   it is labelled "Model not connected, placeholder forecast".
+6. **Plan**: the recommended strategy in a sentence with a computed reason, the model panel (or its not-connected
+   state), and a year-by-year table. Click a row for that year's decisions, full tax return and the value of each
+   decision.
+7. **Compare**: stat cards, fan chart for both strategies, "where the advantage comes from", and every strategy
+   searched, ranked.
+
+A **What-if** panel (from Plan and Compare) re-plans with preset events or edited inputs.
+
+## How the numbers are produced
+
+All dollars are **real 2026 dollars**; tax brackets are held constant in 2026 dollars.
+
+| Piece | Where | What it does |
+|---|---|---|
+| Tax engine | `backend/app/tax/` | Federal MFJ and Illinois for tax year 2026. Every constant is in `params_2026.py` with its source. One scalar kernel is the single source of truth for both the simulator and the line-by-line breakdown. Cross-checked against PolicyEngine-US (below). |
+| Documents | `backend/app/docs/`, `fixtures/` | `fixtures/demo_household.json` is the single source of truth for three generated PDFs (a 2026 1040 projection, a brokerage statement, a 401(k) statement). A pdfplumber parser reads them back with value, page, bounding box and rule-based confidence, plus cross-checks. |
+| Markets and income | `backend/app/sim/markets.py`, `income.py` | Correlated normal real returns (equity 5.5%/16%, bonds 1.5%/5%, private credit 3.5%/8%) from a fixed seed, shared by every strategy. Income is a **placeholder** life-cycle process until the ML forecaster plugs in. |
+| Simulator | `backend/app/sim/simulate.py` | The 11-step yearly household loop (returns, harvesting, goals, spending, conversion, goal bucket, location and rebalancing, tax, fees, contributions) as one numba kernel run over every (strategy, future). |
+| Planner | `backend/app/planner/` | Searches all **224** strategies (stock share x Roth conversions x private credit x direct indexing x goal bonds) on the same 400 futures, scoring each by certainty-equivalent after-tax wealth at 70 (CRRA, risk aversion 3, $50,000 floor). A full search takes about 0.1 s; a complete plan about 0.2 s. |
+| Baseline | `planner/baseline.py` | A "good RIA": age-based 80% to 50% glide path, same mix in every account, breakpoint fees, fund-level harvesting, goals from brokerage, no conversions, pro rata withdrawals. |
+| Explanations | `planner/explain.py` | The five-step "where the advantage comes from" (switch decisions on one at a time from the baseline, same futures) and, per year, the value of each decision found by re-running the plan with only that decision removed for that year. |
+
+The simulation and the planner are explained in detail in the docstrings of `sim/simulate.py` and
+`planner/strategies.py`.
+
+## Plugging in the ML models
+
+Drop trained models in `backend/models/` as `recommender.pkl` and `forecaster.pkl`; no restart is needed.
+The contracts, the exact feature vector, a worked example and the training-data export are in
+[`backend/models/README.md`](backend/models/README.md).
+
+```bash
+cd backend && python export_training_data.py --k 2000 --paths 150 --out data/training_data.parquet
+```
+
+## Regenerating things
+
+```bash
+make docs                       # rewrite fixtures/sample_docs/*.pdf from fixtures/demo_household.json
+cd frontend && npm run gen:api  # refresh src/lib/api-schema.d.ts from the running API's OpenAPI document
+```
+
+The sample PDFs are committed and byte-reproducible; a test fails if they drift from the generator.
+
+## API
+
+Typed with Pydantic (`backend/app/api_models.py`); try it at http://localhost:8000/docs.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /documents/sample` | load the three fictional PDFs, return document ids |
+| `POST /documents/upload` | accept PDFs |
+| `POST /documents/{id}/parse` | fields with bbox and confidence, plus the cross-checks |
+| `GET /documents/{id}/file` | serve the PDF to the viewer |
+| `POST /household` | build the household from confirmed fields plus answers (422 lists anything unreadable) |
+| `POST /forecast` | the forecast, or `connected: false` plus the labelled placeholder |
+| `POST /plan` | planner and recommender; everything the Plan and Compare screens need |
+| `POST /plan/year-detail` | decisions, tax return and value of each decision for one year |
+| `POST /plan/whatif` | apply presets and edits, re-plan |
+| `GET /models/status` | whether each model is connected |
+
+## Tests
+
+```bash
+make test                                   # backend, about 12 s
+cd frontend && npx tsc --noEmit && npx eslint src
+```
+
+* Tax engine: bracket math, Illinois, Roth conversions, capital-gain stacking, NIIT, child-credit phase-out and
+  capital-loss carryforward, in both compiled and plain-Python modes.
+* Optional cross-check against PolicyEngine-US (`pip install policyengine-us`, then
+  `pytest tests/test_policyengine_compare.py`): six households match to the cent. The one documented gap is
+  filers 65 and over, for whom PolicyEngine adds the age-65 and senior deductions that this project's spec
+  leaves out.
+* Simulator: each mechanism against hand calculations, a zero-return conservation identity (every dollar of
+  change is a contribution, goal, spending, tax or fee), and a per-year recomputation of the simulator's taxes
+  through the public tax engine.
+* Parser: it recovers every fixture value from the generated PDFs; defects injected into scratch copies were all
+  caught.
+* A subprocess test forces numba's unsafe `workqueue` threading layer and fires overlapping plans, to protect
+  the API from a process abort that overlapping requests would otherwise cause on some machines.
+
+## Modeling choices and known simplifications
+
+Stated in the app footer: income tax only (no payroll taxes), standard deduction only, no AMT, no state tax
+credits. Beyond that, choices made where the spec was silent, so they are not a surprise:
+
+* **Age basis.** The household's age is the primary earner's; both spouses retire in the same year; the spouse's
+  age only drives their wage growth. The 10% early-withdrawal penalty applies before age 59 1/2 on that basis.
+* **65 and over.** The plain $32,200 standard deduction is used at every age, so tax is slightly overstated in
+  the last years of the horizon for every strategy alike (see the PolicyEngine note above).
+* **Private credit.** The sleeve is 10% of long-term money, held only in the pre-tax account; the stock share is
+  applied to the remaining 90%. The bond / private-credit correlation (0.1) is assumed; the spec gives only the
+  equity pairs.
+* **Asset location.** Private credit, then bonds, fill the pre-tax account first; the Roth holds stocks; the
+  brokerage account takes the remainder (including overflow bonds).
+* **Cash and goals.** Cash joins brokerage bonds. The goal bucket holds the next four years of goals, funded and
+  released each year; without it goals are paid from brokerage pro rata.
+* **Fees** are taken pro rata from every account; gains realized to pay tax or fees are reported the next year.
+* **Conversions** are limited to what the taxable account can pay in tax.
+* **"Advantage" figures** are differences of medians (so the stat cards, the outcome cards and the attribution
+  bars always agree).
+
+What the numbers say is not tuned. For the sample household the engine's choice is conservative: 70% stocks (the
+lowest option on the menu) and no Roth conversions. With risk aversion 3 the safest stock share on the menu often
+wins (in a 100-household synthetic sample it was best for 66, against 12 for 100% stocks), and conversions at the
+22% bracket or higher cost more tax up front than the model's 20-year withdrawal rate saves later. For the sample
+household about 70% of the advantage over the baseline is simply the lower fee.
+
+## Layout
+
+```
+backend/app/         main.py (API), api_models.py, schemas.py, builder.py, forecast.py, whatif.py, store.py
+  tax/               params_2026.py, engine.py, picture.py
+  docs/              generate.py, parse.py, models.py
+  sim/               markets.py, income.py, simulate.py
+  planner/           strategies.py, search.py, baseline.py, explain.py, guided.py, plan.py
+  ml/                interfaces.py, adapters.py
+backend/models/      drop recommender.pkl / forecaster.pkl here
+backend/tests/       pytest suite
+backend/export_training_data.py
+fixtures/            demo_household.json, sample_docs/*.pdf
+frontend/src/        app/ (the seven routes), components/, lib/ (API client, store, formatting)
+```

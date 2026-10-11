@@ -283,9 +283,9 @@ class _Reader:
             for index, row in enumerate(page.rows):
                 cells = _cells(row)
                 if len(cells) == len(cols) and all(
-                    c.text.lower().startswith(col.header.lower()) for c, col in zip(cells, cols)
+                    c.text.lower().startswith(col.header.lower()) for c, col in zip(cells, cols, strict=True)
                 ):
-                    header = {col.key: c for c, col in zip(cells, cols)}
+                    header = {col.key: c for c, col in zip(cells, cols, strict=True)}
                     return _Table(page, index, header, tuple(cols))
         return None
 

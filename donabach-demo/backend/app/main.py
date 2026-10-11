@@ -9,6 +9,7 @@ documents: the frontend sends the household with each planning request.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from typing import Annotated
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -82,7 +83,7 @@ def load_sample_documents() -> DocumentList:
 
 
 @app.post("/documents/upload", response_model=DocumentList)
-async def upload_documents(files: list[UploadFile] = File(...)) -> DocumentList:
+async def upload_documents(files: Annotated[list[UploadFile], File()]) -> DocumentList:
     stored = []
     for upload in files:
         try:

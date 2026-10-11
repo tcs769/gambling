@@ -55,7 +55,8 @@ def _uniform(rng: np.random.Generator, bounds: tuple[float, float]) -> float:
     return float(rng.uniform(*bounds))
 
 
-def sample_household(rng: np.random.Generator, r: SamplingRanges = SamplingRanges()) -> Household:
+def sample_household(rng: np.random.Generator, r: SamplingRanges | None = None) -> Household:
+    r = r or SamplingRanges()
     age = int(rng.integers(r.age[0], r.age[1] + 1))
     income = float(np.exp(rng.uniform(np.log(r.household_income[0]), np.log(r.household_income[1]))))
     people = [Person(age=age, wages=income)]
@@ -111,9 +112,10 @@ def export(
     paths: int = 150,
     seed: int = 1,
     out: Path | None = None,
-    ranges: SamplingRanges = SamplingRanges(),
+    ranges: SamplingRanges | None = None,
     progress: bool = False,
 ) -> pd.DataFrame:
+    ranges = ranges or SamplingRanges()
     rng = np.random.default_rng(seed)
     rows = []
     started = time.perf_counter()

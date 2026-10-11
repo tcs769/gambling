@@ -94,7 +94,6 @@ def render(results: dict, seeds=DEFAULT_SEEDS, seconds: float | None = None) -> 
             "| Step | The plan's recommendation (seed 2026) | Median advantage | Risk-adjusted | Mean of seeds: median | Mean of seeds: risk-adj. | Runs out of money: plan / good RIA |",
             "|---|---|---|---|---|---|---|",
         ]
-        previous = None
         for stage, summary in stages:
             run0 = summary["app_seed_run"]
             held = run0["baselines"]["good_ria"]["held_out"]
@@ -104,7 +103,6 @@ def render(results: dict, seeds=DEFAULT_SEEDS, seconds: float | None = None) -> 
                 f"| {stage.name} | {run0['strategy_label']} | {_pct(held['median'])} | {_pct(held['risk_adjusted'])} | "
                 f"{_pct(mean['median'])} | {_pct(mean['risk_adjusted'])} | {short['plan']:.1%} / {short['baseline']:.1%} |"
             )
-            previous = (held, mean)
         lines.append("")
         base_held = stages[0][1]["app_seed_run"]["baselines"]["good_ria"]["held_out"]
         last_held = stages[-1][1]["app_seed_run"]["baselines"]["good_ria"]["held_out"]
@@ -122,15 +120,48 @@ def render(results: dict, seeds=DEFAULT_SEEDS, seconds: float | None = None) -> 
     return "\n".join(lines).rstrip() + "\n"
 
 
+def compare_studies(before: Path, after: Path) -> str:
+    """The 300-household study before and after tax lots: the median across the households of each type."""
+    import pandas as pd
+
+    from app.study.households import TYPES
+
+    old, new = pd.read_csv(before), pd.read_csv(after)
+    key = ["type", "index"]
+    both = old.merge(new, on=key, suffixes=("_before", "_after"))
+    rows = [
+        "## The 300 households of the household study, before and after tax lots",
+        "",
+        "Median across the households of each type, raw (median) advantage over the good advisor on 1,000 futures each, "
+        "the planning style's own recommendation for each household (equity first), before and after lots. "
+        "The last column counts the households whose plan changed.",
+        "",
+        "| Type | Raw advantage before | Raw advantage after | Change | Risk-adjusted before | after | Plans that changed |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for kind, label in [*TYPES.items(), (None, "All 300 households")]:
+        part = both if kind is None else both[both["type"] == kind]
+        changed = int((part["strategy_before"] != part["strategy_after"]).sum())
+        b, a = part["adv_median_vs_good_ria_before"].median(), part["adv_median_vs_good_ria_after"].median()
+        rb, ra = part["adv_risk_adjusted_vs_good_ria_before"].median(), part["adv_risk_adjusted_vs_good_ria_after"].median()
+        name = f"**{label}**" if kind is None else label.split(" (")[0]
+        rows.append(f"| {name} | {_pct(b)} | {_pct(a)} | {(a - b) * 100:+.2f} points | {_pct(rb)} | {_pct(ra)} | {changed} of {len(part)} |")
+    return "\n".join(rows) + "\n"
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path, default=None)
     parser.add_argument("--seeds", type=int, default=len(DEFAULT_SEEDS))
     parser.add_argument("--n-eval", type=int, default=2000)
+    parser.add_argument("--study-before", type=Path, default=None, help="the household study's CSV from before tax lots")
+    parser.add_argument("--study-after", type=Path, default=None, help="the household study's CSV with tax lots")
     args = parser.parse_args(argv)
     started = time.perf_counter()
     seeds = DEFAULT_SEEDS[: args.seeds]
     text = render(run(seeds=seeds, n_eval=args.n_eval), seeds, time.perf_counter() - started)
+    if args.study_before and args.study_after:
+        text = text.replace("_Computed in", compare_studies(args.study_before, args.study_after) + "\n_Computed in", 1)
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(text)

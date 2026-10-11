@@ -28,7 +28,6 @@ from app.api_models import (
     WealthLines,
 )
 from app.planner import plan as planner
-from app.planner.baseline import GOOD_RIA
 from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, search
 from app.planner.strategies import Strategy, menu
 from app.planner.waterfall import run_waterfall, waterfall_strategies

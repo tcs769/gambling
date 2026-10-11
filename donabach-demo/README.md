@@ -71,6 +71,15 @@ seed, so every run on camera produces identical numbers. Turn it off to draw a f
 
 A **What-if** panel (from Plan and Compare) re-plans with preset events or edited inputs.
 
+**The showcase flow** is a separate three-screen path (`/showcase`, linked from the first screen) about one household:
+1. **Household**: a summary card (who, what they have by account with the taxable account's gain, what they are saving
+   for on a timeline, what stands out).
+2. **Strategies**: a waterfall from the good advisor's median after-tax wealth at 80 to Donabach's, one bar per strategy,
+   each in percent a year and dollars at 80, every strategy a switch: turn one off and the whole chain is re-run on the same
+   simulated futures and the total recomputed.
+3. **Wealth**: median and 10th-percentile wealth by age against the advisor, the headline advantage and the
+   risk-adjusted advantage labelled and explained in one line (it follows the switches chosen on screen 2).
+
 ## How the numbers are produced
 
 All dollars are **real 2026 dollars**; tax brackets are held constant in 2026 dollars.
@@ -84,7 +93,8 @@ All dollars are **real 2026 dollars**; tax brackets are held constant in 2026 do
 | Planner | `backend/app/planner/` | Searches the strategies of a planning style on the same 400 futures, scoring each by certainty-equivalent after-tax wealth at 80 (CRRA, risk aversion 3, $50,000 floor). **Equity first** (the default): a spending reserve of 2, 4 or 6 years of expenses in bonds and private credit with everything else in stocks, crossed with Roth conversions x private credit sleeve x direct indexing x 401(k) type x goal funding (**1,008** strategies). **Balanced** (`planning_style: "balanced"`, the earlier default): a stock share with a glide path x the same choices x goal bonds (**4,032**). The search is staged: every strategy is scored on 100 of the futures and the best 150 go on to all 400 (about 1 s; `exhaustive=True` scores everything on everything, and a test checks both pick the same winner). |
 | Baselines | `planner/baseline.py` | A **good RIA** (age-based 80% to 50% glide path, same mix in every account, breakpoint fees falling from 1.0% to 0.5%, fund-level harvesting, goals from brokerage, no conversions, pro rata withdrawals, oldest tax lots sold first) and a **typical advisor** (flat 1.0% fee, no harvesting, accounts managed separately, 80% to 50% glide, no conversions, proportional withdrawals, oldest tax lots sold first). Each is shown with its definition. |
 | Year-by-year planner | `backend/app/sim/adaptive.py`, `planner/adaptive_plan.py`, `adaptive_service.py` | Each year, after that year's returns, scores candidate actions by rollouts and takes the best (below). |
-| Explanations | `planner/explain.py` | The five-step "where the advantage comes from" (switch decisions on one at a time from the baseline, same futures) and, per year, the value of each decision found by re-running the plan with only that decision removed for that year. |
+| Explanations | `planner/explain.py` | The seven-step "where the advantage comes from" (switch decisions on one at a time from the baseline, same futures) and, per year, the value of each decision found by re-running the plan with only that decision removed for that year. |
+| Showcase | `backend/app/showcase.py`, `planner/waterfall.py` | One household (`fixtures/showcase.json`) planned once and measured on 2,000 futures it never saw: its summary card, the **waterfall** from the good advisor's result to Donabach's (one bar per strategy of the plan, switched on in sequence on the same futures; any subset can be switched off and the chain is re-run, so the bars always add up to the total) and its wealth over time against the advisor. |
 
 The simulation and the planner are explained in detail in the docstrings of `sim/simulate.py` and
 `planner/strategies.py`.
@@ -153,6 +163,8 @@ Typed with Pydantic (`backend/app/api_models.py`); try it at http://localhost:80
 | `DELETE /plan/adaptive/{id}` | the viewer walked away from the plan: drop one watcher; when none is left the job stops (204, or 404 for an unknown id) |
 | `POST /plan/year-detail` | decisions, tax return and value of each decision for one year of the fixed plan |
 | `POST /plan/whatif` | apply presets and edits, re-plan (same fixed-then-adaptive behaviour) |
+| `GET /showcase` | the showcase household: its summary card and its waterfall, headline and wealth lines with every strategy on |
+| `POST /showcase/analysis` | the same with only the strategies in `enabled` switched on (unknown names are a 422) |
 | `GET /models/status` | whether each of the four models is connected |
 
 ## Tests
@@ -364,14 +376,15 @@ backend/app/         main.py (API), api_models.py, schemas.py, builder.py, forec
   tax/               params_2026.py, engine.py, picture.py
   docs/              generate.py, parse.py, models.py
   sim/               markets.py, income.py, simulate.py, adaptive.py (the year-by-year planner's kernel)
-  planner/           strategies.py, search.py, baseline.py, explain.py, guided.py, plan.py,
+  planner/           strategies.py, search.py, baseline.py, explain.py, guided.py, plan.py, waterfall.py,
                      adaptive_plan.py, adaptive_service.py (background jobs, cache), decision_data.py (training data)
+  showcase.py        the showcase household's card, waterfall and wealth lines
   study/             the measurement scripts behind reports/ (households, household_study, adaptive_evaluation, ...)
   ml/                interfaces.py, adapters.py
 backend/models/      drop recommender.pkl, forecaster.pkl, policy.pkl, value.pkl here
 reports/             measurements: progress, household study, adaptive evaluation, assumption review, ...
 backend/tests/       pytest suite
 backend/export_training_data.py
-fixtures/            demo_household.json, sample_docs/*.pdf
+fixtures/            demo_household.json, sample_docs/*.pdf, showcase.json (the showcase household)
 frontend/src/        app/ (the seven routes), components/, lib/ (API client, store, formatting)
 ```

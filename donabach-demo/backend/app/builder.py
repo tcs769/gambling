@@ -22,6 +22,16 @@ from app.tax.picture import current_tax_return
 
 ESTIMATED = ("roth_balance", "cash", "social_security")
 
+# Plain-language names for the values the household cannot be built without, for the case where no
+# uploaded document contained the field at all (so there is no parsed label to borrow).
+REQUIRED_LABELS = {
+    "taxpayer_age": "Taxpayer age",
+    "spouse_age": "Spouse age",
+    "child_age_1": "Age of child 1",
+    "w2_wages_taxpayer": "Taxpayer W-2 wages (box 1)",
+    "w2_wages_spouse": "Spouse W-2 wages (box 1)",
+}
+
 
 class MissingFieldsError(Exception):
     def __init__(self, missing: list[MissingField]):
@@ -47,7 +57,7 @@ class _Fields:
         if field is not None and field.value is not None:
             return float(field.value)
         if required:
-            label = field.label if field is not None else key.replace("_", " ")
+            label = field.label if field is not None else REQUIRED_LABELS.get(key, key.replace("_", " "))
             self.missing[key] = MissingField(key=key, label=label)
         return default
 
@@ -94,12 +104,18 @@ def build_household(
         cash=answers.cash,
     )
 
-    snapshot = IncomeSnapshot(
-        wages_after_401k=f.number("wages_1a", required=False),
-        interest=f.number("taxable_interest_2b", required=False),
-        qualified_dividends=f.number("qualified_dividends_3a", required=False),
-        ordinary_dividends=f.number("ordinary_dividends_3b", required=False),
-        net_capital_gain=f.number("capital_gain_7", required=False),
+    # Without a tax form there is no reported income: leave the snapshot empty so the profile's tax
+    # picture is estimated from the wages and balances (and says so) rather than shown as all zeros.
+    snapshot = (
+        IncomeSnapshot(
+            wages_after_401k=f.number("wages_1a", required=False),
+            interest=f.number("taxable_interest_2b", required=False),
+            qualified_dividends=f.number("qualified_dividends_3a", required=False),
+            ordinary_dividends=f.number("ordinary_dividends_3b", required=False),
+            net_capital_gain=f.number("capital_gain_7", required=False),
+        )
+        if f.has("wages_1a")
+        else None
     )
 
     if f.missing:
@@ -186,5 +202,6 @@ def household_profile(household: Household) -> HouseholdProfile:
         tax_return=tax,
         tax_lines=tax.lines(),
         estimated=list(household.estimated),
+        tax_estimated=household.snapshot is None,
         total_assets=sum(line.amount for line in accounts),
     )

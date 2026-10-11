@@ -1,4 +1,4 @@
-import { Disclosure, Panel, StatCard } from "@/components/ui";
+import { Disclosure, Panel, StatCard, Tag } from "@/components/ui";
 import { dollars, percent } from "@/lib/format";
 import type { HouseholdProfile } from "@/lib/types";
 import styles from "./Profile.module.css";
@@ -12,8 +12,14 @@ export function TaxPicture({ profile }: { profile: HouseholdProfile }) {
   return (
     <>
       <div className={styles.sectionHead}>
-        <h2>This year&apos;s tax picture</h2>
-        <p>Computed from the income on your tax return, with 2026 rules.</p>
+        <h2>
+          This year&apos;s tax picture {profile.tax_estimated && <Tag tone="gold">Estimated</Tag>}
+        </h2>
+        <p>
+          {profile.tax_estimated
+            ? "Estimated from your wages and balances, because no tax return was read. 2026 rules."
+            : "Computed from the income on your tax return, with 2026 rules."}
+        </p>
       </div>
 
       <div className={styles.cards}>

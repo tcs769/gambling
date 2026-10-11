@@ -433,3 +433,23 @@ def test_whatif_drops_a_change_that_nets_to_nothing(household_json):
     body = whatif(household_json, presets=["retire_57"], edits={"retirement_age": 62}).json()
     assert body["changes"] == []
     assert body["household"]["goals"]["retirement_age"] == 62
+
+
+def test_without_a_tax_form_the_missing_values_are_named_and_the_tax_picture_is_an_estimate(sample_docs):
+    ids = [SAMPLE_IDS["brokerage_statement"], SAMPLE_IDS["retirement_401k"]]
+    response = client.post("/household", json={"document_ids": ids})
+    assert response.status_code == 422
+    missing = {m["key"]: m["label"] for m in response.json()["detail"]["missing"]}
+    assert missing == {"taxpayer_age": "Taxpayer age", "w2_wages_taxpayer": "Taxpayer W-2 wages (box 1)"}
+
+    typed = {"taxpayer_age": 38, "spouse_age": 37, "w2_wages_taxpayer": 115_500, "w2_wages_spouse": 85_500}
+    profile = client.post("/household", json={"document_ids": ids, "overrides": typed}).json()
+    assert profile["tax_estimated"] is True
+    assert [p["wages"] for p in profile["household"]["people"]] == [140_000, 110_000]
+    assert profile["household"]["snapshot"] is None
+    assert profile["tax_return"]["agi"] > 150_000  # estimated from wages and balances, not zero
+    assert profile["tax_return"]["grand_total"] > 0
+
+
+def test_a_tax_form_makes_the_tax_picture_reported_not_estimated(profile):
+    assert profile["tax_estimated"] is False

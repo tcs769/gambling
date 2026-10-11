@@ -92,6 +92,7 @@ class HouseholdProfile(BaseModel):
     tax_return: TaxReturn
     tax_lines: list[TaxLine]
     estimated: list[str]
+    tax_estimated: bool = False  # True when no tax form was read and the picture is an estimate
     total_assets: float
 
 

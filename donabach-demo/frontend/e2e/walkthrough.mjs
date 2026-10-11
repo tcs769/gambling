@@ -175,6 +175,55 @@ for (let i = 0; i < 2; i++) {
 }
 check(fresh[0] === fresh[1], `demo mode: two fresh sessions show identical numbers (${fresh[0].slice(0, 48)})`);
 
+// --- Other paths worth guarding ---------------------------------------------------------------------
+// A fresh session with demo mode off: nothing is preloaded, and a direct visit to a later step goes back.
+{
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const p = await ctx.newPage();
+  await p.addInitScript(() => localStorage.setItem("donabach-demo-mode", "false"));
+  await p.goto(BASE + "/plan", { waitUntil: "networkidle" });
+  await p.waitForURL((u) => u.pathname === "/", { timeout: 15000 });
+  check(true, "demo mode off: a direct visit to /plan goes back to Upload");
+  await p.waitForTimeout(1500);
+  check(!/Ready/.test(await p.evaluate(() => document.body.innerText)), "demo mode off: no documents are preloaded");
+
+  // A PDF the demo does not read is accepted but reported plainly.
+  const pdf = Buffer.from("JVBERi0xLjMKJZOMi54gUmVwb3J0TGFiIEdlbmVyYXRlZCBQREYgZG9jdW1lbnQgKG9wZW5zb3VyY2UpCjEgMCBvYmoKPDwKL0YxIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9CYXNlRm9udCAvSGVsdmV0aWNhIC9FbmNvZGluZyAvV2luQW5zaUVuY29kaW5nIC9OYW1lIC9GMSAvU3VidHlwZSAvVHlwZTEgL1R5cGUgL0ZvbnQKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL0NvbnRlbnRzIDcgMCBSIC9NZWRpYUJveCBbIDAgMCA1OTUuMjc1NiA4NDEuODg5OCBdIC9QYXJlbnQgNiAwIFIgL1Jlc291cmNlcyA8PAovRm9udCAxIDAgUiAvUHJvY1NldCBbIC9QREYgL1RleHQgL0ltYWdlQiAvSW1hZ2VDIC9JbWFnZUkgXQo+PiAvUm90YXRlIDAgL1RyYW5zIDw8Cgo+PiAKICAvVHlwZSAvUGFnZQo+PgplbmRvYmoKNCAwIG9iago8PAovUGFnZU1vZGUgL1VzZU5vbmUgL1BhZ2VzIDYgMCBSIC9UeXBlIC9DYXRhbG9nCj4+CmVuZG9iago1IDAgb2JqCjw8Ci9BdXRob3IgKGFub255bW91cykgL0NyZWF0aW9uRGF0ZSAoRDoyMDAwMDEwMTAwMDAwMCswMCcwMCcpIC9DcmVhdG9yIChhbm9ueW1vdXMpIC9LZXl3b3JkcyAoKSAvTW9kRGF0ZSAoRDoyMDAwMDEwMTAwMDAwMCswMCcwMCcpIC9Qcm9kdWNlciAoUmVwb3J0TGFiIFBERiBMaWJyYXJ5IC0gXChvcGVuc291cmNlXCkpIAogIC9TdWJqZWN0ICh1bnNwZWNpZmllZCkgL1RpdGxlICh1bnRpdGxlZCkgL1RyYXBwZWQgL0ZhbHNlCj4+CmVuZG9iago2IDAgb2JqCjw8Ci9Db3VudCAxIC9LaWRzIFsgMyAwIFIgXSAvVHlwZSAvUGFnZXMKPj4KZW5kb2JqCjcgMCBvYmoKPDwKL0xlbmd0aCA5MQo+PgpzdHJlYW0KMSAwIDAgMSAwIDAgY20gIEJUIC9GMSAxMiBUZiAxNC40IFRMIEVUCkJUIDEgMCAwIDEgMTAwIDcwMCBUbSAoQSBzaG9wcGluZyBsaXN0KSBUaiBUKiBFVAogCmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDgKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDYxIDAwMDAwIG4gCjAwMDAwMDAwOTIgMDAwMDAgbiAKMDAwMDAwMDE5OSAwMDAwMCBuIAowMDAwMDAwNDAyIDAwMDAwIG4gCjAwMDAwMDA0NzAgMDAwMDAgbiAKMDAwMDAwMDczMSAwMDAwMCBuIAowMDAwMDAwNzkwIDAwMDAwIG4gCnRyYWlsZXIKPDwKL0lEIApbPDFjMTc4MTk4ZmJkZmE1MWIyNTk5NWQ4OWQ0MTAyMDQzPjwxYzE3ODE5OGZiZGZhNTFiMjU5OTVkODlkNDEwMjA0Mz5dCiUgUmVwb3J0TGFiIGdlbmVyYXRlZCBQREYgZG9jdW1lbnQgLS0gZGlnZXN0IChvcGVuc291cmNlKQoKL0luZm8gNSAwIFIKL1Jvb3QgNCAwIFIKL1NpemUgOAo+PgpzdGFydHhyZWYKOTMwCiUlRU9GCg==", "base64");
+  await p.locator('input[type="file"]').setInputFiles({ name: "shopping-list.pdf", mimeType: "application/pdf", buffer: pdf });
+  await p.getByText(/Not recognised|Not recognized/i).first().waitFor({ timeout: 15000 });
+  check(true, "upload: a PDF the demo does not read is reported as not recognised");
+  await ctx.close();
+}
+
+// No tax form: the household cannot be built, the missing values are asked for by name, and the tax
+// picture that follows is labelled as an estimate.
+{
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const p = await ctx.newPage();
+  await p.goto(BASE + "/", { waitUntil: "networkidle" });
+  await p.waitForFunction(() => (document.body.innerText.match(/Ready/g) ?? []).length >= 3, null, { timeout: 20000 });
+  await p.getByRole("button", { name: /remove/i }).first().click(); // drops the Form 1040
+  await p.getByRole("link", { name: /Review extracted numbers/ }).or(p.getByRole("button", { name: /Review extracted numbers/ })).first().click();
+  await p.waitForURL("**/review");
+  await p.getByRole("button", { name: /Keep as is/ }).first().click();
+  await p.getByRole("button", { name: /Confirm and continue/ }).or(p.getByRole("link", { name: /Confirm and continue/ })).first().click();
+  await p.waitForURL("**/questions");
+  await p.getByRole("button", { name: /Build my profile/ }).click();
+  await p.waitForURL("**/review");
+  const asked = await p.evaluate(() => document.body.innerText);
+  check(/Taxpayer age/.test(asked) && /Taxpayer W-2 wages \(box 1\)/.test(asked), "no tax form: the missing values are asked for by name");
+  await p.getByLabel(/Taxpayer age/).first().fill("38");
+  await p.getByLabel(/Taxpayer W-2 wages/).first().fill("115500");
+  await p.keyboard.press("Tab");
+  await p.getByRole("button", { name: /Confirm and continue/ }).or(p.getByRole("link", { name: /Confirm and continue/ })).first().click();
+  await p.waitForURL("**/questions");
+  await p.getByRole("button", { name: /Build my profile/ }).click();
+  await p.waitForURL("**/profile", { timeout: 20000 });
+  await p.getByText(/Estimated from your wages and balances/).first().waitFor({ timeout: 10000 });
+  check(true, "no tax form: the profile's tax picture is labelled as an estimate");
+  await ctx.close();
+}
+
 await browser.close();
 for (const n of notes) console.log(` note  ${n}`);
 console.log(failures.length ? `\n${failures.length} check(s) failed` : "\nAll checks passed");

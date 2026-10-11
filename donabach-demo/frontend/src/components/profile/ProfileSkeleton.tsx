@@ -5,6 +5,9 @@ import styles from "./Profile.module.css";
 export function ProfileSkeleton() {
   return (
     <div aria-busy="true">
+      <p className="sr-only" role="status">
+        Building your profile…
+      </p>
       <div className={styles.summary}>
         {[4, 4, 3].map((rows, p) => (
           <Panel key={p} className={styles.bonePanel}>

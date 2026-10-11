@@ -598,6 +598,11 @@ export interface components {
             tax_lines: components["schemas"]["TaxLine"][];
             /** Estimated */
             estimated: string[];
+            /**
+             * Tax Estimated
+             * @default false
+             */
+            tax_estimated: boolean;
             /** Total Assets */
             total_assets: number;
         };

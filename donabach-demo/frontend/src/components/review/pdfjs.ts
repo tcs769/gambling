@@ -1,37 +1,17 @@
 // pdf.js is large and only works in the browser, so it is imported on demand, once, and its worker
-// is served from /pdf.worker.min.mjs (copied into public/ by `npm install`).
+// is served from /pdf.worker.min.mjs (the legacy worker, copied into public/ by `npm install`).
+//
+// The legacy build is used for both the library and the worker: pdf.js 6 calls newer JavaScript
+// methods (for example Map.prototype.getOrInsertComputed, Chrome 145 and later) and the legacy build
+// bundles the polyfills, so the viewer also works in browsers that are a little behind.
 
 type PdfjsModule = typeof import("pdfjs-dist");
-
-type Upsert = { getOrInsertComputed?: (key: unknown, compute: (key: unknown) => unknown) => unknown };
-
-/**
- * pdf.js 6 calls Map/WeakMap.prototype.getOrInsertComputed, which browsers only gained in 2026
- * (Chrome 145). Older ones, including the Chromium used to check this app, would fail to draw a
- * page, so add the method when it is missing. (The worker does not need it for these documents.)
- */
-function addUpsertMethods(): void {
-  for (const proto of [Map.prototype, WeakMap.prototype] as unknown as (Upsert & Map<unknown, unknown>)[]) {
-    if (typeof proto.getOrInsertComputed === "function") continue;
-    Object.defineProperty(proto, "getOrInsertComputed", {
-      configurable: true,
-      writable: true,
-      value(this: Map<unknown, unknown>, key: unknown, compute: (key: unknown) => unknown) {
-        if (this.has(key)) return this.get(key);
-        const value = compute(key);
-        this.set(key, value);
-        return value;
-      },
-    });
-  }
-}
 
 let loading: Promise<PdfjsModule> | null = null;
 
 export function loadPdfjs(): Promise<PdfjsModule> {
   loading ??= (async () => {
-    addUpsertMethods();
-    const pdfjs = await import("pdfjs-dist");
+    const pdfjs = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as PdfjsModule;
     pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
     return pdfjs;
   })();

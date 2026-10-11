@@ -5,6 +5,9 @@ import styles from "./Review.module.css";
 export function ReviewSkeleton() {
   return (
     <div aria-busy="true">
+      <p className="sr-only" role="status">
+        Getting your documents ready…
+      </p>
       <PageHeader
         title="Review extracted numbers"
         subtitle="Check what we read from your documents. Choose any number to see where it came from."

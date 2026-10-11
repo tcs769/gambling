@@ -1,4 +1,4 @@
-"""The strategy menu: every combination of the five choices Donabach plans over.
+"""The strategy menu: every combination of the seven choices Donabach plans over.
 
 * Stock share of long-term money: 50/60/70/80/90/100%, held until 58, then gliding down 25 points by 70
 * Roth conversions: none, or fill the 12/22/24% bracket, either in low-income years and
@@ -41,7 +41,7 @@ CONVERSION_OPTIONS: dict[str, tuple[int | None, float, bool]] = {
     "fill24_every": (24, P.TOP_OF_24, True),
 }
 
-# The five choices, in the order the recommender reports them.
+# The seven choices, in the order the recommender reports them.
 CHOICES = ("stock_share", "conversion", "private_credit", "direct_indexing", "goal_bonds", "k401", "goal_funding")
 CHOICE_OPTIONS: dict[str, tuple[str, ...]] = {
     "stock_share": tuple(f"{round(s * 100)}" for s in STOCK_SHARES),
@@ -79,7 +79,7 @@ class Strategy:
         return "|".join(self.choices().values())
 
     def choices(self) -> dict[str, str]:
-        """The five choices as option labels (the vocabulary the recommender uses)."""
+        """The seven choices as option labels (the vocabulary the recommender uses)."""
         return {
             "stock_share": f"{round(self.stock_share * 100)}",
             "conversion": self.conversion,

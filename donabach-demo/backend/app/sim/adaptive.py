@@ -14,9 +14,25 @@ Each simulated year, on each evaluation path, the planner
 Search. Scoring every combination of the six dimensions (about 2,500) every year is far too slow, so
 the planner uses COORDINATE SEARCH, the spec's first choice: start from the continuation policy's action,
 then improve one dimension at a time holding the others fixed, for two passes. That is at most about 35
-candidates a year instead of thousands, and it needs no second, cheaper scoring model. A candidate replaces
-the incumbent only if its advantage over it is at least `z_min` standard errors across the `k` rollouts
-(paired: every candidate sees the same futures), so the planner does not chase noise.
+candidates a year instead of thousands, and it needs no second, cheaper scoring model (the spec's second
+choice, pruning with a cheap first score, would). A candidate replaces the incumbent only if its advantage over
+it is at least `z_min` standard errors across the `k` rollouts (paired: every candidate sees the same futures).
+Stock-share candidates are the menu's shares with the strategy's glide path applied, so "60% stocks" means
+what it means in a fixed strategy at every age.
+
+Why the search is not the plain one. Judged on independent futures (`app/study/decision_quality.py`,
+`reports/adaptive_decision_quality.md`) the plain search LOWERS the planner's own objective on average: the best
+of a dozen candidates scored on the same 32 rollouts is flattered by luck, and 32 rollouts almost never contain
+the futures in which money runs out, which dominate a certainty equivalent. Two measures, both measured to help:
+
+* IMPORTANCE SAMPLING (`tilt`): half the rollout pairs draw their equity shocks from a market `tilt` standard
+  deviations a year worse, and every rollout carries the likelihood ratio against the 50/50 mixture of the two (a
+  weight between 0 and 2), so weighted averages are still estimates under the market's own distribution but the
+  bad stretches are in the sample about as often as the good ones.
+* CONFIRMATION (`confirm_k`, `confirm_z`): a change the search proposes is re-tested, one change at a time, on
+  `confirm_k` fresh futures it was not chosen on, and kept only if it wins by `confirm_z` standard errors there.
+
+(Stratifying the first imagined year's draws was tried and gave no measurable benefit, so it is not here.)
 
 No look-ahead. The futures a decision is scored on are drawn from a counter-based random stream keyed by
 (rollout seed, path, year, rollout), where the rollout seed comes from a `SeedSequence` child disjoint from
@@ -28,6 +44,10 @@ streams do not overlap.
 
 Everything runs through `_run_years`, the same function the fixed strategies use, so forcing the
 continuation action every year reproduces the fixed strategy exactly.
+
+Shadow mode (`AdaptiveSettings.shadow`) searches and records what the planner would choose while the path follows the
+continuation; `probe_candidates` then re-scores every candidate and the chosen action on futures the planner never
+used. Together they measure a search design's decisions on the same states, which is how the design above was chosen.
 """
 
 from __future__ import annotations

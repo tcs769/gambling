@@ -156,7 +156,39 @@ def test_the_single_household_evaluation_is_consistent_and_writes_a_report():
     assert j.plan_median == np.median(fw.wealth["adaptive"]) and j.baseline_median == np.median(fw.wealth["best_fixed"])
     assert fw.advantage("best_fixed", "typical_advisor").median > fw.advantage("good_ria", "typical_advisor").median - 0.05  # sanity: ordering is plausible
     assert set(result.decomposition) == {"tax timing only", "allocation only", "all six decisions"}
+    labels = [row[0] for row in result.steps]
+    assert labels[0] == "RIA baseline" and len(labels) == 6 and result.steps[0][3] == 0.0 and result.steps[0][4] == 0.0
+    assert result.steps[-1][1] == pytest.approx(np.median(fw.wealth["best_fixed"]))  # the last step is the best fixed strategy itself
     assert len(result.by_futures) == 2 and result.by_futures[0][1] == fw.judgment
     text = ev.report(result)
-    for needle in ("## The four strategies", "## What judgment over time adds", "### Where it comes from", "### Other futures", "Adaptive planner"):
+    for needle in ("## The four strategies", "## Where the best fixed strategy's advantage over the good RIA comes from", "## What judgment over time adds", "### Where it comes from", "### Other futures", "Adaptive planner"):
         assert needle in text
+
+
+def test_the_decision_quality_measurement_judges_choices_on_futures_the_search_never_used():
+    from tests.test_adaptive import short_household
+    from tests.test_sim import menu_policy
+
+    from app.sim.simulate import build_inputs
+    from app.study import decision_quality as dq
+
+    household = short_household()
+    inputs = build_inputs(household, n_paths=4, seed=5)
+    policy = menu_policy("60|fill22_every|10|on|on|pretax|borrow")
+    measurements = [
+        dq.measure(dq.BY_NAME[name], inputs, policy, 4, 32, 0.25) for name in ("plain", "default")
+    ]
+    for m in measurements:
+        assert m.gains.shape == (4, inputs.n_years) and np.all(np.isfinite(m.gains))
+        assert 0.0 <= m.departures <= 1.0 and 0.0 <= m.harmful_share <= 1.0 and 0.0 <= m.helpful_share <= 1.0
+        assert set(m.by_dimension) == {"conversion", "realize_gains", "goal_funding", "k401", "private_credit", "stock_share"}
+        assert m.seconds_per_100_paths > 0
+    text = dq.report(measurements, 4, 32, 0.25, "a strategy")
+    assert text.count("\n| K=32") == 2 and "## Where the gains and losses come from" in text and "## Reading this" in text
+    assert "shadow mode" in text and "re-scored on 32 fresh futures" in text and "applied to whole paths" not in text
+    from app.study import metrics
+
+    advantage = metrics.compare(np.array([1e6, 2e6, 3e6]), np.array([1e6, 1.9e6, 3e6]), 42)
+    realized = [dq.Realized(dq.BY_NAME["plain"], advantage, 0.1, 3.0)]
+    with_realized = dq.report(measurements, 4, 32, 0.25, "a strategy", realized, 4)
+    assert "## The same designs applied to whole paths" in with_realized and "| 10.0% |" in with_realized

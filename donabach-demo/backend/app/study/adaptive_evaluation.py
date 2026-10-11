@@ -25,6 +25,7 @@ from pathlib import Path
 
 import numpy as np
 
+from app.planner import explain
 from app.planner.baseline import GOOD_RIA, TYPICAL
 from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, certainty_equivalent, search
 from app.planner.strategies import Strategy
@@ -135,12 +136,27 @@ def judgment_line(j: metrics.Advantage) -> str:
     )
 
 
+def attribution(strategy: Strategy, evaluation: SimInputs, years: int, risk_aversion: float = RISK_AVERSION) -> list[tuple[str, float, float, float, float]]:
+    """Where the best fixed strategy's advantage over the good RIA comes from: the decisions switched on one at a time
+    from the baseline (`explain.advantage_policies`), cumulative, on the same futures. Each row: label, median wealth at
+    the horizon, certainty equivalent, and the two annualized advantages over the baseline."""
+    steps = explain.advantage_policies(strategy)
+    wealth = run_batch(evaluation, [policy for _, policy in steps]).wealth
+    base_median, base_ce = float(np.median(wealth[0])), float(certainty_equivalent(wealth[0], risk_aversion, WEALTH_FLOOR))
+    rows = []
+    for (label, _), w in zip(steps, wealth, strict=True):
+        median, ce = float(np.median(w)), float(certainty_equivalent(w, risk_aversion, WEALTH_FLOOR))
+        rows.append((label, median, ce, metrics.annualized(median, base_median, years), metrics.annualized(ce, base_ce, years)))
+    return rows
+
+
 @dataclass
 class Evaluation:
     household: Household
     strategy: Strategy
     main: FourWay
     n_paths: int
+    steps: list[tuple[str, float, float, float, float]]
     decomposition: dict[str, metrics.Advantage]
     by_rollouts: dict[int, tuple[metrics.Advantage, float]]  # rollouts -> (value of judgment, seconds per 100 paths)
     by_futures: list[tuple[int, metrics.Advantage]]  # evaluation seed -> value of judgment
@@ -192,7 +208,8 @@ def run(
         fw = four_way(household, strategy, other, settings)
         by_futures.append((seed + extra * 7_919, fw.judgment))
         log(f"futures {extra}: {judgment_line(fw.judgment)}")
-    return Evaluation(household, strategy, main, n_paths, decomposition, by_rollouts, by_futures, per_100)
+    steps = attribution(strategy, evaluation, household.horizon_years, risk_aversion)
+    return Evaluation(household, strategy, main, n_paths, steps, decomposition, by_rollouts, by_futures, per_100)
 
 
 def report(ev: Evaluation) -> str:
@@ -213,6 +230,17 @@ def report(ev: Evaluation) -> str:
         "## The four strategies",
         "",
         *four_way_table(fw),
+        "",
+        "## Where the best fixed strategy's advantage over the good RIA comes from",
+        "",
+        "The decisions switched on one at a time starting from the good RIA, cumulatively, on the same futures: what each step adds to median wealth and to certainty-equivalent wealth at 80, annualized.",
+        "",
+        "| Step | Median wealth at 80 | Median advantage | Certainty equivalent | Risk-adjusted advantage |",
+        "|---|---|---|---|---|",
+        *[f"| {label} | {_money(median)} | {_pct(adv_m)} | {_money(ce)} | {_pct(adv_ce)} |" for label, median, ce, adv_m, adv_ce in ev.steps],
+        "",
+        "The lower-risk allocation and private credit step is where the risk-adjusted advantage is made, and it *costs* median wealth: the plan holds the lowest stock share on the menu "
+        "and a private-credit sleeve, which lowers the middle of the distribution and, above all, the chance of running out of money (certainty-equivalent wealth is dominated by that tail).",
         "",
         "## What judgment over time adds",
         "",

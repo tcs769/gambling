@@ -210,3 +210,23 @@ def test_the_export_refuses_a_run_that_did_not_record_what_it_needs():
     with pytest.raises(ValueError, match="record_candidates"):
         dd.decision_tables(household, 0, strategy, inputs, bare, np.zeros(2))
     assert dataclasses.is_dataclass(dd.DecisionTables)
+
+
+def test_a_household_that_cannot_fund_its_plan_is_flagged_and_can_be_left_out():
+    """With every candidate scored at the $50,000 floor its scores say nothing, so the tables say so."""
+    from app.schemas import Goals
+
+    broke = make_demo_household(goals=Goals(home_purchase_in_years=None, college_starts_in_years=None, retirement_age=62, retirement_spending=900_000))
+    fine = short_household()
+    kept = dd.export_decisions([fine, broke], paths=2, seed=3, settings=FAST)
+    assert list(kept.households["underfunded"]) == [False, True]
+    flags = kept.decisions.groupby("household_id")["ce_at_floor"].mean()
+    assert flags[1] > 0.9 and flags[0] < 0.5  # nearly every decision of the broke household sits at the floor (not the first year or two)
+    broke_scores = kept.candidates[(kept.candidates["household_id"] == 1) & (kept.candidates["year"] > 12)]
+    assert broke_scores["ce"].median() <= 50_000 * (1 + 1e-6)  # the scores that remain tell the planner nothing
+    dropped = dd.export_decisions([fine, broke], paths=2, seed=3, settings=FAST, drop_underfunded=True)
+    assert list(dropped.households["household_id"]) == [0] and set(dropped.decisions["household_id"]) == {0}
+    # the household that is left is exactly what it was with the other one present
+    pd.testing.assert_frame_equal(
+        dropped.decisions.reset_index(drop=True), kept.decisions[kept.decisions["household_id"] == 0].reset_index(drop=True)
+    )

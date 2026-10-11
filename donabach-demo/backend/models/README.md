@@ -161,7 +161,9 @@ For each of K synthetic households the best fixed strategy is found, then the ye
 few fresh futures (`--decision-paths`, default 4) recording every decision. Three parquet files:
 
 **`households.parquet`**: one row per household: `household_id`, the 37 `FEATURE_NAMES` of the household as the
-plan started, `label_*` (the best fixed strategy's choices, the continuation policy) and `n_paths`.
+plan started, `label_*` (the best fixed strategy's choices, the continuation policy), `n_paths` and `underfunded`
+(the household cannot fund its own plan: its median after-tax wealth at the horizon is below the $50,000 floor of
+the objective).
 
 **`decisions.parquet`**: one row per decision (household x path x year), the policy model's table.
 
@@ -174,6 +176,7 @@ plan started, `label_*` (the best fixed strategy's choices, the continuation pol
 | `departs` | the chosen action differs from the continuation action |
 | `n_candidates` | candidates fully scored this year |
 | `ce_chosen`, `ce_continuation`, `ce_gain` | the rollouts' score (certainty-equivalent wealth at the horizon, dollars) of the chosen and continuation action, and `ce_chosen / ce_continuation - 1` |
+| `ce_at_floor` | the continuation's score sits at the $50,000 floor: every candidate is scored at the floor in such a decision, so it carries no information (see below) |
 | `changes_proposed`, `changes_confirmed` | changes the search proposed, and how many survived the re-test on fresh futures |
 | `realized_wealth_at_horizon` | **the realized outcome**: after-tax wealth at the horizon that this path actually reached under the year-by-year planner |
 | `realized_wealth_fixed_strategy` | the same path's horizon wealth under the best fixed strategy, for comparison |
@@ -196,6 +199,10 @@ Training notes:
   rollouts, so *differences* between candidates are far more accurate than levels: consider training on
   `ce_relative_to_continuation`.
 * **Split by `household_id`, never by row**: all rows of a household share its futures and strategy.
+* **Underfunded households carry no information.** The objective counts wealth below $50,000 as $50,000, so for a household
+  that runs out of money every candidate scores exactly the floor. The exporter's random households include some
+  (retirement spending is drawn without a sustainability check); filter on `ce_at_floor` / `underfunded`, or export with
+  `--drop-underfunded`, which leaves them out (ids keep counting them).
 * The scores are Monte Carlo estimates (K = 32 rollouts per candidate by default); the label noise is
   documented in `reports/adaptive_decision_quality.md`.
 * About 1 household a second on 4 cores with the defaults.

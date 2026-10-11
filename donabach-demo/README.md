@@ -9,10 +9,11 @@ with a year-by-year plan, compare it with a typical advisor, and run what-ifs.
 > **Everything is fictional.** The household, documents, names, SSNs (`000-00-0000`) and accounts (`XXXX-1234`)
 > are invented. The market is simulated. This is a prototype for illustration, not investment or tax advice.
 
-Two machine-learning models (a strategy recommender and an income forecaster) are built separately and plug in
-through the interfaces in `backend/app/ml/`. **Until they are connected the UI says "Model not connected" and
-never shows a stand-in prediction.** Every other number on screen (tax, simulation, planner, comparison) is
-computed by the code, not typed into the UI.
+Machine-learning models are built separately and plug in through the interfaces in `backend/app/ml/`: a strategy
+recommender, an income forecaster, and a policy model and a value model that will speed up the year-by-year
+planner's search. **Until they are connected the UI says "Model not connected" and never shows a stand-in
+prediction.** Every other number on screen (tax, simulation, planner, comparison) is computed by the code, not
+typed into the UI.
 
 ## Run it
 
@@ -59,10 +60,14 @@ seed, so every run on camera produces identical numbers. Turn it off to draw a f
 5. **Forecast**: income fan chart (p10 to p90 band, median line). While the forecaster model is not connected
    it is labelled "Model not connected, placeholder forecast".
 6. **Plan**: the recommended strategy in a sentence with a computed reason, the model panel (or its not-connected
-   state), and a year-by-year table. Click a row for that year's decisions, full tax return and the value of each
-   decision.
-7. **Compare**: stat cards, fan chart for both strategies, "where the advantage comes from", and every strategy
-   searched, ranked.
+   state), and a year-by-year table. The fixed plan appears at once; a "Refining plan…" state follows while the
+   year-by-year (adaptive) plan is computed in the background (the demo household's is precomputed), and then the
+   table can show either: the years where the planner departs from the fixed strategy are highlighted. Click a row for
+   that year's decisions, full tax return and, for the adaptive plan, **"Why this year"**: the action chosen, the two
+   next best alternatives and the score gap between them, from the rollout results.
+7. **Compare**: the median and risk-adjusted advantage over a good RIA and over a typical advisor, fan chart with
+   the two advisors, the best fixed strategy and the adaptive planner, the four strategies side by side, what judgment
+   over time adds, "where the advantage comes from", and every strategy searched, ranked.
 
 A **What-if** panel (from Plan and Compare) re-plans with preset events or edited inputs.
 
@@ -77,7 +82,8 @@ All dollars are **real 2026 dollars**; tax brackets are held constant in 2026 do
 | Markets and income | `backend/app/sim/markets.py`, `income.py` | Correlated normal real returns (equity 5.5%/16%, bonds 1.5%/5%, private credit 3.5%/8%) from a fixed seed, shared by every strategy. Income is a **placeholder** life-cycle process until the ML forecaster plugs in. |
 | Simulator | `backend/app/sim/simulate.py` | The 11-step yearly household loop (returns, harvesting, goals, spending, conversion, goal bucket, location and rebalancing, tax, fees, contributions) as one numba kernel run over every (strategy, future). |
 | Planner | `backend/app/planner/` | Searches all **4,032** strategies (stock share x Roth conversions x private credit sleeve x direct indexing x goal bonds x 401(k) type x goal funding) on the same 400 futures, scoring each by certainty-equivalent after-tax wealth at 80 (CRRA, risk aversion 3, $50,000 floor). The search is staged: every strategy is scored on 100 of the futures and the best 150 go on to all 400 (about 1 s; `exhaustive=True` scores everything on everything, and a test checks both pick the same winner). |
-| Baseline | `planner/baseline.py` | A "good RIA": age-based 80% to 50% glide path, same mix in every account, breakpoint fees, fund-level harvesting, goals from brokerage, no conversions, pro rata withdrawals. |
+| Baselines | `planner/baseline.py` | A **good RIA** (age-based 80% to 50% glide path, same mix in every account, breakpoint fees falling from 1.0% to 0.5%, fund-level harvesting, goals from brokerage, no conversions, pro rata withdrawals) and a **typical advisor** (flat 1.0% fee, no harvesting, accounts managed separately, 80% to 50% glide, no conversions, proportional withdrawals). Each is shown with its definition. |
+| Year-by-year planner | `backend/app/sim/adaptive.py`, `planner/adaptive_plan.py`, `adaptive_service.py` | Each year, after that year's returns, scores candidate actions by rollouts and takes the best (below). |
 | Explanations | `planner/explain.py` | The five-step "where the advantage comes from" (switch decisions on one at a time from the baseline, same futures) and, per year, the value of each decision found by re-running the plan with only that decision removed for that year. |
 
 The simulation and the planner are explained in detail in the docstrings of `sim/simulate.py` and
@@ -85,13 +91,32 @@ The simulation and the planner are explained in detail in the docstrings of `sim
 
 ## Plugging in the ML models
 
-Drop trained models in `backend/models/` as `recommender.pkl` and `forecaster.pkl`; no restart is needed.
-The contracts, the exact feature vector, a worked example and the training-data export are in
-[`backend/models/README.md`](backend/models/README.md).
+Drop trained models in `backend/models/` as `recommender.pkl`, `forecaster.pkl`, `policy.pkl` and `value.pkl`;
+no restart is needed. The policy and value models are for the year-by-year planner's search: trained on what the
+rollout search chose and the score it gave every candidate, they will propose candidate actions and estimate
+their scores to speed the search up (nothing is trained here and they are not wired into the search yet; until a
+file exists `GET /models/status` says so). The contracts, the exact feature vectors, a worked example and the
+formats of the training data are in [`backend/models/README.md`](backend/models/README.md).
 
 ```bash
-cd backend && python export_training_data.py --k 2000 --paths 150 --out data/training_data.parquet
+cd backend
+python export_training_data.py --k 2000 --paths 150 --out data/training_data.parquet     # the household recommender
+python export_training_data.py --decisions --k 500 --decision-paths 4 --decisions-dir data/decisions   # policy and value models
 ```
+
+## Reports
+
+The measurements behind the numbers are scripts, not hand-typed tables (run from `backend/`; the outputs are in `reports/`):
+
+| Report | Command |
+|---|---|
+| Sample household after each change (`progress.md`) | `python -m app.study.measure --label "..." --out ../reports/progress/step_NN.json`, then `python -m app.study.progress` |
+| Stock-share menu before and after (`stock_share_wins.md`) | `python -m app.study.winners --k 100 --paths 150 --out ../reports/stock_share_wins.md` |
+| Risk aversion 2, 3, 5 (`risk_aversion.md`) | `python -m app.study.risk_aversion --out ../reports/risk_aversion.md` |
+| Two assumptions against the research (`assumption_review.md`, `sensitivity.md`) | `python -m app.study.sensitivity --out ../reports/sensitivity.md` |
+| 300 households of six types (`household_study.csv`, `.md`) | `python -m app.study.household_study --per-type 50 --adaptive-paths 200 --checkpoint /tmp/study.csv --out-dir ../reports` |
+| Four-way evaluation and the value of judgment over time (`adaptive_evaluation.md`) | `python -m app.study.adaptive_evaluation --paths 2000 --out ../reports/adaptive_evaluation.md` |
+| Decision quality of the year-by-year search (`adaptive_decision_quality.md`) | `python -m app.study.decision_quality --paths 80 --out ../reports/adaptive_decision_quality.md` |
 
 ## Regenerating things
 
@@ -114,15 +139,16 @@ Typed with Pydantic (`backend/app/api_models.py`); try it at http://localhost:80
 | `GET /documents/{id}/file` | serve the PDF to the viewer |
 | `POST /household` | build the household from confirmed fields plus answers (422 lists anything unreadable) |
 | `POST /forecast` | the forecast, or `connected: false` plus the labelled placeholder |
-| `POST /plan` | planner and recommender; everything the Plan and Compare screens need |
-| `POST /plan/year-detail` | decisions, tax return and value of each decision for one year |
-| `POST /plan/whatif` | apply presets and edits, re-plan |
-| `GET /models/status` | whether each model is connected |
+| `POST /plan` | planner and recommender; everything the Plan and Compare screens need. Returns the fixed plan at once, with the year-by-year plan attached if it is already known (the demo household's is precomputed at startup) or a job id otherwise |
+| `GET /plan/adaptive/{id}` | the year-by-year plan's job: status, progress, and the finished plan |
+| `POST /plan/year-detail` | decisions, tax return and value of each decision for one year of the fixed plan |
+| `POST /plan/whatif` | apply presets and edits, re-plan (same fixed-then-adaptive behaviour) |
+| `GET /models/status` | whether each of the four models is connected |
 
 ## Tests
 
 ```bash
-make test                                   # backend, about 12 s
+make test                                   # backend, about 6 minutes on 4 cores (`pytest -q -x` stops at the first failure)
 cd frontend && npx tsc --noEmit && npx eslint src
 make e2e                                    # the whole demo in a real browser (needs both servers running)
 ```
@@ -146,7 +172,20 @@ sessions in demo mode. It writes screenshots to `.screenshots/`. Install a brows
 * Parser: it recovers every fixture value from the generated PDFs; defects injected into scratch copies were all
   caught.
 * A subprocess test forces numba's unsafe `workqueue` threading layer and fires overlapping plans, to protect
-  the API from a process abort that overlapping requests would otherwise cause on some machines.
+  the API from a process abort that overlapping requests would otherwise cause on some machines. The kernel lock
+  has two priorities (a request waiting for its plan goes ahead of the adaptive planner's background chunks) and
+  has its own tests.
+* Year-by-year planner (`tests/test_adaptive.py`): **no look-ahead** (changing every return and wage after year t changes
+  nothing about the decisions already taken, scores included, and the rollout random streams are disjoint from the
+  evaluation streams); **consistency** (forcing the continuation action every year reproduces the fixed strategy
+  exactly, for several policies and households); **sanity** (a retiree with no income, a huge pre-tax balance and room
+  in the low brackets converts, and changes the tax timing, not the portfolio's risk); **determinism** (the same
+  inputs give identical results whatever the threads or chunking, and in demo mode across API runs);
+  **guardrails** (borrowing stays inside its limits and conversion tax is never paid from the converted dollars);
+  importance weights unbiased; confirmation on fresh futures; serial and parallel kernels agree.
+* Training data and the policy/value interfaces (`tests/test_decision_data.py`, `tests/test_ml.py`): the state
+  features never see the future, every candidate the search scored is exported with the chosen one flagged, and a
+  missing, broken or contract-violating model is reported as "not connected", never replaced by a made-up prediction.
 
 ## Modeling choices and known simplifications
 
@@ -190,15 +229,70 @@ credits. Beyond that, choices made where the spec was silent, so they are not a 
   what the household spends today, so normal spending before retirement is taken to be its planned retirement
   spending. The tax is never paid out of the converted dollars. Spare wages are used only for conversion tax;
   as before, wages not saved are consumed.
-* **"Advantage" figures** are differences of medians (so the stat cards, the outcome cards and the attribution
-  bars always agree).
+* **"Advantage" figures** are reported two ways, always together: the difference in **median** after-tax wealth at
+  80 and the difference in **certainty-equivalent** wealth (the planner's own objective: CRRA, risk aversion 3, wealth
+  below $50,000 counting as $50,000), each annualized as a growth-rate difference, `(plan / baseline)^(1/years) - 1`,
+  measured on futures the strategy search never saw, with a 90% range over resamples of those futures. The
+  certainty equivalent is dominated by the few futures in which money runs out (the plan's chance of that is about
+  0.5%, the good RIA's about 2%): read the risk-adjusted advantage as mostly a statement about that tail.
+* **The year-by-year planner** (spec part B) decides each year after that year's returns are known, using only what
+  the household could know then (balances by account and asset class, basis, loss carryforward, any loan, age,
+  this year's income and goals, recent returns). Candidate actions: stock share (50 to 100%, with the strategy's
+  glide path applied), Roth conversion (none or fill the 12/22/24% bracket), private credit (0/5/10/15%), 401(k) type,
+  how a goal due this year is paid (sell or borrow) and realizing gains up to the 0% bracket. Each candidate is scored
+  by simulating K = 32 fresh futures from the household's current state, applying the candidate for the rest of the year and
+  then following the best fixed strategy to age 80, scored by the same certainty equivalent. **Search: coordinate
+  search**, the first of the two options in the spec (start from the continuation's action, improve one decision
+  at a time holding the others fixed, two passes, at most about 35 candidates a year): it needs no second, cheaper
+  scoring model, and its cost is predictable. Pruning with a cheap first score would need that model.
+  Two things were added because measurement showed the plain search *lowers* the planner's own objective when its choices
+  are re-scored on independent futures (`reports/adaptive_decision_quality.md`): the best of a dozen candidates on the same 32
+  rollouts is flattered by luck, and 32 rollouts almost never contain the futures in which money runs out. So (1) half the
+  rollouts are drawn from a market a quarter of a standard deviation a year worse and re-weighted (importance sampling: the
+  estimates stay unbiased, the bad tail is represented), and (2) a change the search proposes is kept only if it also wins
+  by 1.645 standard errors on 64 fresh futures it was not chosen on. The plan table and "Why this year" use one path, so they
+  get 8 times the rollouts. See the report for what each step buys and what it costs.
+* **No look-ahead.** The rollout futures come from a counter-based random stream keyed by (rollout seed, path, year) whose
+  seed is a `SeedSequence` child disjoint from the ones behind the evaluation returns and incomes; the rollout wage
+  process restarts from the path's wage level in the decision year; a decision in year t reads the path's inputs only up
+  to year t. Tests change every later return and wage and check nothing already decided moves.
+* **Running it.** `POST /plan` returns the fixed-strategy plan at once; the year-by-year plan is a background job (one
+  worker thread, chunks of 12 paths at background priority, results cached) that the Plan and Compare screens poll, with a
+  "Refining plan…" state until it lands. The demo household's plan is computed at startup (set `DONABACH_NO_PRECOMPUTE=1` to
+  skip it), so on camera the Plan screen has it at once. What-ifs re-plan the same way. Measured on 4 cores: the fixed plan takes
+  1.2 s; a full year-by-year plan (K = 32, 200 evaluation paths) takes **8.6 s**, of which the 200 evaluation paths take 7.4 s
+  (0.037 s a path) and the single plan path 1.1 s, against the 10 s target (100 paths: 5.0 s; 400 paths: 15.6 s). The first
+  start on a machine also compiles the year-by-year kernels, in the background, about a minute once and cached afterwards.
 
-What the numbers say is not tuned. For the sample household the engine's choice is conservative: 70% stocks (the
-lowest option on the menu) and no Roth conversions. With risk aversion 3 the safest stock share on the menu often
-wins (in a 100-household synthetic sample it was best for 66, against 12 for 100% stocks), and conversions at the
-22% bracket or higher cost more tax up front than the model's 20-year withdrawal rate saves later. For the sample
-household roughly three quarters of the advantage over the baseline (71% to 84% across 12 random seeds) is
-simply the lower fee; the recommendation itself was the same in all 12.
+**What the numbers say** is whatever the engine produces; nothing is tuned toward a target (`reports/` has every
+measurement and the command that regenerates it).
+
+* **The advantage.** For the sample household the planner recommends the lowest stock share on the menu (50%, gliding
+  down to 25% by age 70), a Roth conversion filling the 24% bracket every year and a 15% private credit sleeve. On 2,000
+  futures it never saw it is ahead of a good RIA by **+0.27% a year in median wealth and +2.54% a year in
+  certainty-equivalent wealth** (+0.40% and +2.60% over a typical advisor); the year-by-year planner on top makes it +0.29%
+  and +2.60%. Across the 300-household study the typical household of each type is ahead of the good RIA by +0.14% to
+  +0.55% a year (median) and +1.62% to +2.97% a year (risk-adjusted). The median advantage is a few tenths of a percent
+  a year, not 2 to 3%: the lower fee (0.35% against 0.5 to 1.0%) and asset location are worth about 0.6% a year of median
+  wealth, and the lower-risk allocation gives it back (next point) before Roth timing adds a quarter of a percent.
+* **Why the two measures differ.** Switching the decisions on one at a time from the good RIA: the lower fee and asset
+  location add +0.63% a year of median wealth; moving to 50% stocks and a private credit sleeve *costs* 0.6% a year of median
+  wealth but lifts the risk-adjusted advantage from +0.85% to +2.52% a year, because certainty-equivalent wealth is
+  dominated by the few futures in which money runs out (the plan runs out in 0.1% of futures, the good RIA in 0.6%); Roth
+  timing then adds +0.24% a year of median wealth. So most of the risk-adjusted advantage is risk reduction, not extra return,
+  and it rests on the private credit assumption (3.5% real net of fees, 8% volatility, no defaults), which the research review calls
+  generous in its tails: with no private credit the sample household's figures are -0.09% and +1.51%
+  (`reports/sensitivity.md`, `reports/assumption_review.md`).
+* **What judgment over time adds.** Not much on top of a well-chosen fixed plan. For the sample household the year-by-year
+  planner adds +0.01% a year (median) and +0.06% (risk-adjusted), indistinguishable from nothing in the first and small in
+  the second; for the typical household of each type +0.01% to +0.11% (median) and +0.02% to +0.11% (risk-adjusted), most for
+  early retirees, whose low-income years are what judgment over time can use (`reports/household_study.md`). The fixed strategy
+  already uses the main tools every year, returns do not mean-revert in the model, and the action space is the six decisions in
+  the spec: stock share, Roth conversion, private credit, 401(k) type, how a goal is paid and realizing gains. The search matters: a plain
+  rollout search lowers the planner's own objective, which is why importance sampling and re-testing on fresh futures are in
+  (`reports/adaptive_decision_quality.md`).
+* **After a 30% market fall** (the what-if preset) the fixed search's recommendation changes (it adds goal bonds ahead of the
+  home purchase) and the year-by-year plan changes with it; the planner's own year-by-year choices do not change systematically.
 
 ## Layout
 
@@ -206,10 +300,13 @@ simply the lower fee; the recommendation itself was the same in all 12.
 backend/app/         main.py (API), api_models.py, schemas.py, builder.py, forecast.py, whatif.py, store.py
   tax/               params_2026.py, engine.py, picture.py
   docs/              generate.py, parse.py, models.py
-  sim/               markets.py, income.py, simulate.py
-  planner/           strategies.py, search.py, baseline.py, explain.py, guided.py, plan.py
+  sim/               markets.py, income.py, simulate.py, adaptive.py (the year-by-year planner's kernel)
+  planner/           strategies.py, search.py, baseline.py, explain.py, guided.py, plan.py,
+                     adaptive_plan.py, adaptive_service.py (background jobs, cache), decision_data.py (training data)
+  study/             the measurement scripts behind reports/ (households, household_study, adaptive_evaluation, ...)
   ml/                interfaces.py, adapters.py
-backend/models/      drop recommender.pkl / forecaster.pkl here
+backend/models/      drop recommender.pkl, forecaster.pkl, policy.pkl, value.pkl here
+reports/             measurements: progress, household study, adaptive evaluation, assumption review, ...
 backend/tests/       pytest suite
 backend/export_training_data.py
 fixtures/            demo_household.json, sample_docs/*.pdf

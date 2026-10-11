@@ -11,6 +11,10 @@ targets its networks learn from. For every household-year decision this module r
   from its rollouts);
 * the **realized outcome**: the after-tax wealth that path actually reached at the horizon.
 
+A household that cannot fund its own plan (its median after-tax wealth at the horizon is below the $50,000 floor of the
+objective) has every candidate scored at the floor, so its scores carry no information: its rows are flagged
+(`underfunded`, `ce_at_floor`) and `export_decisions(drop_underfunded=True)` leaves such households out.
+
 Three tables come out (see `backend/models/README.md` for the column-by-column format): `households`
 (one row per household), `decisions` (one row per household-year-path decision: state, chosen and continuation
 action, outcome) and `candidates` (one row per candidate scored in a decision). A policy model learns
@@ -228,7 +232,14 @@ def decision_tables(
     offset_of_row = np.tile(offsets, n_paths)
 
     static = household_features(household)
-    household_row = {"household_id": household_id, **static, **{f"label_{k}": v for k, v in strategy.choices().items()}, "n_paths": n_paths}
+    floor = result.settings.floor
+    household_row = {
+        "household_id": household_id,
+        **static,
+        **{f"label_{k}": v for k, v in strategy.choices().items()},
+        "n_paths": n_paths,
+        "underfunded": bool(np.median(fixed_wealth) < floor),
+    }
 
     paths = np.repeat(np.arange(n_paths), n_years)
     years = np.tile(np.arange(n_years), n_paths)
@@ -251,6 +262,7 @@ def decision_tables(
             "ce_chosen": ce_chosen,
             "ce_continuation": ce_cont,
             "ce_gain": ce_chosen / ce_cont - 1.0,
+            "ce_at_floor": ce_cont <= floor * (1.0 + 1e-6),
             "changes_proposed": result.proposed.reshape(-1),
             "changes_confirmed": result.kept.reshape(-1),
             "realized_wealth_at_horizon": realized,
@@ -295,12 +307,14 @@ def export_decisions(
     settings: ad.AdaptiveSettings | None = None,
     search_paths: int = 150,
     progress: bool = False,
+    drop_underfunded: bool = False,
 ) -> DecisionTables:
     """Run the year-by-year planner on each household and collect the training tables.
 
     Each household is planned as the app plans it: the best fixed strategy is found on `search_paths` futures,
     and the adaptive planner then runs on `paths` fresh futures it has not seen, recording every candidate and the
-    state of every decision. `seed` seeds the futures; the result is deterministic.
+    state of every decision. `seed` seeds the futures; the result is deterministic. Household ids count every household
+    drawn, including any left out with `drop_underfunded`.
     """
     settings = settings or ad.AdaptiveSettings()
     household_rows, decision_frames, candidate_frames = [], [], []
@@ -312,6 +326,8 @@ def export_decisions(
         result = ad.run_adaptive(evaluation, strategy.policy(), settings, record_candidates=True, record_states=True)
         fixed = run_batch(evaluation, [strategy.policy()]).wealth[0]
         row, decisions, candidates = decision_tables(household, i, strategy, evaluation, result, fixed)
+        if drop_underfunded and row["underfunded"]:
+            continue
         household_rows.append(row)
         decision_frames.append(decisions)
         candidate_frames.append(candidates)

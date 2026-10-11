@@ -15,6 +15,9 @@ importance-sampled toward bad markets so the tail is represented. The decision's
 gain in certainty-equivalent wealth of the chosen action over the fixed strategy's action.
 
 Nothing here is tuned toward a result: the designs are the ones that were considered and all are reported.
+
+With `--realized-paths N` each design is also applied for real (not in shadow) to N whole paths and compared with the best
+fixed strategy on the same futures: what the design choices do to the outcomes a reader actually sees.
 """
 
 from __future__ import annotations
@@ -28,7 +31,8 @@ import numpy as np
 
 from app.planner.search import search
 from app.sim import adaptive as ad
-from app.sim.simulate import build_inputs
+from app.sim.simulate import build_inputs, run_batch
+from app.study import metrics
 from app.study.measure import sample_household
 
 SEED = 2026
@@ -118,7 +122,56 @@ def run(paths: int = 80, reference_k: int = 1_024, reference_tilt: float = 0.25,
     return out
 
 
-def report(measurements: list[Measurement], paths: int, reference_k: int, reference_tilt: float, strategy_label: str) -> str:
+@dataclass
+class Realized:
+    design: Design
+    judgment: metrics.Advantage  # applied for real on whole paths, over the best fixed strategy on the same futures
+    departure_share: float
+    seconds_per_100_paths: float
+
+
+def realize(designs=DESIGNS, n_paths: int = 2_000, progress: bool = False) -> list[Realized]:
+    household = sample_household()
+    strategy = search(build_inputs(household, n_paths=400, seed=SEED)).best.strategy
+    policy = strategy.policy()
+    inputs = build_inputs(household, n_paths=n_paths, seed=SEED + EVAL_SEED_OFFSET)
+    fixed = run_batch(inputs, [policy]).wealth[0]
+    out = []
+    for design in designs:
+        started = time.perf_counter()
+        result = ad.run_adaptive(inputs, policy, ad.AdaptiveSettings(**design.settings))
+        seconds = time.perf_counter() - started
+        judgment = metrics.compare(result.wealth, fixed, household.horizon_years, ad.AdaptiveSettings().risk_aversion, with_range=True)
+        out.append(Realized(design, judgment, float((result.chosen != result.continuation).any(axis=2).mean()), seconds / n_paths * 100.0))
+        if progress:
+            print(f"  realized {design.name:14s} median {judgment.median * 100:+.2f}%  risk-adjusted {judgment.risk_adjusted * 100:+.2f}%", flush=True)
+    return out
+
+
+def realized_report(realized: list[Realized], n_paths: int) -> list[str]:
+    def pct(x: float) -> str:
+        return f"{x * 100:+.2f}%"
+
+    lines = [
+        "## The same designs applied to whole paths",
+        "",
+        f"Each design applied for real (its choices followed, year after year) to {n_paths:,} held-out futures, against the best fixed strategy it continues, on the same futures.",
+        "Annualized growth-rate differences with the 90% range over resamples of the futures. A design that lowers the objective per decision can still raise the median:",
+        "taking more risk lifts the middle of the distribution and thickens the bad tail.",
+        "",
+        "| Design | Median advantage over best fixed | Risk-adjusted advantage over best fixed | Decision-years it changes | Seconds per 100 paths |",
+        "|---|---|---|---|---|",
+    ]
+    for r in realized:
+        j = r.judgment
+        lines.append(
+            f"| {r.design.description} | {pct(j.median)} ({pct(j.median_range[0])} to {pct(j.median_range[1])}) | "
+            f"{pct(j.risk_adjusted)} ({pct(j.risk_adjusted_range[0])} to {pct(j.risk_adjusted_range[1])}) | {r.departure_share:.1%} | {r.seconds_per_100_paths:.1f} |"
+        )
+    return lines + [""]
+
+
+def report(measurements: list[Measurement], paths: int, reference_k: int, reference_tilt: float, strategy_label: str, realized: list[Realized] | None = None, realized_paths: int = 0) -> str:
     lines = [
         "# Year-by-year planner: decision quality on independent futures",
         "",
@@ -184,6 +237,8 @@ def report(measurements: list[Measurement], paths: int, reference_k: int, refere
         "against the same futures the other strategies are measured on, is in `reports/adaptive_evaluation.md`.",
         "",
     ]
+    if realized:
+        lines += realized_report(realized, realized_paths)
     return "\n".join(lines) + "\n"
 
 
@@ -193,13 +248,15 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--reference-k", type=int, default=1_024)
     parser.add_argument("--reference-tilt", type=float, default=0.25)
     parser.add_argument("--designs", default=",".join(BY_NAME), help="comma-separated names from: " + ", ".join(BY_NAME))
+    parser.add_argument("--realized-paths", type=int, default=0, help="also apply each design to this many whole paths (0: skip)")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args(argv)
     designs = [BY_NAME[n] for n in args.designs.split(",")]
     household = sample_household()
     strategy = search(build_inputs(household, n_paths=400, seed=SEED)).best.strategy
     measurements = run(args.paths, args.reference_k, args.reference_tilt, designs, progress=True)
-    text = report(measurements, args.paths, args.reference_k, args.reference_tilt, strategy.short_label())
+    realized = realize(designs, args.realized_paths, progress=True) if args.realized_paths else None
+    text = report(measurements, args.paths, args.reference_k, args.reference_tilt, strategy.short_label(), realized, args.realized_paths)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(text)
     print(text)

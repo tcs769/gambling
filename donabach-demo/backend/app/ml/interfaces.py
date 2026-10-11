@@ -6,7 +6,7 @@ trained on what the app will actually feed them.
 
 Strategy recommender
     `recommend(household) -> Recommendation`
-    For each of the five strategy choices (`CHOICES`): the option it recommends, the
+    For each of the seven strategy choices (`CHOICES`): the option it recommends, the
     probability it assigns that option (0 to 1), optionally the full distribution over options,
     plus `top_factors` for the explanation. Options must come from `CHOICE_OPTIONS`.
 

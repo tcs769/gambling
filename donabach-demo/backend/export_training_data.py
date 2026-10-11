@@ -174,13 +174,15 @@ def export_decision_data(
     ranges: SamplingRanges | None = None,
     rollouts: int = adaptive.DEFAULT_K,
     progress: bool = False,
+    drop_underfunded: bool = False,
 ) -> DecisionTables:
     """The year-by-year planner's decisions on K synthetic households (see `app.planner.decision_data`)."""
     ranges = ranges or SamplingRanges()
     rng = np.random.default_rng(seed)
     households = [sample_household(rng, ranges) for _ in range(k)]
     tables = export_decisions(
-        households, paths=paths_per_household, seed=seed, settings=adaptive.AdaptiveSettings(k=rollouts), progress=progress
+        households, paths=paths_per_household, seed=seed, settings=adaptive.AdaptiveSettings(k=rollouts), progress=progress,
+        drop_underfunded=drop_underfunded,
     )
     if out_dir is not None:
         tables.write(out_dir)
@@ -197,9 +199,13 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--decision-paths", type=int, default=4, help="futures planned per household with --decisions")
     parser.add_argument("--rollouts", type=int, default=adaptive.DEFAULT_K, help="rollouts per candidate with --decisions")
     parser.add_argument("--decisions-dir", type=Path, default=Path("data/decisions"))
+    parser.add_argument("--drop-underfunded", action="store_true", help="leave out households that cannot fund their plan (their scores sit at the floor)")
     args = parser.parse_args(argv)
     if args.decisions:
-        tables = export_decision_data(args.k, args.decision_paths, args.seed, args.decisions_dir, rollouts=args.rollouts, progress=True)
+        tables = export_decision_data(
+            args.k, args.decision_paths, args.seed, args.decisions_dir, rollouts=args.rollouts, progress=True,
+            drop_underfunded=args.drop_underfunded,
+        )
         print(f"Wrote to {args.decisions_dir}:")
         print(f"  households.parquet  {len(tables.households)} rows (household features and best fixed strategy)")
         print(f"  decisions.parquet   {len(tables.decisions)} rows ({len(STATE_FEATURE_NAMES)} state features, {len(ACTION_COLUMNS)} chosen-action columns, outcome)")

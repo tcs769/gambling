@@ -691,3 +691,33 @@ def test_a_failing_adaptive_job_is_reported_not_swallowed():
     _, job_id = adaptive_service.service.request("broken-key", broken)
     done = adaptive_service.service.wait(job_id)
     assert done.status == "error" and "kernel exploded" in done.error and done.result is None
+
+
+# --- Demo mode: the adaptive plan is precomputed -------------------------------------------------
+
+
+def test_the_demo_households_adaptive_plan_is_precomputed_and_the_plan_screen_gets_it_at_once(profile, monkeypatch):
+    """What the app does at startup: plan the household the sample documents make, in the background, so the
+    Plan screen finds the finished year-by-year plan when it asks."""
+    from app import warmup
+    from app.planner import adaptive_service
+
+    monkeypatch.delenv("DONABACH_NO_PRECOMPUTE", raising=False)
+    adaptive_service.service.clear()
+    warmup.precompute_demo()
+    jobs = [j for j in adaptive_service.service._jobs.values()]
+    assert len(jobs) == 1  # one job, started by the precompute
+    done = adaptive_service.service.wait(jobs[0].id, timeout=600)
+    assert done.status == "done"
+    # the Plan screen's own request for that household, with the app's defaults, is a cache hit
+    start = time.perf_counter()
+    response = client.post("/plan", json={"household": profile["household"]})
+    body = response.json()
+    assert response.status_code == 200 and body["adaptive"] is not None and body["adaptive_job"] is None
+    assert body["adaptive"]["from_cache"] is True and time.perf_counter() - start < 3.0
+    assert body["adaptive"]["n_eval_paths"] == 200 and body["adaptive"]["k"] == 32
+    # and nothing is precomputed when it is switched off
+    adaptive_service.service.clear()
+    monkeypatch.setenv("DONABACH_NO_PRECOMPUTE", "1")
+    warmup.precompute_demo()
+    assert not adaptive_service.service._jobs

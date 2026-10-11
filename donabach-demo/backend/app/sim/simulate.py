@@ -656,7 +656,9 @@ def _wage_tax_table(wages, k401, tv, out):
 # Python layer
 # --------------------------------------------------------------------------------------------
 
-_KERNEL_LOCK = threading.Lock()  # numba's default threading layer is not safe for concurrent launches
+# numba's `workqueue` threading layer (the fallback when OpenMP/TBB are unavailable) aborts the whole
+# process on concurrent parallel launches, so every parallel kernel call goes through this lock.
+_KERNEL_LOCK = threading.Lock()
 
 
 @dataclass(frozen=True)
@@ -798,7 +800,8 @@ def build_inputs(
     tv = _time_table(household, n_years, expected)
     k401 = np.minimum(P.LIMIT_401K_EMPLOYEE * tv[:, TV_NEARN][None, :], KEEP_401K_SHARE_OF_WAGES * wages)
     wage_tax = np.zeros_like(wages)
-    _wage_tax_table(np.ascontiguousarray(wages), np.ascontiguousarray(k401), tv, wage_tax)
+    with _KERNEL_LOCK:
+        _wage_tax_table(np.ascontiguousarray(wages), np.ascontiguousarray(k401), tv, wage_tax)
 
     hhc = np.zeros(NHC)
     hhc[HC_SS] = household.social_security.annual_benefit

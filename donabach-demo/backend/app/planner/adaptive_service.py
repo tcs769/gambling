@@ -5,6 +5,11 @@ either the finished plan (it was precomputed, as for the demo household, or aske
 the client polls with `job`. One worker thread runs jobs in order; each runs in chunks of evaluation paths
 and releases the kernel lock between them, so a fresh fixed-strategy plan is never stuck behind a long
 adaptive run.
+
+A client that stops caring about a job (the plan on its screen changed) calls `cancel`. Every `request` that
+hands out a job id counts as one watcher and every `cancel` as one watcher gone; when the last watcher leaves
+a job that is queued or running, it is stopped at its next chunk (or never started), so abandoned work does
+not make the current plan wait behind it.
 """
 
 from __future__ import annotations
@@ -47,6 +52,10 @@ def cache_key(
     return hashlib.sha256("|".join(parts).encode()).hexdigest()
 
 
+class Cancelled(Exception):
+    """Raised inside a job's progress callback when nobody is waiting for it any more."""
+
+
 @dataclass
 class _Job:
     id: str
@@ -55,6 +64,8 @@ class _Job:
     progress: float = 0.0
     error: str | None = None
     result: AdaptiveSection | None = None
+    watchers: int = 0  # requests that were handed this job and have not cancelled it
+    cancelled: bool = False
     lock: threading.Lock = field(default_factory=threading.Lock)
 
 
@@ -101,14 +112,15 @@ class AdaptiveService:
             return hit, None
         with self._lock:
             existing = self._by_key.get(key)
-            if existing is not None and existing in self._jobs and self._jobs[existing].status != "error":
+            if existing is not None and existing in self._jobs and self._jobs[existing].status not in ("error", "cancelled") and not self._jobs[existing].cancelled:
                 job = self._jobs[existing]
                 if job.status == "done" and job.result is not None:  # finished, but no longer in the cache
                     self._cache[key] = job.result
                     self._cache.move_to_end(key)
                     return job.result.model_copy(update={"from_cache": True}), None
+                job.watchers += 1
                 return None, existing
-            job = _Job(id=uuid.uuid4().hex[:12], key=key)
+            job = _Job(id=uuid.uuid4().hex[:12], key=key, watchers=1)
             self._jobs[job.id] = job
             self._by_key[key] = job.id
             while len(self._jobs) > JOBS_KEPT:
@@ -117,12 +129,32 @@ class AdaptiveService:
         self._executor.submit(self._run, job, work)
         return None, job.id
 
+    def cancel(self, job_id: str) -> bool:
+        """One watcher of the job is gone. Returns False for an unknown job. When the last watcher goes, a job that is
+        queued or running stops at its next chunk (and a later request for the same plan starts a fresh one)."""
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None:
+                return False
+            job.watchers = max(0, job.watchers - 1)
+            if job.watchers == 0 and job.status == "running":
+                job.cancelled = True
+        return True
+
     def _run(self, job: _Job, work: Callable[[Callable[[float], None]], AdaptiveSection]) -> None:
         def progress(value: float) -> None:
+            if job.cancelled:
+                raise Cancelled()
             job.progress = max(job.progress, min(1.0, value))
 
+        if job.cancelled:  # abandoned while it waited its turn
+            job.status = "cancelled"
+            return
         try:
             section = work(progress)
+        except Cancelled:
+            job.status = "cancelled"
+            return
         except Exception as exc:  # a failure is reported to the poller, never swallowed
             job.error = f"{type(exc).__name__}: {exc}"
             job.status = "error"

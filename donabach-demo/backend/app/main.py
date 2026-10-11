@@ -185,6 +185,13 @@ def adaptive_job(job_id: str) -> AdaptiveJob:
     return job
 
 
+@app.delete("/plan/adaptive/{job_id}", status_code=204)
+def cancel_adaptive_job(job_id: str) -> None:
+    """The caller no longer wants this job (its plan was replaced). It stops once nobody else is waiting for it."""
+    if not adaptive_service.service.cancel(job_id):
+        raise HTTPException(status_code=404, detail=f"No adaptive job with id {job_id}")
+
+
 @app.post("/plan/year-detail", response_model=explain.YearDetail)
 def year_detail(request: YearDetailRequest) -> explain.YearDetail:
     if set(request.choices) != set(CHOICES):

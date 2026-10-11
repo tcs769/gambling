@@ -141,6 +141,7 @@ Typed with Pydantic (`backend/app/api_models.py`); try it at http://localhost:80
 | `POST /forecast` | the forecast, or `connected: false` plus the labelled placeholder |
 | `POST /plan` | planner and recommender; everything the Plan and Compare screens need. Returns the fixed plan at once, with the year-by-year plan attached if it is already known (the demo household's is precomputed at startup) or a job id otherwise |
 | `GET /plan/adaptive/{id}` | the year-by-year plan's job: status, progress, and the finished plan |
+| `DELETE /plan/adaptive/{id}` | the viewer walked away from the plan: drop one watcher; when none is left the job stops (204, or 404 for an unknown id) |
 | `POST /plan/year-detail` | decisions, tax return and value of each decision for one year of the fixed plan |
 | `POST /plan/whatif` | apply presets and edits, re-plan (same fixed-then-adaptive behaviour) |
 | `GET /models/status` | whether each of the four models is connected |

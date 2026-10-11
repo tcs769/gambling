@@ -147,3 +147,88 @@ def test_the_cache_key_changes_with_anything_the_result_depends_on():
         adaptive_service.cache_key(household, strategy, 1, 200, None, AdaptiveSettings(confirm_z=2.0)),
     ]
     assert len({base, *variants}) == 1 + len(variants)
+
+
+# --- Cancelling work nobody is waiting for ------------------------------------------------------------
+
+
+def test_a_queued_job_nobody_waits_for_any_more_never_runs(service):
+    gate = threading.Event()
+    ran = []
+    _, first = service.request("first", lambda progress: (gate.wait(5.0), section(1))[1])
+    _, second = service.request("second", lambda progress: (ran.append(1), section(2))[1])
+    assert service.cancel(second) is True
+    gate.set()
+    assert service.wait(first, timeout=5.0).status == "done"
+    abandoned = service.wait(second, timeout=5.0)
+    assert abandoned.status == "cancelled" and abandoned.result is None and not ran
+
+
+def test_a_running_job_stops_at_its_next_progress_report_when_its_last_watcher_leaves(service):
+    started = threading.Event()
+    reports = []
+
+    def work(progress):
+        for i in range(1_000):
+            started.set()
+            progress(i / 1_000)
+            reports.append(i)
+            time.sleep(0.01)
+        return section()
+
+    _, job_id = service.request("long", work)
+    assert started.wait(5.0)
+    service.cancel(job_id)
+    done = service.wait(job_id, timeout=5.0)
+    assert done.status == "cancelled" and done.result is None and len(reports) < 500
+    assert service.cached("long") is None  # a cancelled plan is not remembered as if it were finished
+
+
+def test_a_job_other_requests_are_still_watching_keeps_running(service):
+    gate = threading.Event()
+
+    def work(progress):
+        gate.wait(5.0)
+        progress(0.5)
+        return section(4)
+
+    _, a = service.request("shared", work)
+    _, b = service.request("shared", work)
+    assert a == b  # the second request joined the first
+    service.cancel(a)  # one of the two watchers leaves
+    assert service.job(a).status == "running"
+    gate.set()
+    assert service.wait(a, timeout=5.0).status == "done"
+
+
+def test_the_job_stops_only_when_every_watcher_has_gone_and_a_new_request_then_starts_afresh(service):
+    started = threading.Event()
+    release = threading.Event()
+    runs = []
+
+    def work(progress):
+        runs.append(1)
+        started.set()
+        release.wait(5.0)
+        progress(0.1)  # a cancelled job notices here
+        return section(len(runs))
+
+    _, a = service.request("k", work)
+    _, b = service.request("k", work)
+    assert started.wait(5.0) and a == b
+    service.cancel(a)
+    service.cancel(a)  # the last one leaves
+    hit, fresh = service.request("k", work)  # asked for again while the cancelled job is still winding down
+    assert hit is None and fresh != a
+    release.set()
+    assert service.wait(a, timeout=5.0).status == "cancelled"
+    done = service.wait(fresh, timeout=5.0)
+    assert done.status == "done" and done.result.k == 2 and runs == [1, 1]
+
+
+def test_cancelling_an_unknown_or_finished_job_is_harmless(service):
+    assert service.cancel("nope") is False
+    _, job_id = service.request("done", lambda progress: section(9))
+    service.wait(job_id, timeout=5.0)
+    assert service.cancel(job_id) is True
+    assert service.job(job_id).status == "done" and service.cached("done").k == 9

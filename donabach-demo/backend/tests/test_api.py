@@ -682,6 +682,28 @@ def test_a_repeat_request_is_served_from_the_cache(household_json):
     assert other["adaptive"] is None and other["adaptive_job"]  # different settings: not a hit
 
 
+def test_an_adaptive_job_can_be_cancelled_over_the_api():
+    import threading
+
+    from app.planner import adaptive_service
+
+    gate = threading.Event()
+
+    def slow(progress):
+        gate.wait(10.0)
+        progress(0.5)  # a cancelled job stops here
+        raise AssertionError("a cancelled job must not run on")
+
+    _, job_id = adaptive_service.service.request("cancel-me", slow)
+    assert client.delete("/plan/adaptive/nonexistent").status_code == 404
+    response = client.delete(f"/plan/adaptive/{job_id}")
+    assert response.status_code == 204 and response.content == b""
+    gate.set()
+    done = adaptive_service.service.wait(job_id, timeout=10.0)
+    assert done.status == "cancelled"
+    assert client.get(f"/plan/adaptive/{job_id}").json()["status"] == "cancelled"
+
+
 def test_a_failing_adaptive_job_is_reported_not_swallowed():
     from app.planner import adaptive_service
 

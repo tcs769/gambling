@@ -369,7 +369,7 @@ class AdaptiveSection(BaseModel):
 
 class AdaptiveJob(BaseModel):
     id: str
-    status: Literal["running", "done", "error"]
+    status: Literal["running", "done", "error", "cancelled"]
     progress: float  # 0 to 1
     error: str | None = None
     result: AdaptiveSection | None = None

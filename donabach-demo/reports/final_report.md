@@ -172,6 +172,6 @@ Effect on the headline: direct indexing none (the sample household's winner does
 
 ## What was built (pointers)
 
-* `backend/app/sim/adaptive.py` (kernel), `planner/adaptive_plan.py`, `adaptive_service.py` (background jobs and cache), `GET /plan/adaptive/{id}`; no look-ahead, consistency, sanity, determinism and guardrail tests in `tests/test_adaptive.py`.
+* `backend/app/sim/adaptive.py` (kernel), `planner/adaptive_plan.py`, `adaptive_service.py` (background jobs, cache, and cancellation when the last viewer walks away), `GET` and `DELETE /plan/adaptive/{id}`; no look-ahead, consistency, sanity, determinism and guardrail tests in `tests/test_adaptive.py`.
 * Policy and value model interfaces (not connected), state features, the training-data export (`export_training_data.py --decisions`) and `backend/models/README.md` (B7). Nothing is trained.
 * The UI: the Refining plan state, the plan table with the planner's departures highlighted, "Why this year", the four strategies on the Compare screen, what judgment adds, and what changed in a what-if (B6).

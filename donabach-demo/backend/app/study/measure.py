@@ -28,7 +28,7 @@ import numpy as np
 from app.planner.baseline import RIA_BASELINE
 from app.planner.search import RISK_AVERSION, search
 from app.schemas import Household
-from app.sim.simulate import build_inputs, run_batch
+from app.sim.simulate import ModelOptions, build_inputs, run_batch
 from app.study.metrics import Advantage, compare
 
 EVAL_SEED_OFFSET = 1_000_003  # held-out futures use seed + this offset
@@ -74,19 +74,21 @@ def measure(
     n_eval: int = 2000,
     risk_aversion: float = RISK_AVERSION,
     baselines: dict | None = None,
+    options: ModelOptions | None = None,
+    strategies: list | None = None,
 ) -> dict:
     """Search on `n_search` futures, then score the winner on held-out futures."""
     baselines = baselines if baselines is not None else default_baselines()
     years = household.horizon_years
     started = time.perf_counter()
-    futures = build_inputs(household, n_paths=n_search, seed=seed)
-    result = search(futures, risk_aversion=risk_aversion) if risk_aversion != RISK_AVERSION else search(futures)
+    futures = build_inputs(household, n_paths=n_search, seed=seed, options=options)
+    result = search(futures, strategies=strategies, risk_aversion=risk_aversion)
     chosen = result.best.strategy
     policies = [chosen.policy(), *baselines.values()]
 
     in_batch = run_batch(futures, policies)
     in_sample = in_batch.wealth
-    held = build_inputs(household, n_paths=n_eval, seed=seed + EVAL_SEED_OFFSET)
+    held = build_inputs(household, n_paths=n_eval, seed=seed + EVAL_SEED_OFFSET, options=options)
     held_batch = run_batch(held, policies)
     held_wealth = held_batch.wealth
 

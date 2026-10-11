@@ -245,7 +245,7 @@ def test_private_credit_in_brokerage_is_taxed_each_year_as_interest():
     tv[0, sim.TV_AGE] = 50.0
     ys = np.zeros(sim.NY)
     act = np.zeros(sim.NACT)
-    sim._year_begin(st, ys, tv, 0, act, 0.0, 0.0, 0.10)
+    sim._year_begin(st, ys, tv, 0, np.zeros(sim.NHC), act, 0.0, 0.0, 0.10)
     taxable_interest = 0.055 * 100_000 + 0.035 * 50_000  # opening balances: private credit 5.5%, bonds 3.5%
     assert ys[sim.Y_INTEREST] == pytest.approx(taxable_interest)
     assert st[sim.S_BP] == pytest.approx(110_000)  # the return is separate from the taxable income
@@ -592,7 +592,7 @@ def test_interest_on_the_loan_is_a_capital_loss():
     tv = np.zeros((1, sim.NTV))
     tv[0, sim.TV_AGE] = 45.0
     ys = np.zeros(sim.NY)
-    sim._year_begin(st, ys, tv, 0, np.zeros(sim.NACT), 0.0, 0.0, 0.0)
+    sim._year_begin(st, ys, tv, 0, np.zeros(sim.NHC), np.zeros(sim.NACT), 0.0, 0.0, 0.0)
     interest = 100_000 * P.BORROWING_RATE_REAL
     assert ys[sim.Y_LOANINT] == pytest.approx(interest)
     assert ys[sim.Y_REALIZED] == pytest.approx(-interest)  # a loss that offsets gains and carries forward

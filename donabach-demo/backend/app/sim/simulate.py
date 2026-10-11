@@ -111,7 +111,9 @@ NY = 10
 # Household constants.
 HC_SS = 0
 HC_RMD_START = 1  # age at which required minimum distributions begin
-NHC = 2
+HC_HARVEST_MODEL = 2  # 0: the specification's direct-indexing harvest rule; 1: the evidence-based alternative
+HC_DI_FEE_PREMIUM = 3  # extra yearly fee on direct-indexed equity (0 in the specification)
+NHC = 4
 
 # Kernel result columns.
 R_WEALTH, R_TAXES, R_PRETAX_OWED, R_UNFUNDED = range(4)
@@ -512,10 +514,12 @@ def _policy_action(row, gates_row, tv, t, w, act):
 
 
 @jit(inline="always")
-def _year_begin(st, ys, tv, t, act, r_e, r_b, r_c):
+def _year_begin(st, ys, tv, t, hhc, act, r_e, r_b, r_c):
     """Steps 1-2: apply this year's returns, then harvest losses. Fills the year scratch `ys`."""
     age = tv[t, TV_AGE]
     early = age < _EARLY_AGE
+    equity_open = st[S_BE]
+    basis_open = st[S_BBASIS]
 
     # Gains and withdrawals deferred from paying last year's tax and fees land in this year.
     realized = st[S_DGAIN]
@@ -551,8 +555,16 @@ def _year_begin(st, ys, tv, t, act, r_e, r_b, r_c):
     if mode > 0.5 and be > 0.0:
         if mode > 1.5:
             decline = max(0.0, -r_e) * be / (1.0 + r_e)
-            dispersion = HARVEST_DISPERSION * be * min(1.0, basis / be)
-            harvest = min(HARVEST_DECLINE_SHARE * decline + dispersion, HARVEST_CAP_OF_VALUE * be, basis)
+            if hhc[HC_HARVEST_MODEL] > 0.5:
+                # Sensitivity only (reports/assumption_review.md): harvesting shrinks steeply as the basis rises to
+                # the value, and only a part of a decline is harvestable once lots have gains.
+                b_open = min(1.0, basis_open / equity_open) if equity_open > 0.0 else 1.0
+                b_now = min(1.0, basis / be)
+                wanted = 0.85 * b_open**3 * decline + 0.14 * be * b_now**14
+            else:
+                dispersion = HARVEST_DISPERSION * be * min(1.0, basis / be)
+                wanted = HARVEST_DECLINE_SHARE * decline + dispersion
+            harvest = min(wanted, HARVEST_CAP_OF_VALUE * be, basis)
         elif r_e < FUND_HARVEST_TRIGGER:
             harvest = max(0.0, basis - be)
         harvest = max(0.0, harvest)
@@ -792,6 +804,8 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         if i != S_BBASIS:
             total_assets += st[i]
     fee = _advisory_fee(total_assets, row[SP_FEE_BREAKPOINTS], row[SP_FEE_FLAT])
+    if act[A_HARVEST] > 1.5:
+        fee += hhc[HC_DI_FEE_PREMIUM] * st[S_BE]  # zero unless a sensitivity run charges a direct-indexing premium
     if fee > 0.0 and total_assets > 0.0:
         f = min(1.0, fee / total_assets)
         st[S_DGAIN] += f * (st[S_BE] - st[S_BBASIS])
@@ -939,7 +953,7 @@ def _run_years(st, ys, act, tv, hhc, row, gates, rets, wages, k401, wt, t0, t1, 
         w = wages[t]
         if not (mode == RUN_REST and t == t0):
             _policy_action(row, gates[t], tv, t, w, act)
-            _year_begin(st, ys, tv, t, act, rets[t, 0], rets[t, 1], rets[t, 2])
+            _year_begin(st, ys, tv, t, hhc, act, rets[t, 0], rets[t, 1], rets[t, 2])
             if mode == RUN_BEGIN:
                 return 0.0, 0.0
         want = record or do_log or (want_last and t == t1 - 1)
@@ -1050,6 +1064,16 @@ class Policy:
         return replace(self, **changes)
 
 
+@dataclass(frozen=True)
+class ModelOptions:
+    """Alternative assumptions for sensitivity runs (`app.study.sensitivity`). The defaults are exactly the
+    specification, and the app never passes anything else."""
+
+    harvest_model: str = "spec"  # "spec" or "evidence": the direct-indexing harvest rule
+    di_fee_premium: float = 0.0  # extra yearly fee on direct-indexed equity
+    market: markets.Assumptions | None = None
+
+
 @dataclass
 class SimInputs:
     """Everything the kernel needs for one household and one set of futures."""
@@ -1130,8 +1154,10 @@ def build_inputs(
     seed: int = markets.DEFAULT_SEED,
     deterministic: bool = False,
     shock: MarketShock | None = None,
+    options: ModelOptions | None = None,
 ) -> SimInputs:
     """Draw the futures (or build the one deterministic path) and precompute what is shared."""
+    options = options or ModelOptions()
     n_years = household.horizon_years
     base = [p.wages for p in household.people]
     ages = [p.age for p in household.people]
@@ -1140,10 +1166,10 @@ def build_inputs(
 
     expected = income.household_wages(base, ages, retire, income.no_shocks(n_years, n_earners))[0]
     if deterministic:
-        rets = markets.expected_returns(n_years)
+        rets = markets.expected_returns(n_years, options.market)
         wages = expected[None, :].copy()
     else:
-        rets = markets.draw_returns(n_paths, n_years, seed)
+        rets = markets.draw_returns(n_paths, n_years, seed, options.market)
         shocks = income.draw_income_shocks(n_paths, n_years, n_earners, seed)
         wages = income.household_wages(base, ages, retire, shocks)
     if shock is not None:
@@ -1158,6 +1184,8 @@ def build_inputs(
     hhc = np.zeros(NHC)
     hhc[HC_SS] = household.social_security.annual_benefit
     hhc[HC_RMD_START] = P.rmd_start_age(P.TAX_YEAR - household.primary_age)
+    hhc[HC_HARVEST_MODEL] = {"spec": 0.0, "evidence": 1.0}[options.harvest_model]
+    hhc[HC_DI_FEE_PREMIUM] = options.di_fee_premium
     return SimInputs(
         n_years=n_years,
         n_paths=wages.shape[0],

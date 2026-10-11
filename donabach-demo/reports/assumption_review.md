@@ -120,7 +120,30 @@ unlevered exposure and low for market-priced or levered vehicles. Normal tails w
 generous: private credit's risk is concentrated in a stress state that a normal distribution with 8% volatility
 understates, and the correlation with equities rises in that state.
 
-## 3. Source table (all marks as above)
+## 3. What the corrections would do to the sample household (analysis only)
+
+`reports/sensitivity.md` repeats the whole search with each proposed correction applied, on the same futures, scored on 2,000
+held-out futures against the good RIA. As specified, the sample household gets a median advantage of +0.27% a year and a
+risk-adjusted advantage of +2.54% a year (recommendation: 50% stocks, fill the 24% bracket every year, 15% private credit).
+
+* **Direct-indexing harvest: no effect on the sample household's headline.** Its winning strategy does not use direct indexing, and
+  forcing the planner to use it changes nothing, with the specified rule or the evidence-based one (with or without a 0.20% fee premium).
+  The reason is mechanical: a harvested loss lowers basis by the same amount, so at the horizon the valuation credits 15% of the carried
+  loss and charges 15% of the extra unrealized gain, which cancel; direct indexing only pays when losses are used earlier against
+  gains or ordinary income taxed at more than 15%, which this household rarely has. That agrees with the literature's point that the
+  benefit depends on the investor's other gains. For households that realize large gains the specified rule is the generous one, as
+  section 1 finds.
+* **Private credit is the assumption that matters.** The planner puts the maximum 15% in private credit in the sample household and in
+  nearly all of the 300 household-study households, because as specified it beats bonds on both return (3.5% against 1.5%) and, per unit
+  of return, risk. With a 1-point lower return the advantage is +0.11% median and +2.25% risk-adjusted; with 12% volatility and a 0.7
+  correlation with stocks, +0.21% and +1.61%; with equity-linked stress tails, +0.29% and +2.36%; with the lower return and the higher
+  risk together (plus the direct-indexing correction), the planner cuts the sleeve to 5% and the advantage is +0.14% and +1.37%.
+  Forbidding private credit altogether gives -0.09% and +1.51%.
+* **So the review points one way for the headline**: the risk-adjusted advantage of about 2.5% a year is roughly 1 point larger than it would
+  be without the private-credit sleeve, and the median advantage of about +0.27% disappears without it. Neither correction is applied to the
+  app; if you adopt the proposed private-credit values the sample household's figures become the rows above.
+
+## 4. Source table (all marks as above)
 
 | Source | Mark | Figures taken |
 |---|---|---|
@@ -150,7 +173,7 @@ understates, and the correlation with equities rises in that state.
 | J.P. Morgan 2026 Long-Term Capital Market Assumptions; BlackRock direct-lending note | S | Direct lending 7.6% nominal after fees with leverage; gross asset yield about 10% |
 | Redemption data (trade press: Altswire, Stanger) | S2 | BCRED 7.9% (Q1), about 10% (Q2, Q3) vs 5% cap; some funds 17-41% |
 
-## 4. What could not be verified
+## 5. What could not be verified
 
 * **Everything at the page level** (see the top of this note).
 * TLH: the full texts of the papers; the 13% / over-20% / about 30% / 12-62% path comes only second-hand via
@@ -164,7 +187,7 @@ understates, and the correlation with equities rises in that state.
   published (1.08/0.82) versus SSRN (1.10/0.85) figures; Wealthfront's 2024 yield; the inflation assumption behind
   J.P. Morgan's real figures.
 
-## 5. Tax constants checked in the same pass (spec A1)
+## 6. Tax constants checked in the same pass (spec A1)
 
 Evidence level: search excerpts of IRS-hosted documents (not opened).
 

@@ -25,10 +25,11 @@ import pandas as pd
 from app.planner.baseline import BASELINES
 from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, search
 from app.sim import adaptive as ad
-from app.sim.simulate import build_inputs, run_batch
+from app.sim.simulate import HC_SS, TV_AGED, build_inputs, run_batch
 from app.study import households as hh
 from app.study.adaptive_evaluation import LABELS, four_way
-from app.study.metrics import compare
+from app.study.metrics import annualized, compare
+from app.study.reach import pretax_balance
 
 EVAL_SEED_OFFSET = 1_000_003
 DEFAULT_N_EVAL = 1_000
@@ -59,8 +60,19 @@ def adaptive_columns(item: hh.StudyHousehold, chosen, position: int, adaptive_pa
 
 
 def household_row(
-    item: hh.StudyHousehold, position: int, n_search: int, n_eval: int, risk_aversion: float, adaptive_paths: int = 0
+    item: hh.StudyHousehold,
+    position: int,
+    n_search: int,
+    n_eval: int,
+    risk_aversion: float,
+    adaptive_paths: int = 0,
+    measure_risk_aversion: float | None = None,
+    heirs_rates: tuple[float, ...] = (),
 ) -> dict:
+    """`risk_aversion` is what the planner searches at; `measure_risk_aversion` (default the same) is the risk aversion
+    behind the reported risk-adjusted advantage, so plans chosen at different settings can be read on one yardstick.
+    `heirs_rates` add the raw advantage with the pre-tax balance at the horizon taxed at those flat rates."""
+    measure_risk_aversion = risk_aversion if measure_risk_aversion is None else measure_risk_aversion
     household = item.household
     seed = 5_000 + position
     years = household.horizon_years
@@ -93,7 +105,7 @@ def household_row(
         "plan_shortfall": float(np.mean(batch.unfunded[0] > 0)),
     }
     for i, baseline in enumerate(BASELINES, start=1):
-        adv = compare(batch.wealth[0], batch.wealth[i], years, risk_aversion)
+        adv = compare(batch.wealth[0], batch.wealth[i], years, measure_risk_aversion)
         key = baseline.key
         row[f"{key}_median"] = adv.baseline_median
         row[f"{key}_p10"] = float(np.percentile(batch.wealth[i], 10))
@@ -101,6 +113,15 @@ def household_row(
         row[f"{key}_shortfall"] = float(np.mean(batch.unfunded[i] > 0))
         row[f"adv_median_vs_{key}"] = adv.median
         row[f"adv_risk_adjusted_vs_{key}"] = adv.risk_adjusted
+    if heirs_rates:
+        ss, aged = float(held.hhc[HC_SS]), float(held.tv[-1, TV_AGED])
+        balances = np.vstack([pretax_balance(batch.pretax_owed[i], ss, aged) for i in range(len(policies))])
+        for rate in heirs_rates:
+            wealth = batch.wealth + batch.pretax_owed - rate * balances
+            for i, baseline in enumerate(BASELINES, start=1):
+                row[f"adv_median_vs_{baseline.key}_heirs{round(rate * 100)}"] = annualized(
+                    float(np.median(wealth[0])), float(np.median(wealth[i])), years
+                )
     # households that run out of money in most futures: the floored objective stops being informative
     row["underfunded"] = bool(row["plan_median"] < WEALTH_FLOOR)
     if adaptive_paths > 0:
@@ -117,6 +138,8 @@ def run(
     progress: bool = False,
     adaptive_paths: int = 0,
     checkpoint: Path | None = None,
+    measure_risk_aversion: float | None = None,
+    heirs_rates: tuple[float, ...] = (),
 ) -> pd.DataFrame:
     """The study. With a `checkpoint` path the rows so far are saved every 25 households and a rerun resumes from them."""
     items = hh.generate(seed=seed, per_type=per_type)
@@ -131,7 +154,9 @@ def run(
     started = time.perf_counter()
     first = len(rows)
     for position in range(first, len(items)):
-        rows.append(household_row(items[position], position, n_search, n_eval, risk_aversion, adaptive_paths))
+        rows.append(
+            household_row(items[position], position, n_search, n_eval, risk_aversion, adaptive_paths, measure_risk_aversion, heirs_rates)
+        )
         if progress and (position + 1) % 25 == 0:
             elapsed = time.perf_counter() - started
             print(f"  {position + 1}/{len(items)} households ({elapsed / (position + 1 - first):.1f}s each)", flush=True)
@@ -212,13 +237,41 @@ def adaptive_sections(frame: pd.DataFrame) -> list[str]:
     return lines
 
 
-def summarize(frame: pd.DataFrame, n_eval: int, risk_aversion: float) -> str:
+def heirs_sections(frame: pd.DataFrame) -> list[str]:
+    """The raw advantage with the pre-tax balance at the horizon taxed at a flat heirs' rate (a sensitivity, not the app's rule)."""
+    rates = sorted({int(c.rsplit("heirs", 1)[1]) for c in frame.columns if "_heirs" in c})
+    lines = [
+        "## If heirs paid a flat tax on pre-tax money at the horizon (sensitivity)",
+        "",
+        "The app values a pre-tax balance at the horizon as if it were withdrawn evenly over 20 years beside Social Security, a low rate. "
+        "A non-spouse heir must empty an inherited account within ten years. Median raw advantage over the good RIA with the balance taxed at a flat rate instead "
+        "(median across the households of the type; the plan's choices are the ones the planner made under the app's rule).",
+        "",
+        "| Type | As specified | " + " | ".join(f"Heirs at {r}%" for r in rates) + " |",
+        "|---|---|" + "---|" * len(rates),
+    ]
+    for t, title in hh.TYPES.items():
+        sub = frame[frame["type"] == t]
+        cells = [_pct(sub["adv_median_vs_good_ria"].median())] + [_pct(sub[f"adv_median_vs_good_ria_heirs{r}"].median()) for r in rates]
+        lines.append(f"| {title} | " + " | ".join(cells) + " |")
+    cells = [_pct(frame["adv_median_vs_good_ria"].median())] + [_pct(frame[f"adv_median_vs_good_ria_heirs{r}"].median()) for r in rates]
+    lines += [f"| **All {len(frame)} households** | " + " | ".join(f"**{c}**" for c in cells) + " |", ""]
+    return lines
+
+
+def summarize(frame: pd.DataFrame, n_eval: int, risk_aversion: float, measure_risk_aversion: float | None = None) -> str:
+    measure = risk_aversion if measure_risk_aversion is None else measure_risk_aversion
+    setting = (
+        f"risk aversion {risk_aversion:g}"
+        if measure == risk_aversion
+        else f"the planner searched at risk aversion {risk_aversion:g}; risk-adjusted figures are at risk aversion {measure:g}"
+    )
     lines = [
         "# Household-type study",
         "",
         f"{len(frame)} synthetic households ({frame.groupby('type').size().iloc[0]} of each of six types), all fictional. For each, the planner searched",
         f"its strategy menu on 400 simulated futures and the winner was scored against both advisors on {n_eval:,} fresh",
-        f"futures it never saw (risk aversion {risk_aversion:g}). Nothing was tuned; the households were drawn from fixed ranges",
+        f"futures it never saw ({setting}). Nothing was tuned; the households were drawn from fixed ranges",
         "that make each a clear example of its type (see `backend/app/study/households.py`).",
         "",
         "* **Median advantage**: difference in median after-tax wealth at the horizon, annualized as a growth-rate difference.",
@@ -275,6 +328,8 @@ def summarize(frame: pd.DataFrame, n_eval: int, risk_aversion: float) -> str:
         )
     if "judgment_median" in frame.columns:
         lines += [""] + adaptive_sections(frame)
+    if any("_heirs" in c for c in frame.columns):
+        lines += [""] + heirs_sections(frame)
     lines += [
         "",
         "## Reading these numbers",
@@ -304,14 +359,22 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--adaptive-paths", type=int, default=0, help="also run the adaptive planner on this many futures per household (spec B5)")
     parser.add_argument("--checkpoint", type=Path, default=None, help="save progress here every 25 households and resume from it")
+    parser.add_argument("--risk-aversion", type=float, default=RISK_AVERSION, help="the risk aversion the planner searches at (the app's is 3)")
+    parser.add_argument(
+        "--measure-risk-aversion", type=float, default=None, help="the risk aversion behind the reported risk-adjusted advantage (default: the same)"
+    )
+    parser.add_argument(
+        "--heirs-rates", type=float, nargs="*", default=[], help="flat tax rates on pre-tax money at the horizon to report as a sensitivity, e.g. 0.24 0.32"
+    )
     args = parser.parse_args(argv)
     frame = run(
         per_type=args.per_type, n_eval=args.n_eval, seed=args.seed, progress=True,
-        adaptive_paths=args.adaptive_paths, checkpoint=args.checkpoint,
+        adaptive_paths=args.adaptive_paths, checkpoint=args.checkpoint, risk_aversion=args.risk_aversion,
+        measure_risk_aversion=args.measure_risk_aversion, heirs_rates=tuple(args.heirs_rates),
     )
     args.out_dir.mkdir(parents=True, exist_ok=True)
     frame.to_csv(args.out_dir / "household_study.csv", index=False)
-    text = summarize(frame, args.n_eval, RISK_AVERSION)
+    text = summarize(frame, args.n_eval, args.risk_aversion, args.measure_risk_aversion)
     (args.out_dir / "household_study.md").write_text(text)
     print(text)
 

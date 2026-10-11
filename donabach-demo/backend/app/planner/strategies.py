@@ -1,6 +1,7 @@
 """The strategy menu: every combination of the seven choices Donabach plans over.
 
-* Stock share of long-term money: 50/60/70/80/90/100%, held until 58, then gliding down 25 points by 70
+* Stock share: 50/60/70/80/90/100%, held until 58, then gliding down 25 points by 70. It is the share of the money
+  outside the private credit sleeve, so a 50% stock share with a 15% sleeve holds 42.5% of the portfolio in stocks
 * Roth conversions: none, or fill the 12/22/24% bracket, either in low-income years and
   retirement only, or every year (7 options)
 * Private credit sleeve: 0, 5, 10 or 15% of long-term money (pre-tax account first, then Roth, then taxable)
@@ -154,10 +155,18 @@ class Strategy:
 
     def describe(self) -> str:
         """The strategy in one plain-language sentence."""
-        parts = [
-            f"Hold {round(self.stock_share * 100)}% of long-term money in stocks until "
-            f"{round(GLIDE_START_AGE)}, then glide down"
-        ]
+        if self.private_credit:
+            # the sleeve comes out first; the stock share is of the money outside it (see `Policy` and `_rebalance`)
+            held = self.stock_share * (1.0 - self.private_credit) * 100.0
+            parts = [
+                f"Hold {round(self.stock_share * 100)}% of the money outside the private credit sleeve in stocks "
+                f"({held:.1f}".rstrip("0").rstrip(".") + f"% of the portfolio) until {round(GLIDE_START_AGE)}, then glide down"
+            ]
+        else:
+            parts = [
+                f"Hold {round(self.stock_share * 100)}% of long-term money in stocks until "
+                f"{round(GLIDE_START_AGE)}, then glide down"
+            ]
         if self.conversion_bracket is None:
             parts.append("no Roth conversions")
         else:

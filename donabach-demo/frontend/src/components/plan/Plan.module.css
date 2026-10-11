@@ -1,0 +1,101 @@
+.stack {
+  display: grid;
+  gap: 20px;
+}
+
+/* ---- Top card ---- */
+.strategy {
+  border-color: var(--gold);
+  background: linear-gradient(0deg, var(--gold-wash), var(--gold-wash)), var(--panel);
+  display: grid;
+  gap: 14px;
+}
+
+.kicker {
+  display: flex;
+}
+
+.sentence {
+  font-size: 1.45rem;
+  line-height: 1.35;
+  font-weight: 700;
+  max-width: 62ch;
+}
+
+.reason {
+  color: var(--espresso);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  max-width: 78ch;
+}
+.reason strong {
+  color: var(--brown);
+}
+
+.choices {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--cream);
+  border: 1px solid var(--muted);
+  font-size: 0.9375rem;
+  line-height: 1.3;
+}
+
+.choiceLabel {
+  color: var(--muted-text);
+}
+
+.choiceValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 650;
+  color: var(--espresso);
+}
+
+.choice[data-off="true"] .choiceValue {
+  font-weight: 500;
+  color: var(--muted-text);
+}
+
+.next {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---- Year-by-year table ---- */
+.tableNote {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  margin: -6px 0 14px;
+  max-width: 90ch;
+}
+
+.age {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.ageNote {
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: var(--muted-text);
+}
+
+.zero {
+  color: var(--muted-text);
+}

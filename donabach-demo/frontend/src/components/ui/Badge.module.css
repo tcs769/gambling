@@ -4,25 +4,26 @@
   gap: 5px;
   padding: 3px 10px 3px 8px;
   border-radius: 999px;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.3;
   white-space: nowrap;
   border: 1px solid transparent;
 }
 
+/* Status text is nudged toward espresso so it holds 4.5:1 on panels and on washed rows. */
 .badge[data-tone="good"] {
-  color: var(--good);
+  color: color-mix(in srgb, var(--good) 75%, var(--espresso));
   background: var(--good-wash);
   border-color: rgba(46, 112, 72, 0.3);
 }
 .badge[data-tone="warn"] {
-  color: var(--warn);
+  color: color-mix(in srgb, var(--warn) 75%, var(--espresso));
   background: var(--warn-wash);
   border-color: rgba(154, 82, 0, 0.3);
 }
 .badge[data-tone="bad"] {
-  color: var(--bad);
+  color: color-mix(in srgb, var(--bad) 75%, var(--espresso));
   background: var(--bad-wash);
   border-color: rgba(174, 58, 46, 0.3);
 }

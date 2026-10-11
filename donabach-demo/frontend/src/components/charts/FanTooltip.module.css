@@ -1,0 +1,61 @@
+.tip {
+  min-width: 230px;
+  padding: 12px 14px 12px;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 20px rgba(90, 69, 33, 0.18);
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.age {
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--brown);
+  margin-bottom: 8px;
+}
+
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+/* A short stroke of the series color: the key for the line, not a box. */
+.key {
+  display: block;
+  width: 16px;
+  height: 2px;
+  margin-top: 11px;
+  border-radius: 1px;
+}
+
+.value {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--espresso);
+  font-variant-numeric: tabular-nums;
+}
+
+.name {
+  margin-left: 8px;
+  color: var(--muted-text);
+}
+
+.detail {
+  color: var(--muted-text);
+  font-variant-numeric: tabular-nums;
+}

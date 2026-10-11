@@ -1,0 +1,196 @@
+/* One document's extracted numbers: groups, rows, and the inline fix. */
+.group + .group {
+  margin-top: 20px;
+}
+
+/* A sub-heading, not a page heading: sans, quiet, sentence case. */
+.groupTitle {
+  margin: 0 0 4px;
+  padding: 0 10px;
+  color: var(--muted-text);
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  border-top: 1px solid var(--line);
+}
+.item:first-child {
+  border-top-color: transparent;
+}
+
+/* The whole row is one button: click anywhere on it to see the number on the document. */
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--espresso);
+  font-size: 1rem;
+  text-align: left;
+  transition: background 140ms ease;
+}
+
+.row:hover {
+  background: color-mix(in srgb, var(--panel-deep) 55%, transparent);
+}
+
+/* The number on screen right now: gold bar and wash. */
+.row[data-selected="true"] {
+  background: var(--gold-wash);
+  box-shadow: inset 4px 0 0 var(--gold);
+}
+
+/* A number still waiting on the user: amber bar, on top of whatever else the row is doing. */
+.row[data-waiting="true"] {
+  background: var(--warn-wash);
+  box-shadow: inset 4px 0 0 var(--warn);
+}
+.row[data-waiting="true"][data-selected="true"] {
+  background: linear-gradient(0deg, var(--gold-wash), var(--gold-wash)), var(--warn-wash);
+}
+
+.label {
+  display: grid;
+  min-width: 0;
+}
+
+.title {
+  line-height: 1.35;
+}
+
+.sub {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.35;
+}
+
+.value {
+  min-width: 4.5rem;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.value[data-missing="true"] {
+  color: var(--muted-text);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.status {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 9.25rem;
+}
+
+/* "Confirmed by you" sits on the gold wash of a selected row: a touch darker keeps it at 4.5:1. */
+.status span[data-tone="neutral"] {
+  color: color-mix(in srgb, var(--muted-text) 80%, var(--espresso));
+}
+
+/* The one-line note once a flagged number has been dealt with. */
+.note {
+  animation: settle-in 200ms ease-out both;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0 10px 10px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brown);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.link:hover {
+  color: var(--espresso);
+}
+
+@keyframes settle-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* The inline fix, under its row. */
+.editor {
+  animation: settle-in 200ms ease-out both;
+  display: grid;
+  gap: 12px;
+  margin: 2px 4px 12px;
+  padding: 14px 16px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--cream);
+}
+
+.editor[data-tone="warn"] {
+  border-color: color-mix(in srgb, var(--warn) 38%, transparent);
+  background: linear-gradient(0deg, var(--warn-wash), var(--warn-wash)), var(--cream);
+}
+
+.why {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--espresso);
+  font-weight: 500;
+}
+
+.whyIcon {
+  flex: none;
+  margin-top: 2px;
+  color: color-mix(in srgb, var(--warn) 75%, var(--espresso));
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Smaller than the page's buttons: they sit in a row with the box. */
+.controls button {
+  padding: 9px 16px;
+  font-size: 0.9375rem;
+}
+
+.amount {
+  width: 10.5rem;
+  min-height: 42px;
+}
+
+.wide {
+  width: 17rem;
+  min-height: 42px;
+}
+
+.help {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}

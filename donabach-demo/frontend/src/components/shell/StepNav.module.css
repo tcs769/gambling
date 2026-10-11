@@ -63,7 +63,7 @@ a.step:hover {
   height: 24px;
   border-radius: 50%;
   border: 1.5px solid var(--muted);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
   line-height: 1;
 }

@@ -1,0 +1,223 @@
+/* Three summary panels side by side, then the tax picture, then the full return. */
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-items: stretch;
+}
+
+@media (max-width: 1100px) {
+  .summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 14px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.item:first-child {
+  border-top: 0;
+  padding-top: 2px;
+}
+
+.name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-weight: 600;
+}
+
+.detail {
+  grid-column: 1;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+.amount {
+  grid-row: 1;
+  grid-column: 2;
+  font-size: 1.125rem;
+  font-weight: 650;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 2px solid var(--brown);
+  font-weight: 700;
+}
+.total .amount {
+  font-size: 1.375rem;
+}
+
+.totalNote {
+  margin-top: 4px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  text-align: right;
+}
+
+/* People and children. */
+.person {
+  display: grid;
+  gap: 2px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.person:first-child {
+  border-top: 0;
+  padding-top: 2px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 32px 0 14px;
+}
+.sectionHead p {
+  color: var(--muted-text);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.wide {
+  grid-column: span 2;
+}
+/* The card inside fills its cell, so it is as tall as its neighbours. */
+.wide > * {
+  height: 100%;
+}
+
+@media (max-width: 1100px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.returnPanel {
+  margin-top: 24px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.returnPanel > div {
+  border-top: 0;
+}
+
+.table {
+  width: 100%;
+  margin: 0 0 12px;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 9px 4px;
+  border-top: 1px solid var(--line);
+  font-size: 1rem;
+  font-weight: 400;
+  text-align: left;
+}
+
+.table td {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table tr[data-zero="true"] th,
+.table tr[data-zero="true"] td {
+  color: var(--muted-text);
+}
+
+.table tr[data-kind="subtotal"] th,
+.table tr[data-kind="subtotal"] td {
+  font-weight: 700;
+  border-top: 1.5px solid var(--muted);
+}
+
+.table tr[data-kind="total"] th,
+.table tr[data-kind="total"] td {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--brown);
+  background: var(--gold-wash);
+  border-top: 2px solid var(--brown);
+}
+
+.table tr[data-kind="rate"] th {
+  font-style: italic;
+}
+
+.note {
+  display: block;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  font-weight: 400;
+}
+
+.failed {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+  max-width: 44rem;
+}
+
+/* Loading: the same frames, greyed out, so nothing moves when the numbers arrive. */
+.bone {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--panel) 0%, var(--panel-deep) 50%, var(--panel) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.boneRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+}
+
+.boneCard {
+  height: 150px;
+  border-radius: var(--radius);
+}
+
+/* About as tall as the real panels (four accounts and a total). */
+.bonePanel {
+  min-height: 437px;
+}

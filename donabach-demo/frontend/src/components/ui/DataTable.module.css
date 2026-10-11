@@ -1,0 +1,118 @@
+.wrap {
+  --surface: var(--panel);
+  /* A darker take on the quiet text color, for rows with a strong tint behind them. */
+  --muted-text-strong: color-mix(in srgb, var(--muted-text) 75%, var(--espresso));
+  position: relative;
+}
+.wrap[data-surface="cream"] {
+  --surface: var(--cream);
+}
+
+.scroller {
+  /* The containing block for the screen-reader-only spans inside cells: without it they sit outside
+     the scroller's clip and stretch the page. */
+  position: relative;
+  overflow: auto;
+  /* Keep the scrollbar visible (not an overlay) so it is obvious the body scrolls. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) var(--line);
+  border-radius: var(--radius-sm);
+}
+
+/* A soft fade over the last visible row while more rows wait below. */
+.wrap[data-more="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 12px;
+  bottom: 0;
+  height: 44px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--surface));
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th,
+.table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+  font-weight: 400;
+  line-height: 1.4;
+}
+.table[data-dense="true"] th,
+.table[data-dense="true"] td {
+  padding: 7px 12px;
+}
+
+.table [data-align="end"] {
+  text-align: right;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+  color: var(--brown);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.25;
+  vertical-align: bottom;
+  border-bottom: 1px solid var(--muted);
+}
+
+.table tbody th {
+  color: var(--espresso);
+  font-weight: 600;
+}
+
+.table tbody tr {
+  scroll-margin-top: 54px;
+  scroll-margin-bottom: 20px;
+}
+
+.table tbody tr[data-interactive="true"] {
+  cursor: pointer;
+}
+.table tbody tr[data-interactive="true"]:hover {
+  background: var(--panel-deep);
+}
+.table tbody tr:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: -3px;
+  border-radius: 0;
+}
+
+/* Rows worth noticing: a thin edge and a faint tint, never loud. */
+.table tbody tr[data-tone="marked"] {
+  background: rgba(184, 137, 43, 0.05);
+}
+.table tbody tr[data-tone="marked"] > :first-child {
+  box-shadow: inset 3px 0 0 rgba(184, 137, 43, 0.45);
+}
+/* The row the page is about (chosen strategy, selected year): clearly stronger than a mark. Its
+   quieter text is darkened a little so it still holds 4.5:1 on the deeper tint. */
+.table tbody tr[data-tone="highlight"],
+.table tbody tr[data-selected="true"] {
+  --muted-text: var(--muted-text-strong);
+  background: rgba(184, 137, 43, 0.22);
+}
+.table tbody tr[data-tone="highlight"] > :first-child,
+.table tbody tr[data-selected="true"] > :first-child {
+  box-shadow: inset 5px 0 0 var(--gold);
+}
+
+.table tbody tr:last-child th,
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}

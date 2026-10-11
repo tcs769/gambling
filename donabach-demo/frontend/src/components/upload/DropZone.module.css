@@ -1,0 +1,77 @@
+.zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 34px 32px 24px;
+  text-align: center;
+  border: 2px dashed var(--muted);
+  border-radius: 22px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 60%, var(--cream)), var(--cream));
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.zone[data-dragging="true"] {
+  border-style: solid;
+  border-color: var(--gold);
+  background: var(--gold-wash);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  color: var(--brown);
+  background: var(--gold-wash);
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+}
+
+.title {
+  font-size: 2.125rem;
+  line-height: 1.15;
+}
+
+.lede {
+  max-width: 74ch;
+  color: var(--muted-text);
+  font-size: 1.0625rem;
+}
+
+.lede[data-tone="warn"] {
+  color: color-mix(in srgb, var(--warn) 75%, var(--espresso));
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+
+.input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Wide enough for the spinner that appears while the samples load, so nothing shifts. */
+.sample {
+  min-width: 15.75rem;
+}

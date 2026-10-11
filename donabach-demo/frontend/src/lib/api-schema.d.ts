@@ -859,6 +859,8 @@ export interface components {
             goal_bonds_flow: number;
             /** Goal Paid */
             goal_paid: number;
+            /** Goal Label */
+            goal_label?: string | null;
             /** Stock Share */
             stock_share: number;
             /** Total Tax */

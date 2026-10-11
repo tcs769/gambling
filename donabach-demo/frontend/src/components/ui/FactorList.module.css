@@ -1,0 +1,55 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.2fr) minmax(150px, 1fr) minmax(90px, 1.4fr) 44px;
+  align-items: center;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+.row:last-child {
+  border-bottom: 0;
+}
+
+.name {
+  font-weight: 600;
+  color: var(--espresso);
+}
+
+.direction {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--brown);
+  font-size: 0.9375rem;
+}
+
+/* A thin track; the fill rounds only at its data end and is square at the baseline. */
+.bar {
+  display: block;
+  height: 10px;
+  background: var(--line);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--series-donabach);
+  border-radius: 0 5px 5px 0;
+  transition: width 700ms ease-in-out;
+}
+
+.weight {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}

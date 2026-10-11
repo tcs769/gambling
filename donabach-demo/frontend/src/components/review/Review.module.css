@@ -1,0 +1,255 @@
+/* The Review screen: fields on the left, the document on the right, which stays in view. */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* One column that can shrink below its content, so a long line truncates instead of pushing
+   the document out from under the list. */
+.fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  min-width: 0;
+}
+
+.viewerColumn {
+  position: sticky;
+  top: 84px;
+  height: calc(100vh - 108px);
+  min-height: 520px;
+}
+
+@media (max-width: 1100px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .viewerColumn {
+    position: static;
+    height: 720px;
+  }
+}
+
+/* Header actions: what is left to do, then the button. */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: color-mix(in srgb, var(--warn) 75%, var(--espresso));
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: right;
+}
+button.hint {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.hint[data-done="true"] {
+  color: color-mix(in srgb, var(--good) 75%, var(--espresso));
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border: 1px solid;
+  border-radius: var(--radius);
+}
+.summary[data-tone="warn"] {
+  background: var(--warn-wash);
+  border-color: color-mix(in srgb, var(--warn) 35%, transparent);
+}
+.summary[data-tone="good"] {
+  background: var(--good-wash);
+  border-color: color-mix(in srgb, var(--good) 35%, transparent);
+}
+
+.summaryIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--cream);
+}
+.summary[data-tone="warn"] .summaryIcon {
+  color: color-mix(in srgb, var(--warn) 75%, var(--espresso));
+}
+.summary[data-tone="good"] .summaryIcon {
+  color: color-mix(in srgb, var(--good) 75%, var(--espresso));
+}
+
+.summaryText {
+  flex: 1;
+  min-width: 0;
+}
+
+.summaryTitle {
+  font-weight: 650;
+  color: var(--espresso);
+}
+
+.summaryBody {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+
+/* One document's panel: less side padding than a normal panel, so numbers get the room. */
+section.docPanel {
+  padding: 22px 14px 8px;
+}
+
+.docHead {
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.docIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  color: var(--brown);
+  background: var(--gold-wash);
+}
+
+.docTitle {
+  font-size: 1.25rem;
+}
+
+.docMeta {
+  overflow: hidden;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docHead > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.unread {
+  padding: 14px 16px;
+  color: var(--muted-text);
+  border: 1.5px dashed var(--muted);
+  border-radius: 12px;
+}
+
+/* A build that came back missing numbers. */
+.banner {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 20px;
+  border-color: color-mix(in srgb, var(--warn) 40%, transparent);
+  background: linear-gradient(0deg, var(--warn-wash), var(--warn-wash)), var(--cream);
+}
+
+.bannerHead {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.bannerHead svg {
+  flex: none;
+  margin-top: 3px;
+  color: color-mix(in srgb, var(--warn) 75%, var(--espresso));
+}
+.bannerHead h2 {
+  font-size: 1.25rem;
+}
+.bannerHead p {
+  margin-top: 4px;
+}
+
+.missingList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.missingList label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.bannerActions {
+  display: flex;
+  gap: 12px;
+}
+
+/* Loading and failure: the same two columns, so nothing moves when the real thing arrives. */
+.bone {
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--panel) 0%, var(--panel-deep) 50%, var(--panel) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeletonRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 12px;
+}
+
+.failed {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+  max-width: 44rem;
+}
+
+/* The line under the document: what is shown, and a way to correct it. */
+.captionText {
+  flex: 1;
+  min-width: 0;
+}
+
+.captionAction {
+  flex: none;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--brown);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.captionAction:hover {
+  color: var(--espresso);
+}

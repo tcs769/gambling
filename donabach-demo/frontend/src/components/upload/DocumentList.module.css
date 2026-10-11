@@ -1,0 +1,183 @@
+.list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 14px 17px 16px;
+  overflow: hidden;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  animation: row-in 240ms ease-out both;
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.fileIcon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  color: var(--brown);
+  background: var(--gold-wash);
+}
+
+.text {
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  color: var(--espresso);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+
+.meta[data-tone="warn"] {
+  color: color-mix(in srgb, var(--warn) 75%, var(--espresso));
+}
+
+.meta[data-tone="bad"] {
+  color: color-mix(in srgb, var(--bad) 75%, var(--espresso));
+}
+
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.state[data-tone="busy"] {
+  color: var(--muted-text);
+}
+.state[data-tone="good"] {
+  color: color-mix(in srgb, var(--good) 75%, var(--espresso));
+}
+.state[data-tone="warn"] {
+  color: color-mix(in srgb, var(--warn) 75%, var(--espresso));
+}
+.state[data-tone="bad"] {
+  color: color-mix(in srgb, var(--bad) 75%, var(--espresso));
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2.5px solid var(--gold);
+  border-right-color: transparent;
+  animation: spin 800ms linear infinite;
+}
+
+.remove {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted-text);
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.remove:hover {
+  background: var(--panel-deep);
+  color: var(--brown);
+}
+
+/* A thin bar along the bottom edge: each stage fills it further, so progress reads at a glance. */
+.bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--gold);
+  border-radius: 0 3px 3px 0;
+  animation-duration: 450ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+.bar[data-status="uploading"] {
+  animation-name: fill-uploading;
+}
+.bar[data-status="reading"] {
+  animation-name: fill-reading;
+}
+.bar[data-status="ready"] {
+  background: var(--good);
+  animation-name: fill-ready;
+}
+.bar[data-status="warn"] {
+  background: var(--warn);
+  width: 100%;
+}
+.bar[data-status="error"] {
+  background: var(--bad);
+  width: 100%;
+}
+
+@keyframes fill-uploading {
+  from {
+    width: 0;
+  }
+  to {
+    width: 40%;
+  }
+}
+@keyframes fill-reading {
+  from {
+    width: 40%;
+  }
+  to {
+    width: 80%;
+  }
+}
+@keyframes fill-ready {
+  from {
+    width: 80%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.empty {
+  display: grid;
+  place-items: center;
+  min-height: 259px;
+  padding: 24px;
+  color: var(--muted-text);
+  text-align: center;
+  border: 1.5px dashed var(--line);
+  border-radius: 12px;
+}

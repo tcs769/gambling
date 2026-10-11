@@ -273,6 +273,9 @@ def test_plan_table_has_every_year_and_ties_out(plan):
     assert [r["age"] for r in rows] == list(range(38, 70))
     assert rows[0]["wages"] == 250_000 and rows[-1]["wages"] == 0
     assert rows[3]["goal_paid"] == 120_000 and sum(r["goal_paid"] for r in rows) == 260_000
+    labels = {r["age"]: r["goal_label"] for r in rows if r["goal_paid"] > 0}
+    assert labels == {41: "Home purchase", 48: "College", 49: "College", 50: "College", 51: "College"}
+    assert all(r["goal_label"] is None for r in rows if r["goal_paid"] == 0)
     assert all(r["total_tax"] == pytest.approx(r["federal_tax"] + r["illinois_tax"]) for r in rows)
     assert all(0.4 < r["stock_share"] < 1.0 for r in rows)
     assert rows[-1]["wealth"] > rows[0]["wealth"]
@@ -364,6 +367,7 @@ def test_whatif_home_purchase_next_year(household_json, plan):
     assert body["changes"] == [{"field": "home_purchase_in_years", "label": "Home purchase", "before": "in 3 years", "after": "in 1 year"}]
     rows = body["plan"]["rows"]
     assert rows[1]["goal_paid"] == 120_000 and rows[3]["goal_paid"] == 0
+    assert rows[1]["goal_label"] == "Home purchase" and rows[3]["goal_label"] is None
     assert body["household"]["goals"]["home_purchase_in_years"] == 1
 
 
@@ -417,3 +421,15 @@ def test_whatif_uses_the_same_futures_so_changes_are_the_scenario(household_json
     assert nothing["changes"] == []
     for key in ("typical_outcome", "ria_typical_outcome"):
         assert nothing["plan"]["stats"][key] == plan["stats"][key]
+
+
+def test_whatif_merges_a_preset_and_an_edit_to_the_same_field(household_json):
+    body = whatif(household_json, presets=["retire_57"], edits={"retirement_age": 58}).json()
+    assert body["changes"] == [{"field": "retirement_age", "label": "Retirement age", "before": "62", "after": "58"}]
+    assert body["household"]["goals"]["retirement_age"] == 58
+
+
+def test_whatif_drops_a_change_that_nets_to_nothing(household_json):
+    body = whatif(household_json, presets=["retire_57"], edits={"retirement_age": 62}).json()
+    assert body["changes"] == []
+    assert body["household"]["goals"]["retirement_age"] == 62

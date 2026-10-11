@@ -1,0 +1,78 @@
+.drawer {
+  position: fixed;
+  top: 68px; /* corrected from the header's real height on open */
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  max-width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--cream);
+  border-left: 1px solid var(--line);
+  box-shadow: -10px 0 28px rgba(90, 69, 33, 0.12);
+  animation: drawer-in 220ms ease-out both;
+  outline: none;
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(28px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--cream);
+}
+
+.heading {
+  min-width: 0;
+}
+
+.eyebrow {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  margin-bottom: 2px;
+}
+
+.header h2 {
+  font-size: 1.5rem;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.close {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: var(--brown);
+}
+.close:hover {
+  background: var(--panel);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px 28px;
+}

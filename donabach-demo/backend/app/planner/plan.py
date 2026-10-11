@@ -82,7 +82,21 @@ def ranked_rows(ranked: list[RankedStrategy], chosen: Strategy, model_pick: Stra
     ]
 
 
-def plan_rows(log: dict[str, np.ndarray]) -> list[PlanRow]:
+def goal_labels(household: Household, n_years: int) -> list[str | None]:
+    """Which goal(s) are paid in each simulated year (None when nothing is due)."""
+    g = household.goals
+    names: list[list[str]] = [[] for _ in range(n_years)]
+    if g.home_purchase_in_years is not None and g.home_purchase_in_years < n_years and g.home_down_payment > 0:
+        names[g.home_purchase_in_years].append("Home purchase")
+    if g.college_starts_in_years is not None and g.college_annual_cost > 0:
+        for t in range(g.college_starts_in_years, g.college_starts_in_years + g.college_years):
+            if t < n_years:
+                names[t].append("College")
+    return [" and ".join(n) or None for n in names]
+
+
+def plan_rows(log: dict[str, np.ndarray], household: Household) -> list[PlanRow]:
+    labels = goal_labels(household, len(log["age"]))
     rows = []
     for t in range(len(log["age"])):
         income = log["wages"][t] + log["ss"][t] + log["ret_dist"][t] + log["interest"][t] + log["dividends"][t]
@@ -97,6 +111,7 @@ def plan_rows(log: dict[str, np.ndarray]) -> list[PlanRow]:
                 goal_bonds_balance=float(log["bucket"][t]),
                 goal_bonds_flow=float(log["bucket_flow"][t]),
                 goal_paid=float(log["goal_paid"][t]),
+                goal_label=labels[t] if log["goal_paid"][t] > 0 else None,
                 stock_share=float(log["stock_target"][t]),
                 total_tax=float(log["total_tax"][t]),
                 federal_tax=float(log["fed_tax"][t]),
@@ -199,7 +214,7 @@ def build_plan(
             sentence=RIA_SENTENCE,
             outcome=outcome_view(ria_outcome),
         ),
-        rows=plan_rows(log),
+        rows=plan_rows(log, household),
         stats=stats,
         fan=fan_series(pair.path_wealth[0], start_wealth, household.primary_age),
         ria_fan=fan_series(pair.path_wealth[1], start_wealth, household.primary_age),

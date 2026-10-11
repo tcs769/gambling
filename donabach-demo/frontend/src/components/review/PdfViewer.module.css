@@ -1,0 +1,171 @@
+.viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 12px 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  position: relative;
+  top: 1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 9px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 10px 10px 0 0;
+  background: transparent;
+  color: var(--muted-text);
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 140ms ease;
+}
+
+.tab:hover {
+  background: var(--panel-deep);
+}
+
+.tab[aria-selected="true"] {
+  background: var(--panel-deep);
+  border-bottom-color: var(--gold);
+  color: var(--brown);
+}
+
+.alert {
+  color: color-mix(in srgb, var(--warn) 75%, var(--espresso));
+}
+
+/* The desk the pages lie on. The gutter is always reserved so a scrollbar appearing never
+   changes the page width (and with it every highlight position). */
+.scroller {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 14px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--panel-deep);
+  scrollbar-gutter: stable;
+}
+
+/* The ring sits inside: the viewer clips anything outside its edge. */
+.scroller:focus-visible {
+  outline-offset: -4px;
+}
+
+.pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.pages[hidden] {
+  display: none;
+}
+
+.sheet {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.pageNumber {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+
+/* Sized from the document's own page size before it has loaded, so nothing moves when it does. */
+.page {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  background: white;
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.canvas[data-drawn="true"] {
+  opacity: 1;
+}
+
+.loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.error {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  max-width: 34rem;
+  padding: 16px 18px;
+  color: var(--espresso);
+  background: var(--cream);
+  border: 1px solid color-mix(in srgb, var(--bad) 40%, transparent);
+  border-radius: 12px;
+}
+.error svg {
+  flex: none;
+  margin-top: 2px;
+  color: color-mix(in srgb, var(--bad) 75%, var(--espresso));
+}
+
+/* The box around a number: gold outline and wash, with a ring that pulses outward twice. */
+.highlight {
+  position: absolute;
+  border: 2px solid var(--gold);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--gold) 26%, transparent);
+  pointer-events: none;
+  animation: pulse 1s ease-out 2;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 70%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 16px color-mix(in srgb, var(--gold) 0%, transparent);
+  }
+}
+
+.caption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 3rem;
+  padding: 10px 16px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  border-top: 1px solid var(--line);
+}
+
+.caption strong {
+  color: var(--brown);
+}

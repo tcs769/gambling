@@ -1,0 +1,23 @@
+.stack {
+  display: grid;
+  gap: 20px;
+}
+
+.summary {
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  color: var(--espresso);
+  max-width: 78ch;
+  margin-bottom: 16px;
+}
+
+.panelNote {
+  color: var(--muted-text);
+  margin-bottom: 8px;
+  max-width: 78ch;
+}
+
+.next {
+  display: flex;
+  justify-content: flex-end;
+}

@@ -180,6 +180,7 @@ class PlanRow(BaseModel):
     goal_bonds_balance: float  # held in the goal bond bucket at year end
     goal_bonds_flow: float  # moved into (+) or released from (-) the bucket this year
     goal_paid: float
+    goal_label: str | None = None  # which goal(s) the payment is for, e.g. "Home purchase"
     stock_share: float  # target stock share of long-term money
     total_tax: float
     federal_tax: float

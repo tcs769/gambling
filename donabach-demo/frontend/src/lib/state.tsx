@@ -101,6 +101,10 @@ class Store {
   private state: AppState = initial;
   private listeners = new Set<() => void>();
   readonly inflight = new Map<string, Promise<unknown>>();
+  /** Bumped by every what-if request and by reset, so a slow response cannot overwrite a newer one. */
+  private whatIfTicket = 0;
+  nextWhatIfTicket = (): number => ++this.whatIfTicket;
+  isLatestWhatIf = (ticket: number): boolean => ticket === this.whatIfTicket;
 
   getState = (): AppState => this.state;
 
@@ -347,19 +351,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
           a.resetWhatIf();
           return;
         }
+        const ticket = store.nextWhatIfTicket();
+        patch({ error: undefined });
         setLoading("whatIf", true);
         try {
           const response = await api.whatIf(base, presets, edits, current().demoMode);
+          if (!store.isLatestWhatIf(ticket)) return; // a newer request or a reset superseded this one
           patch({ whatIf: { presets, edits, response }, error: undefined });
         } catch (e) {
-          patch({ error: (e as Error).message });
+          if (store.isLatestWhatIf(ticket)) patch({ error: (e as Error).message });
         } finally {
-          setLoading("whatIf", false);
+          if (store.isLatestWhatIf(ticket)) setLoading("whatIf", false);
         }
       },
 
       resetWhatIf() {
-        patch({ whatIf: undefined });
+        store.nextWhatIfTicket();
+        patch({ whatIf: undefined, error: undefined });
+        setLoading("whatIf", false);
       },
 
       async ensureProfile() {

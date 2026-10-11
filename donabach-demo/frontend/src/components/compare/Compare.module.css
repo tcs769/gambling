@@ -1,0 +1,82 @@
+.stack {
+  display: grid;
+  gap: 20px;
+}
+
+/* ---- Stat cards ---- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+/* Cards share rows (label, figure, notes), so the figures line up across the row even when a
+   label runs to two lines. */
+.stats > div {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  row-gap: 4px;
+}
+
+.strong {
+  color: var(--espresso);
+  font-weight: 600;
+}
+
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-weight: 600;
+  color: var(--muted-text);
+}
+.delta[data-tone="good"] {
+  color: color-mix(in srgb, var(--good) 75%, var(--espresso));
+}
+.delta[data-tone="bad"] {
+  color: color-mix(in srgb, var(--bad) 75%, var(--espresso));
+}
+
+/* ---- Chart legend ---- */
+.legendStack {
+  display: grid;
+  gap: 4px;
+}
+
+.legendNote {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  max-width: 62ch;
+}
+
+/* ---- Advantage ---- */
+.sectionNote {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  max-width: 100ch;
+  margin-bottom: 14px;
+}
+
+.total {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 1.0625rem;
+  color: var(--espresso);
+}
+.total strong {
+  color: var(--brown);
+}
+
+/* ---- Strategies searched ---- */
+.expander {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+}
+.expander .sectionNote {
+  margin: 0;
+}

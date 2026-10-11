@@ -1,0 +1,167 @@
+.chart {
+  --label-w: 270px;
+  --right-inset: 28px;
+  position: relative;
+  width: 100%;
+}
+
+/* Gridlines sit behind the rows, in the same column as the bars. */
+.plot {
+  position: absolute;
+  top: 0;
+  left: var(--label-w);
+  right: var(--right-inset);
+}
+
+.grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+}
+.grid[data-zero="true"] {
+  background: var(--muted);
+}
+
+.rows {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: var(--label-w) minmax(0, 1fr);
+  align-items: center;
+  border-radius: var(--radius-sm);
+  outline-offset: -3px;
+}
+.row:hover {
+  background: rgba(184, 137, 43, 0.07);
+}
+
+.label {
+  display: grid;
+  gap: 2px;
+  padding-right: 20px;
+  line-height: 1.35;
+}
+
+.name {
+  font-weight: 600;
+  color: var(--espresso);
+}
+
+.unused {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+.row[data-active="false"] .name {
+  color: var(--muted-text);
+  font-weight: 500;
+}
+
+.track {
+  position: relative;
+  align-self: stretch;
+  margin-right: var(--right-inset);
+}
+
+/* Thin bars (22px), square at the baseline and rounded at the data end. */
+.bar {
+  position: absolute;
+  top: 50%;
+  height: 22px;
+  margin-top: -11px;
+  background: var(--series-donabach);
+  border-radius: 0 4px 4px 0;
+  transition:
+    left 700ms ease-in-out,
+    width 700ms ease-in-out,
+    filter 140ms ease;
+}
+.bar[data-negative="true"] {
+  border-radius: 4px 0 0 4px;
+}
+.row:hover .bar,
+.row:focus-visible .bar {
+  filter: brightness(1.12);
+}
+
+/* The value at the tip, in the text color. */
+.value {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--espresso);
+  white-space: nowrap;
+  transition:
+    left 700ms ease-in-out,
+    right 700ms ease-in-out;
+}
+.value[data-negative="true"] {
+  margin-left: 0;
+  margin-right: 10px;
+}
+
+.axis {
+  position: absolute;
+  left: var(--label-w);
+  right: var(--right-inset);
+  bottom: 0;
+}
+
+.tick {
+  position: absolute;
+  top: 10px;
+  transform: translateX(-50%);
+  color: var(--muted-text);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 5;
+  min-width: 220px;
+  padding: 11px 14px;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 20px rgba(90, 69, 33, 0.18);
+  pointer-events: none;
+  transform: translate(16px, -50%);
+  line-height: 1.4;
+}
+.tooltip[data-flip="true"] {
+  transform: translate(calc(-100% - 16px), -50%);
+}
+
+.tipName {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+.tipValue {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--espresso);
+  font-variant-numeric: tabular-nums;
+}
+.tipDetail {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tableNote {
+  display: block;
+  color: var(--muted-text);
+  font-size: 0.875rem;
+  font-weight: 400;
+}

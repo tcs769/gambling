@@ -112,4 +112,17 @@ def apply_whatif(
         changed = Household.model_validate(data)
     except ValueError as exc:
         raise WhatIfError(str(exc)) from exc
-    return changed, shock, changes
+    return changed, shock, _net_changes(changes)
+
+
+def _net_changes(changes: list[Change]) -> list[Change]:
+    """One change per field: from its original value to its final one (dropped if they end up equal).
+
+    A preset followed by an edit to the same field ("retire at 57", then 58) is a single change from
+    the household's original value, not two steps the viewer has to reconcile.
+    """
+    by_field: dict[str, Change] = {}
+    for c in changes:
+        first = by_field.get(c.field)
+        by_field[c.field] = c if first is None else c.model_copy(update={"before": first.before})
+    return [c for c in by_field.values() if c.before != c.after]

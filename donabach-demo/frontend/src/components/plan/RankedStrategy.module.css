@@ -1,0 +1,17 @@
+.cell {
+  display: grid;
+  gap: 4px;
+  line-height: 1.4;
+}
+
+.flags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.tied {
+  color: var(--muted-text);
+  font-size: 0.875rem;
+}

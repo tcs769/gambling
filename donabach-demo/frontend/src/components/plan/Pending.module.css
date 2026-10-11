@@ -1,0 +1,32 @@
+.stack {
+  display: grid;
+  gap: 20px;
+}
+
+.block {
+  display: flex;
+  align-items: flex-start;
+}
+
+.failure {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  color: var(--espresso);
+}
+
+.failure p {
+  margin: 4px 0 14px;
+  color: var(--muted-text);
+}
+
+.failureIcon {
+  color: var(--bad);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.failureTitle {
+  font-weight: 650;
+  color: var(--brown);
+}

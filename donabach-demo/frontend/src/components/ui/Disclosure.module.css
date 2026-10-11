@@ -1,0 +1,71 @@
+.root {
+  border-top: 1px solid var(--line);
+}
+
+/* The heading wrapper only gives screen readers a heading to land on; the look is the button's. */
+.heading {
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: normal;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 4px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--brown);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.trigger:hover .title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.chevron {
+  flex-shrink: 0;
+  transition: transform 180ms ease;
+}
+
+.root[data-open="true"] .chevron {
+  transform: rotate(90deg);
+}
+
+.aside {
+  margin-left: auto;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  font-weight: 400;
+}
+
+/* Height animates through the grid-rows trick; `visibility` keeps closed content out of the tab
+   order and the accessibility tree once the collapse has finished. */
+.region {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows 220ms ease,
+    visibility 0s linear 220ms;
+}
+
+.root[data-open="true"] .region {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 220ms ease;
+}
+
+.inner {
+  min-height: 0;
+  overflow: hidden;
+}

@@ -1,0 +1,176 @@
+.step {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: var(--brown);
+}
+.step:not(:disabled):hover {
+  background: var(--panel);
+}
+.step:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.back {
+  transform: rotate(180deg);
+}
+
+/* ---- Year at a glance ---- */
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 0 0 22px;
+}
+.summary > div {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.summary dt {
+  color: var(--muted-text);
+  font-size: 0.875rem;
+  line-height: 1.3;
+}
+.summary dd {
+  margin: 2px 0 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  color: var(--espresso);
+}
+
+.section + .section {
+  margin-top: 26px;
+}
+.section h3 {
+  margin-bottom: 4px;
+}
+
+.caption {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  margin-bottom: 12px;
+}
+
+/* ---- Decisions ---- */
+.decisions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.decision {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+
+.decisionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-bottom: 4px;
+}
+
+.decision p {
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.context {
+  color: var(--muted-text);
+  font-size: 0.875rem;
+}
+
+/* ---- The tax return ---- */
+.tax {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.tax th,
+.tax td {
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 400;
+  text-align: left;
+  line-height: 1.35;
+  vertical-align: baseline;
+}
+.tax td {
+  text-align: right;
+  white-space: nowrap;
+  padding-left: 14px;
+}
+
+.tax tr[data-zero="true"] th,
+.tax tr[data-zero="true"] td {
+  color: var(--muted-text);
+}
+
+.tax tr[data-kind="subtotal"] th,
+.tax tr[data-kind="subtotal"] td {
+  font-weight: 700;
+  color: var(--espresso);
+  border-top: 1px solid var(--muted);
+  background: rgba(184, 137, 43, 0.06);
+}
+
+.tax tr[data-kind="total"] th,
+.tax tr[data-kind="total"] td {
+  font-weight: 700;
+  font-size: 1.125rem;
+  padding-block: 12px;
+  color: var(--brown);
+  background: var(--gold-wash);
+  border-top: 2px solid var(--gold);
+  border-bottom: 2px solid var(--gold);
+}
+.tax tr[data-kind="total"] th {
+  padding-left: 10px;
+}
+.tax tr[data-kind="total"] td {
+  padding-right: 10px;
+}
+
+.tax tr[data-kind="rate"] th,
+.tax tr[data-kind="rate"] td {
+  color: var(--muted-text);
+  border-bottom: 0;
+}
+
+.lineNote {
+  display: block;
+  color: var(--muted-text);
+  font-size: 0.875rem;
+}
+
+/* ---- Loading and failure keep the panel's height steady ---- */
+.loading {
+  min-height: 560px;
+  padding-top: 8px;
+}
+
+.failure {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-height: 200px;
+  color: var(--bad);
+}
+.failure p {
+  color: var(--espresso);
+  margin-bottom: 12px;
+}

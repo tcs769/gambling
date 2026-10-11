@@ -1,10 +1,17 @@
 export { Button, ButtonLink } from "./Button";
 export { Chip, ChipGroup } from "./Chip";
 export { ConfidenceBadge, Tag } from "./Badge";
+export { DataTable } from "./DataTable";
+export type { DataColumn } from "./DataTable";
+export { Drawer } from "./Drawer";
+export { FactorList, featureLabel } from "./FactorList";
+export { Disclosure } from "./Disclosure";
 export { Icon } from "./Icon";
+export { Input, NumberInput, parseNumber } from "./Input";
 export { ModelNotConnected } from "./ModelNotConnected";
 export { PageHeader } from "./PageHeader";
 export { Panel, PanelTitle } from "./Panel";
+export { Pill } from "./Pill";
 export { ResultsFooter } from "./ResultsFooter";
 export { Spinner } from "./Spinner";
 export { StatCard } from "./StatCard";

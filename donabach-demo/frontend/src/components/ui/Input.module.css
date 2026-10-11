@@ -1,0 +1,66 @@
+/* A text or number field: one bordered shell holding an optional prefix ($), the input and an
+   optional suffix (%). Focus shows on the shell with the same gold ring as every other control. */
+.field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  background: var(--cream);
+  border: 1.5px solid var(--muted);
+  border-radius: var(--radius-sm);
+  transition: border-color 140ms ease;
+}
+
+.field:hover {
+  border-color: var(--brown);
+}
+
+.field:focus-within {
+  border-color: var(--gold);
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.field[data-invalid="true"] {
+  border-color: var(--bad);
+}
+
+.field[data-disabled="true"] {
+  opacity: 0.55;
+}
+
+.affix {
+  color: var(--muted-text);
+  font-weight: 500;
+  user-select: none;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  padding: 10px 0;
+  border: 0;
+  background: transparent;
+  color: var(--espresso);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The shell shows focus; the bare input does not draw a second ring inside it. */
+.input:focus,
+.input:focus-visible {
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--muted-text);
+  opacity: 1;
+}
+
+/* Selected text (e.g. a number about to be replaced) in the palette's gold, not the browser's blue. */
+.input::selection {
+  background: color-mix(in srgb, var(--gold) 45%, transparent);
+  color: var(--espresso);
+}

@@ -14,7 +14,8 @@ export default function ShowcaseHouseholdPage() {
   if (status !== "ready" || !data || !analysis) {
     return (
       <>
-        <PageHeader title="Loading the household…" />
+        {/* Neutral while the household loads and if it cannot be loaded: its name is not known yet. */}
+        <PageHeader title="The household" />
         <ShowcasePending blocks={[900]} label="Loading the household…" />
       </>
     );

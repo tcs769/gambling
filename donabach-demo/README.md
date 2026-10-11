@@ -37,9 +37,10 @@ uvicorn app.main:app --reload --reload-dir app --port 8000
 cd frontend && npm install && npm run dev
 ```
 
-The first start compiles the simulation kernels with numba (about 10 seconds, then cached in
+The first start compiles the simulation kernels with numba (about 20 seconds, then cached in
 `backend/.numba_cache/`); the API warms them up before it accepts requests, so the first plan is as fast as the
-rest (measured on 4 cores: 10.6 s to start with an empty cache, 1.0 s with it, then about 1.3 s per plan). The browser talks to the
+rest (measured on 4 cores: 21 s to start with an empty cache, which was 10.6 s before tax lots, and 0.6 s with it, then about
+0.7 s per plan). The browser talks to the
 API through a same-origin proxy (`/api/*` to `http://localhost:8000`, see `frontend/next.config.ts`). To point it
 elsewhere set `BACKEND_URL` before `npm run dev`, or before `npm run build` for a production build (Next bakes
 rewrites in at build time).
@@ -126,6 +127,7 @@ The measurements behind the numbers are scripts, not hand-typed tables (run from
 | Two assumptions against the research (`assumption_review.md`, `sensitivity.md`) | `python -m app.study.sensitivity --out ../reports/sensitivity.md` |
 | What tax lots change: the sample household after each lot rule (`tax_lots.md`) | `python -m app.study.tax_lots --out ../reports/tax_lots.md` |
 | 300 households of six types (`household_study.csv`, `.md`) | `python -m app.study.household_study --per-type 50 --adaptive-paths 200 --checkpoint /tmp/study.csv --out-dir ../reports` |
+| Five candidates for the showcase household: the study's highest raw advantages among plausible households (screens decided from the household alone), each measured again on 2,000 fresh futures (`showcase_candidates.md`, `showcase_candidates/*.json`, installable as `fixtures/showcase.json`) | `python -m app.study.showcase_pick --out ../reports/showcase_candidates.md --fixtures ../reports/showcase_candidates` |
 | Four-way evaluation and the value of judgment over time (`adaptive_evaluation.md`) | `python -m app.study.adaptive_evaluation --paths 2000 --out ../reports/adaptive_evaluation.md` |
 | Decision quality of the year-by-year search (`adaptive_decision_quality.md`) | `python -m app.study.decision_quality --paths 80 --out ../reports/adaptive_decision_quality.md` |
 | Is the plan holding too little equity? (`equity_share.md`) | `python -m app.study.equity_share --out ../reports/equity_share.md` |
@@ -303,11 +305,14 @@ credits. Beyond that, choices made where the spec was silent, so they are not a 
 * **Running it.** `POST /plan` returns the fixed-strategy plan at once; the year-by-year plan is a background job (one
   worker thread, chunks of 12 paths at background priority, results cached) that the Plan and Compare screens poll, with a
   "Refining plan…" state until it lands. The demo household's plan is computed at startup (set `DONABACH_NO_PRECOMPUTE=1` to
-  skip it), so on camera the Plan screen has it at once. What-ifs re-plan the same way. Measured on 4 cores: the fixed plan takes
-  1.2 s; a full year-by-year plan (K = 32, 200 evaluation paths) takes **8.6 s**, of which the 200 evaluation paths take 7.4 s
-  (0.037 s a path) and the single plan path 1.1 s, against the 10 s target (100 paths: 5.0 s; 400 paths: 15.6 s). A cold start (no numba cache)
-  compiles the fixed kernels before the API answers (the 10.6 s above) and the year-by-year kernels in the background
-  (about 40 s more, measured on a loaded machine); both are cached afterwards.
+  skip it), so on camera the Plan screen has it at once. What-ifs re-plan the same way. Measured on 4 cores, each pair in one process
+  with the rules from before tax lots switched back on for the first number (the best of several runs): the fixed plan
+  (`build_plan`) takes 0.6 s before tax lots and **0.7 s** now; its search over the equity-first menu's 1,008 strategies 0.6 s
+  and 0.8 s, over the balanced menu's 4,032 strategies 1.5 s and 1.9 s; a full year-by-year plan (K = 32, 200 evaluation paths)
+  8.6 s and **10.5 s**, which is just over the 10 s target (100 paths: 4.9 s and 6.0 s; 400 paths: about 15.6 s before and
+  about 20 s now). Tax lots make the year-by-year planner about a fifth slower. A cold start (no numba cache)
+  compiles the fixed kernels before the API answers (21 s; 10.6 s before tax lots) and the year-by-year kernels in the background
+  (about 65 s more); both are cached afterwards.
 
 **What the numbers say** is whatever the engine produces; nothing is tuned toward a target (`reports/` has every
 measurement and the command that regenerates it).

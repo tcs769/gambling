@@ -368,14 +368,20 @@
   .joint {
     display: none;
   }
+  /* The two numbers sit side by side while they fit and one under the other when they do not (the narrowest phones),
+     rather than each breaking in the middle. */
   .values {
-    grid-auto-flow: column;
-    justify-content: start;
-    justify-items: start;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
     gap: 0 14px;
     min-height: 0;
     padding: 0 0 0 4px;
     text-align: left;
+  }
+  .primary,
+  .secondary {
+    white-space: nowrap;
   }
   .axis {
     grid-template-columns: minmax(0, 1fr);

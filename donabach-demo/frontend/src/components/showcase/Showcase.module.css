@@ -59,7 +59,8 @@
 }
 
 .stateText {
-  flex: 1 1 220px;
+  /* Room for a couple of words beside the icon, even on the narrowest phone, before the link wraps below. */
+  flex: 1 1 min(220px, calc(100% - 40px));
   min-width: 0;
   line-height: 1.5;
 }

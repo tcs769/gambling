@@ -224,8 +224,8 @@ def analyze(prepared: Prepared, enabled: list[str] | None = None) -> ShowcaseAna
         wealth=WealthLines(ages=ages, plan_median=plan_median, plan_p10=plan_p10, advisor_median=advisor_median, advisor_p10=advisor_p10),
         risk_adjusted_label="Risk-adjusted advantage",
         risk_adjusted_explanation=(
-            "The same comparison on the wealth you can count on: bad futures weigh more than good ones "
-            f"(risk aversion {RISK_AVERSION:g}, a {_money(WEALTH_FLOOR)} floor), so a plan that takes more risk is credited less for what it earns."
+            f"Bad futures weigh more than good ones (risk aversion {RISK_AVERSION:g}, a {_money(WEALTH_FLOOR)} floor), "
+            "so extra risk is credited less."
         ),
         n_paths=prepared.inputs.n_paths,
         years=result.years,

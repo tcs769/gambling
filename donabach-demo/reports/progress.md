@@ -21,4 +21,5 @@ futures (seed 2026, the app's defaults) and the winner is scored against the goo
 |---|---|---|---|---|---|---|
 | Step 0: engine as shipped (horizon 70) | 32 | 70% stocks, no conversions, private credit, direct indexing | +0.62% | +0.86% | +0.61% / +0.78% | +0.62% / +0.76% |
 | A1: horizon 80, RMDs, 65+ deduction | 42 | 70% stocks, no conversions, private credit, direct indexing | +0.61% | +0.89% | +0.63% / +1.17% | +0.66% / +2.78% |
+| A2: stock-share menu 50-100% | 42 | 50% stocks, no conversions, private credit, direct indexing | -0.03% | +2.32% | +0.07% / +2.42% | +0.02% / +3.32% |
 

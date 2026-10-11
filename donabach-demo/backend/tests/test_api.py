@@ -249,7 +249,7 @@ def test_plan_without_a_recommender_is_the_labelled_search_planner(plan):
     assert plan["planner_label"] == "Search planner (model not connected)"
     assert plan["recommender"]["status"]["connected"] is False
     assert plan["recommender"]["recommendation"] is None and plan["recommender"]["candidates"] == []
-    assert plan["settings"]["strategies_searched"] == 224 and len(plan["searched"]) == 224
+    assert plan["settings"]["strategies_searched"] == 336 and len(plan["searched"]) == 336
     assert plan["settings"]["risk_aversion"] == 3.0 and plan["settings"]["wealth_floor"] == 50_000
     assert plan["searched"][0]["is_chosen"] and plan["searched"][0]["rank"] == 1
 
@@ -279,7 +279,7 @@ def test_plan_table_has_every_year_and_ties_out(plan):
     assert labels == {41: "Home purchase", 48: "College", 49: "College", 50: "College", 51: "College"}
     assert all(r["goal_label"] is None for r in rows if r["goal_paid"] == 0)
     assert all(r["total_tax"] == pytest.approx(r["federal_tax"] + r["illinois_tax"]) for r in rows)
-    assert all(0.4 < r["stock_share"] < 1.0 for r in rows)
+    assert all(0.2 < r["stock_share"] <= 1.0 for r in rows)  # 25 points below the start at the lowest
     assert rows[-1]["wealth"] > rows[0]["wealth"]
 
 
@@ -325,7 +325,7 @@ def test_a_recommender_that_fails_is_reported_and_the_full_search_runs(household
     assert plan["planner_label"] == "Search planner (model not connected)"
     assert plan["recommender"]["status"]["connected"] is False
     assert "invalid Recommendation" in plan["recommender"]["status"]["reason"]
-    assert plan["settings"]["strategies_searched"] == 224
+    assert plan["settings"]["strategies_searched"] == 336
     (models_dir / "recommender.pkl").write_bytes(pickle.dumps(stubs.RaisingRecommender()))
     again = client.post("/plan", json={"household": household_json}).json()
     assert "model blew up" in again["recommender"]["status"]["reason"]

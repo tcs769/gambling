@@ -28,10 +28,10 @@ from app.tax import params_2026 as P
 
 def test_menu_has_every_combination_exactly_once():
     strategies = menu()
-    assert len(strategies) == 4 * 7 * 2 * 2 * 2 == 224
-    assert len({s.key for s in strategies}) == 224
+    assert len(strategies) == 6 * 7 * 2 * 2 * 2 == 336
+    assert len({s.key for s in strategies}) == 336
     assert len(CONVERSION_OPTIONS) == 7
-    assert {s.stock_share for s in strategies} == {0.70, 0.80, 0.90, 1.00}
+    assert {s.stock_share for s in strategies} == {0.50, 0.60, 0.70, 0.80, 0.90, 1.00}
 
 
 def test_choices_round_trip_through_the_recommender_vocabulary():
@@ -122,10 +122,10 @@ def result(futures):
 
 def test_search_ranks_every_strategy_by_score(result):
     ranked = result.ranked
-    assert len(ranked) == 224
+    assert len(ranked) == 336
     scores = [r.outcome.score for r in ranked]
     assert scores == sorted(scores, reverse=True)
-    assert [r.rank for r in ranked] == list(range(1, 225))
+    assert [r.rank for r in ranked] == list(range(1, 337))
     assert result.best is ranked[0]
     for r in ranked[:5]:
         assert r.outcome.p10 < r.outcome.median < r.outcome.p90

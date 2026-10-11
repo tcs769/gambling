@@ -1,6 +1,6 @@
 """The strategy menu: every combination of the five choices Donabach plans over.
 
-* Stock share of long-term money: 70/80/90/100%, held until 58, then gliding down 25 points by 70
+* Stock share of long-term money: 50/60/70/80/90/100%, held until 58, then gliding down 25 points by 70
 * Roth conversions: none, or fill the 12/22/24% bracket, either in low-income years and
   retirement only, or every year (7 options)
 * Private credit sleeve: off, or 10% of long-term money (held in the pre-tax account)
@@ -20,7 +20,8 @@ from itertools import product
 from app.sim.simulate import DONABACH_FLAT_FEE, Policy
 from app.tax import params_2026 as P
 
-STOCK_SHARES = (0.70, 0.80, 0.90, 1.00)
+STOCK_SHARES = (0.50, 0.60, 0.70, 0.80, 0.90, 1.00)
+PRE_REVIEW_STOCK_SHARES = (0.70, 0.80, 0.90, 1.00)  # the menu before spec A2 widened it
 GLIDE_START_AGE = 58.0
 GLIDE_DROP = 0.25
 PRIVATE_CREDIT_SHARE = 0.10
@@ -147,11 +148,11 @@ class Strategy:
         return "; ".join(parts) + "."
 
 
-def menu() -> list[Strategy]:
-    """All 224 strategies, in a fixed order."""
+def menu(stock_shares: tuple[float, ...] = STOCK_SHARES) -> list[Strategy]:
+    """Every strategy, in a fixed order (336 with the full stock-share menu)."""
     return [
         Strategy(s, conv, pc, di, gb)
         for s, conv, pc, di, gb in product(
-            STOCK_SHARES, CONVERSION_OPTIONS, (False, True), (False, True), (False, True)
+            stock_shares, CONVERSION_OPTIONS, (False, True), (False, True), (False, True)
         )
     ]

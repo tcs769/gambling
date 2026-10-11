@@ -266,8 +266,9 @@ def test_joint_probability_multiplies_the_per_choice_probabilities():
     rec = _rec()
     top = guided.strategy_from_recommendation(rec)
     assert guided.joint_probability(rec, top) == pytest.approx(0.6**5)
+    others = len(CHOICE_OPTIONS["stock_share"]) - 1  # the stub spreads the remaining 0.4 over the other options
     assert guided.joint_probability(rec, Strategy(0.80, "none", True, True, False)) == pytest.approx(
-        0.6**4 * (0.4 / 3)
+        0.6**4 * (0.4 / others)
     )
 
 

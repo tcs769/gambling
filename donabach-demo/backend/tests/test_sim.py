@@ -649,7 +649,7 @@ def test_search_scale_batch_is_fast_and_finite():
     import time
 
     policies = [s.policy() for s in menu()]
-    assert len(policies) == 224
+    assert len(policies) == 336
     inp = build_inputs(make_demo_household(), 400, seed=1)
     run_batch(inp, policies[:2])  # make sure the kernel is compiled
     start = time.perf_counter()
@@ -675,7 +675,7 @@ def test_extreme_households_stay_finite():
             goals=Goals(retirement_age=int(rng.integers(max(age + 1, 50), 71)), retirement_spending=float(rng.uniform(20_000, 300_000))),
         )
         inp = build_inputs(hh, 30, seed=int(rng.integers(1_000)))
-        res = run_batch(inp, [RIA_BASELINE] + [menu()[i].policy() for i in rng.integers(0, 224, 6)])
+        res = run_batch(inp, [RIA_BASELINE] + [menu()[i].policy() for i in rng.integers(0, len(menu()), 6)])
         assert np.all(np.isfinite(res.wealth)) and np.all(res.unfunded >= 0)
 
 

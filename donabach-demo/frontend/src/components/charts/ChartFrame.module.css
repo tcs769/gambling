@@ -10,6 +10,10 @@
   margin-bottom: 8px;
 }
 
+.toolbar[data-wrap="true"] {
+  flex-wrap: wrap;
+}
+
 .legend {
   min-width: 0;
   padding-top: 8px;

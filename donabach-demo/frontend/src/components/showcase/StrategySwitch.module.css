@@ -1,0 +1,65 @@
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  min-width: 0;
+  cursor: pointer;
+  user-select: none;
+  color: var(--espresso);
+  font-weight: 600;
+  line-height: 1.3;
+  /* Tabbing to a switch (or scrolling to it) must not leave it under the sticky header. */
+  scroll-margin-block: 130px;
+}
+
+/* The checkbox covers the whole control but is not drawn: it is what is clicked, focused and read out. */
+.input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.track {
+  position: relative;
+  flex-shrink: 0;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--line);
+  border: 1px solid var(--muted);
+  transition: background 160ms ease;
+}
+
+.thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--switch-thumb);
+  box-shadow: 0 1px 2px rgba(43, 36, 24, 0.3);
+  transition: transform 160ms ease;
+}
+
+.input:checked + .track {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.input:checked + .track .thumb {
+  transform: translateX(18px);
+}
+.input:focus-visible + .track {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.text {
+  min-width: 0;
+}

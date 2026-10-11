@@ -1,0 +1,371 @@
+/* ---- Controls above the chart: what the bars show, the explanations, the recomputing state ---- */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+}
+
+.unit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.controlLabel {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.explain {
+  padding-block: 8px;
+}
+
+.recomputing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+
+/* ---- The chart ----
+   Rows are a grid of the strategy (a switch and its name), the room the bars live in, and the numbers. They lay
+   themselves out by the room the chart has, not the window's: a narrow chart stacks each row instead. */
+.chart {
+  --name-w: 300px;
+  --values-w: 176px;
+  position: relative;
+  width: 100%;
+  container-type: inline-size;
+  transition: opacity 220ms ease;
+}
+
+.rows {
+  /* How far down a row the middle of its bar is, and how tall a bar is. */
+  --mid: 28px;
+  --bar-h: 20px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: var(--name-w) minmax(0, 1fr) var(--values-w);
+  column-gap: 16px;
+  align-items: start;
+  min-height: 56px;
+  border-radius: var(--radius-sm);
+}
+.row:hover {
+  background: color-mix(in srgb, var(--gold) 8%, transparent);
+}
+.row[data-kind="total"] {
+  --bar-h: 24px;
+  margin-top: 6px;
+}
+
+/* ---- The strategy: its switch, its name, a button for what it does ---- */
+.name {
+  min-width: 0;
+  padding: 6px 0 6px 6px;
+}
+
+.nameLine {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+}
+
+.plainName {
+  display: grid;
+  line-height: 1.3;
+  padding-left: 4px;
+}
+.plainName strong {
+  font-size: 1.0625rem;
+}
+.row[data-kind="start"] .plainName strong,
+.row[data-kind="total"] .plainName strong {
+  font-family: var(--font-serif);
+  color: var(--brown);
+}
+
+.sub {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+
+.info {
+  scroll-margin-block: 130px;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted-text);
+}
+.info:hover {
+  background: var(--panel-deep);
+  color: var(--brown);
+}
+.info[aria-expanded="true"] {
+  color: var(--brown);
+  background: var(--gold-wash);
+}
+
+/* What the strategy does, in the API's words: shown on request, and always read out with the switch. */
+.detail {
+  margin: 0 0 4px;
+  padding-left: 54px;
+  max-width: 60ch;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+/* ---- The bars ---- */
+.track {
+  position: relative;
+  align-self: stretch;
+  min-height: 56px;
+}
+
+.grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  margin-left: -0.5px;
+  background: var(--line);
+}
+.grid[data-zero="true"] {
+  background: var(--muted);
+}
+
+/* The line that joins a bar to the next: from where one ends to where the next starts. */
+.joint {
+  position: absolute;
+  width: 1px;
+  margin-left: -0.5px;
+  background: var(--muted);
+  opacity: 0.7;
+}
+.joint[data-part="above"] {
+  top: 0;
+  height: calc(var(--mid) - var(--bar-h) / 2);
+}
+.joint[data-part="below"] {
+  top: calc(var(--mid) + var(--bar-h) / 2);
+  bottom: 0;
+}
+
+/* Thin bars, square where they start and rounded where they end; they glide when the numbers change. */
+.bar {
+  position: absolute;
+  top: calc(var(--mid) - var(--bar-h) / 2);
+  height: var(--bar-h);
+  min-width: 2px;
+  background: var(--series-donabach);
+  border-radius: 0 4px 4px 0;
+  transition:
+    left 700ms ease-in-out,
+    width 700ms ease-in-out,
+    background-color 200ms ease,
+    opacity 200ms ease;
+}
+.bar[data-negative="true"] {
+  border-radius: 4px 0 0 4px;
+}
+.row:hover .bar,
+.row:focus-within .bar {
+  filter: brightness(1.1);
+}
+
+/* A strategy that is off: an empty bar with a dashed outline, a stroke wide enough to see. */
+.bar[data-off="true"] {
+  min-width: 0;
+  height: var(--bar-h);
+  background: transparent;
+  border: 2px dashed var(--series-donabach);
+  border-radius: 4px;
+  filter: none;
+}
+
+/* Where everything is measured from: the advisor's result, in the advisor's colour. */
+.origin {
+  position: absolute;
+  top: calc(var(--mid) - 9px);
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  background: var(--series-ria);
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px var(--panel);
+  transform: rotate(45deg) scale(0.78);
+}
+
+/* ---- The numbers ---- */
+.values {
+  display: grid;
+  align-content: center;
+  justify-items: end;
+  min-height: 56px;
+  padding-right: 6px;
+  text-align: right;
+  line-height: 1.35;
+}
+
+.primary {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--espresso);
+  font-variant-numeric: tabular-nums;
+}
+
+.secondary {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The chart holds its previous numbers, quieter, while the new ones are worked out. The switches stay as they are. */
+.chart[data-stale="true"] .track,
+.chart[data-stale="true"] .values {
+  opacity: 0.5;
+}
+.track,
+.values {
+  transition: opacity 220ms ease;
+}
+
+/* ---- The axis ---- */
+.axis {
+  display: grid;
+  grid-template-columns: var(--name-w) minmax(0, 1fr) var(--values-w);
+  column-gap: 16px;
+}
+
+.axisTicks {
+  position: relative;
+  grid-column: 2;
+  height: 28px;
+}
+
+.tick {
+  position: absolute;
+  top: 6px;
+  transform: translateX(-50%);
+  color: var(--muted-text);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tick[data-edge="start"] {
+  transform: none;
+}
+.tick[data-edge="end"] {
+  transform: translateX(-100%);
+}
+
+.caption {
+  margin: 4px 0 0;
+  padding-left: calc(var(--name-w) + 16px);
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+
+/* ---- The tooltip ---- */
+.tooltip {
+  position: absolute;
+  z-index: 5;
+  min-width: 220px;
+  max-width: 290px;
+  padding: 11px 14px;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--tooltip-shadow);
+  pointer-events: none;
+  transform: translate(16px, -50%);
+  line-height: 1.4;
+}
+.tooltip[data-flip="true"] {
+  transform: translate(calc(-100% - 16px), -50%);
+}
+
+.tipName {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+.tipValue {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--espresso);
+  font-variant-numeric: tabular-nums;
+}
+.tipDetail {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tableNote {
+  display: block;
+  color: var(--muted-text);
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+/* ---- A narrower chart: each row stacks (name, bar, numbers) and the bars take the whole width ---- */
+@container (max-width: 820px) {
+  .rows {
+    --mid: 20px;
+  }
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 8px 0 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .row[data-kind="total"] {
+    margin-top: 0;
+  }
+  .name {
+    padding: 0;
+  }
+  .detail {
+    padding-left: 54px;
+  }
+  .track {
+    min-height: 40px;
+  }
+  .joint {
+    display: none;
+  }
+  .values {
+    grid-auto-flow: column;
+    justify-content: start;
+    justify-items: start;
+    gap: 0 14px;
+    min-height: 0;
+    padding: 0 0 0 4px;
+    text-align: left;
+  }
+  .axis {
+    grid-template-columns: minmax(0, 1fr);
+    padding-top: 4px;
+  }
+  .axisTicks {
+    grid-column: 1;
+  }
+  .caption {
+    padding-left: 0;
+  }
+}

@@ -1,0 +1,44 @@
+/* Page-level layout shared by the three showcase screens. */
+
+/* One column that may be narrower than its widest panel's content: a wide table scrolls inside its panel. */
+.stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+
+/* A line of text under a title: no one-word last line. */
+.tagline {
+  display: block;
+  text-wrap: pretty;
+}
+
+/* A note under a panel's title. */
+.note {
+  max-width: 100ch;
+  margin: -6px 0 16px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+/* The button that puts every strategy back on, in the panel's title row. */
+.reset {
+  padding: 6px 14px;
+  font-size: 0.9375rem;
+}
+
+/* The plan in words, folded away under the waterfall. */
+.plan {
+  margin-top: 18px;
+}
+.planLabel {
+  padding: 0 4px 6px;
+  color: var(--brown);
+  font-weight: 650;
+}
+.planText {
+  max-width: 100ch;
+  padding: 0 4px 14px;
+  line-height: 1.6;
+}

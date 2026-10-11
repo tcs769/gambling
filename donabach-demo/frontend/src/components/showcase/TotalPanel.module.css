@@ -1,0 +1,103 @@
+/* The container the narrow-width rules below ask about: it has to be around the panel, not the panel itself. */
+.frame {
+  container-type: inline-size;
+}
+
+.total {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px 48px;
+  align-items: center;
+  padding: 22px 26px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius);
+  background: linear-gradient(0deg, var(--gold-wash), var(--gold-wash)), var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.kicker {
+  color: var(--muted-text);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* The two numbers the screen is about. Proportional figures: tabular ones look loose at this size. */
+.headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 36px;
+  margin: 6px 0 4px;
+  line-height: 1.1;
+  transition: opacity 220ms ease;
+}
+
+.figure {
+  white-space: nowrap;
+}
+
+.big {
+  font-size: 2.875rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--espresso);
+}
+
+.unit {
+  color: var(--muted-text);
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.basis {
+  color: var(--muted-text);
+  font-size: 1rem;
+}
+
+.medians {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 2px 32px;
+  margin: 0;
+  transition: opacity 220ms ease;
+}
+
+.median dt {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+.median dd {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--espresso);
+}
+
+.mediansNote {
+  grid-column: 1 / -1;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+
+/* A new number is on its way: the old one is shown, quieter. */
+.total[data-stale="true"] .headline,
+.total[data-stale="true"] .medians {
+  opacity: 0.5;
+}
+
+@container (max-width: 760px) {
+  .total {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@container (max-width: 420px) {
+  .big {
+    font-size: 2.25rem;
+  }
+  .headline {
+    gap: 2px 24px;
+  }
+}

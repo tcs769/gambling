@@ -18,20 +18,25 @@ interface ChartFrameProps {
    * each line ends). Screen readers get it as the figure's description.
    */
   summary?: ReactNode;
-  /** Total height of the body, x-axis labels included. Chart and table share it, so toggling never moves the page. */
-  height?: number;
+  /**
+   * Total height of the body, x-axis labels included. Chart and table share it, so toggling never moves the page.
+   * "auto" lets the body be as tall as what is in it, for a chart whose rows can open (the table then scrolls within `maxHeight`).
+   */
+  height?: number | "auto";
+  /** Let the toolbar wrap when the legend and the toggle do not fit on one line (a legend that holds controls). */
+  wrapToolbar?: boolean;
 }
 
 /**
  * The container every chart lives in: legend and "View as table" toggle above, a body of fixed
  * height below. Chart and table share that height, so toggling between them never moves the page.
  */
-export function ChartFrame({ legend, chart, table, label, summary, height = CHART_HEIGHT }: ChartFrameProps) {
+export function ChartFrame({ legend, chart, table, label, summary, height = CHART_HEIGHT, wrapToolbar = false }: ChartFrameProps) {
   const [view, setView] = useState<"chart" | "table">("chart");
   const summaryId = useId();
   return (
     <figure className={styles.frame} aria-label={label} aria-describedby={summary ? summaryId : undefined}>
-      <div className={styles.toolbar}>
+      <div className={styles.toolbar} data-wrap={wrapToolbar || undefined}>
         <div className={styles.legend}>{legend}</div>
         <Button variant="ghost" className={styles.toggle} onClick={() => setView(view === "chart" ? "table" : "chart")}>
           <Icon name={view === "chart" ? "table" : "chart"} size={18} />

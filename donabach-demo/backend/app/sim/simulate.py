@@ -74,6 +74,26 @@ G_CONV, G_HARVEST, G_BUCKET, G_LOCATION, G_WITHDRAW = range(5)
 NGATE = 5
 GATE_NAMES = ("conversion", "harvest", "bucket", "location", "withdraw")
 
+# One year's action. The first six are the decisions the adaptive planner chooses among each year
+# (spec B3); the last four come from the fixed policy the planner continues with (and its gates).
+(
+    A_STOCK,  # stock share of long-term money at this year's rebalance
+    A_PC,  # private credit share of long-term money
+    A_CONV_TOP,  # Roth conversion: top of the bracket to fill (0 = none)
+    A_K401_ROTH,  # 1.0 = this year's 401(k) contribution is Roth
+    A_BORROW,  # 1.0 = fund this year's goal by borrowing against the portfolio
+    A_REALIZE,  # 1.0 = realize gains up to the top of the 0% capital-gain bracket
+    A_HARVEST,  # loss harvesting: 0 none, 1 fund level, 2 stock by stock
+    A_BUCKET,  # 1.0 = maintain the goal bond bucket
+    A_LOCATION,  # 1.0 = Donabach asset location (else the same mix in every account)
+    A_WDBRACKET,  # 1.0 = withdraw pre-tax up to the bracket target first
+) = range(10)
+NACT = 10
+
+# Scratch carried from the start of a year to its end (what the household saw, then did).
+(Y_REALIZED, Y_RETDIST, Y_EARLYBASE, Y_CFIN, Y_DIVIDENDS, Y_INTEREST, Y_HARVEST) = range(7)
+NY = 7
+
 # Household constants.
 HC_SS = 0
 NHC = 1
@@ -315,315 +335,364 @@ def _rebalance(st, equity, private_credit, uniform):
 
 
 # --------------------------------------------------------------------------------------------
-# One household, one future, one policy
+# One household, one future: the year, in two halves
 # --------------------------------------------------------------------------------------------
+#
+# A year is simulated by `_year_begin` (returns and loss harvesting: what the household sees
+# before it decides anything) and `_year_rest` (everything it then does, given an action). A fixed
+# policy turns its row into the year's action with `_policy_action`; the adaptive planner chooses
+# the action itself after `_year_begin`, from what has happened so far. Both go through the same
+# two functions, so a forced action reproduces a fixed policy exactly.
+
+
+@jit
+def _policy_action(row, gates_row, tv, t, w, act):
+    """Fill `act` with what the fixed policy `row` does in year `t` (a gate of 0 removes a decision)."""
+    age = tv[t, TV_AGE]
+    act[A_STOCK] = _stock_share(age, row[SP_STOCK], row[SP_GLIDE_START], row[SP_GLIDE_DROP])
+    act[A_PC] = row[SP_PC]
+    conv_top = 0.0
+    if row[SP_CONV_TOP] > 0.0 and gates_row[G_CONV] > 0.5:
+        low_income = w < LOW_INCOME_SHARE * tv[t, TV_EXPWAGE]
+        if row[SP_CONV_EVERY] > 0.5 or tv[t, TV_RETIRED] > 0.5 or low_income:
+            conv_top = row[SP_CONV_TOP]
+    act[A_CONV_TOP] = conv_top
+    act[A_K401_ROTH] = 0.0
+    act[A_BORROW] = 0.0
+    act[A_REALIZE] = 0.0
+    harvest = 0.0
+    if gates_row[G_HARVEST] > 0.5:
+        harvest = 2.0 if row[SP_DI] > 0.5 else 1.0
+    act[A_HARVEST] = harvest
+    act[A_BUCKET] = 1.0 if (row[SP_BUCKET] > 0.5 and gates_row[G_BUCKET] > 0.5) else 0.0
+    act[A_LOCATION] = 1.0 if (row[SP_LOCATION] < 0.5 and gates_row[G_LOCATION] > 0.5) else 0.0
+    act[A_WDBRACKET] = 1.0 if (row[SP_WD_BRACKET] > 0.5 and gates_row[G_WITHDRAW] > 0.5) else 0.0
+
+
+@jit
+def _year_begin(st, ys, tv, t, act, r_e, r_b, r_c):
+    """Steps 1-2: apply this year's returns, then harvest losses. Fills the year scratch `ys`."""
+    age = tv[t, TV_AGE]
+    early = age < _EARLY_AGE
+
+    # Gains and withdrawals deferred from paying last year's tax and fees land in this year.
+    realized = st[S_DGAIN]
+    ret_dist = st[S_DDIST]
+    st[S_DGAIN] = 0.0
+    st[S_DDIST] = 0.0
+    ys[Y_EARLYBASE] = ret_dist if early else 0.0
+    ys[Y_CFIN] = st[S_CF]
+
+    # Opening balances drive this year's dividends and interest.
+    dividends = markets.DIVIDEND_YIELD * st[S_BE]
+    interest = markets.BOND_INTEREST_YIELD * (st[S_BB] + st[S_GB])
+
+    # 1. Returns.
+    st[S_PE] *= 1.0 + r_e
+    st[S_PB] *= 1.0 + r_b
+    st[S_PP] *= 1.0 + r_c
+    st[S_RE] *= 1.0 + r_e
+    st[S_RB] *= 1.0 + r_b
+    st[S_BE] *= 1.0 + r_e
+    st[S_BBASIS] += dividends  # reinvested dividends are bought at cost
+    st[S_BB] *= 1.0 + r_b
+    st[S_GB] *= 1.0 + r_b
+
+    # 2. Harvest losses (0 = none, 1 = fund level, 2 = stock by stock).
+    harvest = 0.0
+    be = st[S_BE]
+    basis = st[S_BBASIS]
+    mode = act[A_HARVEST]
+    if mode > 0.5 and be > 0.0:
+        if mode > 1.5:
+            decline = max(0.0, -r_e) * be / (1.0 + r_e)
+            dispersion = HARVEST_DISPERSION * be * min(1.0, basis / be)
+            harvest = min(HARVEST_DECLINE_SHARE * decline + dispersion, HARVEST_CAP_OF_VALUE * be, basis)
+        elif r_e < FUND_HARVEST_TRIGGER:
+            harvest = max(0.0, basis - be)
+        harvest = max(0.0, harvest)
+        realized -= harvest
+        st[S_BBASIS] = basis - harvest
+
+    ys[Y_REALIZED] = realized
+    ys[Y_RETDIST] = ret_dist
+    ys[Y_DIVIDENDS] = dividends
+    ys[Y_INTEREST] = interest
+    ys[Y_HARVEST] = harvest
+
+
+@jit
+def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wage_tax_t, want_wealth, do_log, log):
+    """Steps 3-11 for the action `act`. Returns (after-tax wealth if `want_wealth`, total income tax)."""
+    age = tv[t, TV_AGE]
+    ss = tv[t, TV_SS]
+    taxable_ss = P.SS_TAXABLE_SHARE * ss
+    kids = tv[t, TV_KIDS]
+    deps = tv[t, TV_DEPS]
+    wages_taxable = w - k
+    early = age < _EARLY_AGE
+    ss_annual = hhc[HC_SS]
+
+    realized = ys[Y_REALIZED]
+    ret_dist = ys[Y_RETDIST]
+    early_base = ys[Y_EARLYBASE]
+    cf_in = ys[Y_CFIN]
+    dividends = ys[Y_DIVIDENDS]
+    interest = ys[Y_INTEREST]
+    harvest = ys[Y_HARVEST]
+    wd_bracket = act[A_WDBRACKET] > 0.5
+    wd_top = row[SP_WD_TOP]
+    conv_top = act[A_CONV_TOP]
+
+    # 3. Pay goals that are due: bucket first, then brokerage pro rata, then Roth, then pre-tax.
+    goal = tv[t, TV_GOAL]
+    if goal > 0.0:
+        due = goal
+        from_bucket = min(st[S_GB], due)
+        st[S_GB] -= from_bucket
+        due -= from_bucket
+        if due > 0.0:
+            sold, gain = _sell_brokerage(st, due)
+            realized += gain
+            due -= sold
+        if due > 0.0:
+            due -= _sell_roth(st, due)
+        if due > 0.0:
+            taken = _sell_pretax(st, due)
+            ret_dist += taken
+            if early:
+                early_base += taken
+            due -= taken
+        st[S_UNFUNDED] += _shortfall(due)
+
+    # 4. Withdraw retirement spending (net of Social Security).
+    need = tv[t, TV_NEED]
+    if need > 0.0:
+        remaining = need
+        if early:
+            # Before 59 1/2: taxable account, then Roth, then pre-tax with the 10% penalty.
+            sold, gain = _sell_brokerage(st, remaining)
+            realized += gain
+            remaining -= sold
+            if remaining > 0.0:
+                remaining -= _sell_roth(st, remaining)
+            if remaining > 0.0:
+                taken = _sell_pretax(st, remaining)
+                ret_dist += taken
+                early_base += taken
+                remaining -= taken
+        elif wd_bracket:
+            # Pre-tax up to the bracket target, then brokerage, then Roth.
+            ordinary = _ordinary_income(wages_taxable, interest, taxable_ss, ret_dist, 0.0, realized, cf_in)
+            room = max(0.0, wd_top + _STD - ordinary)
+            taken = _sell_pretax(st, min(remaining, room))
+            ret_dist += taken
+            remaining -= taken
+            if remaining > 0.0:
+                sold, gain = _sell_brokerage(st, remaining)
+                realized += gain
+                remaining -= sold
+            if remaining > 0.0:
+                remaining -= _sell_roth(st, remaining)
+            if remaining > 0.0:
+                taken = _sell_pretax(st, remaining)
+                ret_dist += taken
+                remaining -= taken
+        else:
+            # Pro rata across pre-tax, brokerage and Roth.
+            pre = st[S_PE] + st[S_PB] + st[S_PP]
+            brk = st[S_BE] + st[S_BB]
+            ros = st[S_RE] + st[S_RB]
+            total = pre + brk + ros
+            if total > 0.0:
+                f = min(1.0, remaining / total)
+                taken = _sell_pretax(st, f * pre)
+                ret_dist += taken
+                sold, gain = _sell_brokerage(st, f * brk)
+                realized += gain
+                got = _sell_roth(st, f * ros)
+                remaining -= taken + sold + got
+        st[S_UNFUNDED] += _shortfall(remaining)
+
+    # 5. Roth conversion: fill the chosen bracket, if the action asks for it.
+    conv = 0.0
+    if conv_top > 0.0:
+        ordinary = _ordinary_income(wages_taxable, interest, taxable_ss, ret_dist, 0.0, realized, cf_in)
+        room = max(0.0, conv_top + _STD - ordinary)
+        pre = st[S_PE] + st[S_PB] + st[S_PP]
+        # The tax is paid from the taxable account, never out of the converted dollars.
+        affordable = (st[S_BE] + st[S_BB]) / marginal_rate(conv_top - 1.0)
+        conv = min(room, pre, affordable)
+        if conv > 0.0:
+            f = conv / pre
+            st[S_RE] += f * st[S_PE]
+            st[S_RB] += f * (st[S_PB] + st[S_PP])
+            st[S_PE] *= 1.0 - f
+            st[S_PB] *= 1.0 - f
+            st[S_PP] *= 1.0 - f
+
+    # 6. Fund or release the goal bucket (bonds held in the taxable account).
+    bucket_flow = 0.0
+    if act[A_BUCKET] > 0.5:
+        target = tv[t, TV_BUCKET]
+        held = st[S_GB]
+        if held < target:
+            sold, gain = _sell_brokerage(st, target - held)
+            realized += gain
+            st[S_GB] += sold
+            bucket_flow = sold
+        elif held > target:
+            st[S_GB] = target
+            st[S_BB] += held - target
+            bucket_flow = target - held
+
+    # 7. Rebalance to the target allocation and asset location.
+    share = act[A_STOCK]
+    pc_share = act[A_PC]
+    if act[A_LOCATION] > 0.5:
+        realized += _rebalance(st, share * (1.0 - pc_share), pc_share, False)
+    else:
+        realized += _rebalance(st, share, 0.0, True)
+
+    # 8. Taxes.
+    r = tax_core(wages_taxable, interest, dividends, dividends, realized, ret_dist, conv, ss, early_base, kids, deps, cf_in)
+    total_tax = r.total_tax
+    portfolio_tax = total_tax - wage_tax_t
+    st[S_CF] = r.cap_loss_carryforward_out
+
+    # 9. Pay the portfolio-caused tax from the brokerage account. Gains realized by selling
+    # to pay it are taxed next year; a negative amount (tax saved) is added to the account.
+    due = portfolio_tax
+    if due > 0.0:
+        sold, gain = _sell_brokerage(st, due)
+        st[S_DGAIN] += gain
+        due -= sold
+        if due > 0.0:
+            due -= _sell_roth(st, due)
+        if due > 0.0:
+            taken = _sell_pretax(st, due)
+            st[S_DDIST] += taken
+            due -= taken
+        st[S_UNFUNDED] += _shortfall(due)
+    elif due < 0.0:
+        st[S_BB] -= due
+
+    # 10. Advisory fee, charged pro rata to every account. Gains realized on the slice sold
+    # from brokerage equity are taxed next year.
+    total_assets = 0.0
+    for i in range(N_BALANCES):
+        if i != S_BBASIS:
+            total_assets += st[i]
+    fee = _advisory_fee(total_assets, row[SP_FEE_BREAKPOINTS], row[SP_FEE_FLAT])
+    if fee > 0.0 and total_assets > 0.0:
+        f = min(1.0, fee / total_assets)
+        st[S_DGAIN] += f * (st[S_BE] - st[S_BBASIS])
+        for i in range(N_BALANCES):
+            st[i] *= 1.0 - f
+
+    # 11. Contributions: 401(k) to the pre-tax account, savings to the brokerage account.
+    if k > 0.0:
+        pre = st[S_PE] + st[S_PB] + st[S_PP]
+        if pre > 0.0:
+            st[S_PE] += k * st[S_PE] / pre
+            st[S_PB] += k * st[S_PB] / pre
+            st[S_PP] += k * st[S_PP] / pre
+        else:
+            st[S_PE] += k
+    saved = BROKERAGE_SAVINGS_SHARE * w
+    if saved > 0.0:
+        brk = st[S_BE] + st[S_BB]
+        to_equity = min(saved, saved * st[S_BE] / brk) if brk > 0.0 else saved
+        st[S_BE] += to_equity
+        st[S_BBASIS] += to_equity
+        st[S_BB] += saved - to_equity
+
+    # After-tax wealth at the end of the year.
+    wealth = 0.0
+    pretax = 0.0
+    if want_wealth or do_log:
+        pretax = st[S_PE] + st[S_PB] + st[S_PP]
+        owed = pretax * pretax_withdrawal_rate(pretax, ss_annual)
+        unrealized = max(0.0, st[S_BE] - st[S_BBASIS])
+        wealth = (
+            st[S_BE]
+            + st[S_BB]
+            + st[S_GB]
+            - _LTCG_RATE * unrealized
+            + st[S_RE]
+            + st[S_RB]
+            + pretax
+            - owed
+            + _LTCG_RATE * st[S_CF]
+            - _LTCG_RATE * max(0.0, st[S_DGAIN])
+            - st[S_UNFUNDED]
+        )
+
+    if do_log:
+        equity_total = st[S_PE] + st[S_RE] + st[S_BE]
+        long_term = pretax + st[S_RE] + st[S_RB] + st[S_BE] + st[S_BB]
+        log[t, L_AGE] = age
+        log[t, L_WAGES] = w
+        log[t, L_K401] = k
+        log[t, L_SS] = ss
+        log[t, L_NEED] = need
+        log[t, L_GOAL] = goal
+        log[t, L_INTEREST] = interest
+        log[t, L_DIVIDENDS] = dividends
+        log[t, L_HARVEST] = harvest
+        log[t, L_RETDIST] = ret_dist
+        log[t, L_CONV] = conv
+        log[t, L_BUCKETFLOW] = bucket_flow
+        log[t, L_BUCKET] = st[S_GB]
+        log[t, L_STOCKTARGET] = share
+        log[t, L_EQSHARE] = equity_total / long_term if long_term > 0.0 else 0.0
+        log[t, L_NETGAIN] = realized
+        log[t, L_EARLYBASE] = early_base
+        log[t, L_CFIN] = cf_in
+        log[t, L_CFOUT] = r.cap_loss_carryforward_out
+        log[t, L_KIDS] = kids
+        log[t, L_DEPS] = deps
+        log[t, L_WAGESTAXABLE] = wages_taxable
+        log[t, L_AGI] = r.agi
+        log[t, L_TAXABLE] = r.taxable_income
+        log[t, L_MARGINAL] = r.marginal_federal_rate
+        log[t, L_FED] = r.federal_total
+        log[t, L_IL] = r.illinois_tax
+        log[t, L_TOTALTAX] = total_tax
+        log[t, L_WAGETAX] = wage_tax_t
+        log[t, L_PORTTAX] = portfolio_tax
+        log[t, L_FEE] = fee
+        log[t, L_PRETAX] = pretax
+        log[t, L_ROTH] = st[S_RE] + st[S_RB]
+        log[t, L_BROKERAGE] = st[S_BE] + st[S_BB]
+        log[t, L_WEALTH] = wealth
+        log[t, L_UNREALIZED] = st[S_BE] - st[S_BBASIS]
+    return wealth, total_tax
 
 
 @jit
 def _simulate_path(s, p, strat, gates, tv, init, hhc, rets, wages, k401, wage_tax, path_wealth, record, log, do_log):
     n_years = tv.shape[0]
     st = init.copy()
+    ys = np.zeros(NY)
+    act = np.zeros(NACT)
     row = strat[s]
-    stock = row[SP_STOCK]
-    glide_start = row[SP_GLIDE_START]
-    glide_drop = row[SP_GLIDE_DROP]
-    pc_share = row[SP_PC]
-    use_di = row[SP_DI] > 0.5
-    use_bucket = row[SP_BUCKET] > 0.5
-    donabach_location = row[SP_LOCATION] < 0.5
-    conv_top = row[SP_CONV_TOP]
-    conv_every = row[SP_CONV_EVERY] > 0.5
-    wd_bracket = row[SP_WD_BRACKET] > 0.5
-    wd_top = row[SP_WD_TOP]
-    ss_annual = hhc[HC_SS]
-
     taxes_paid = 0.0
     wealth = 0.0
     for t in range(n_years):
-        age = tv[t, TV_AGE]
-        ss = tv[t, TV_SS]
-        taxable_ss = P.SS_TAXABLE_SHARE * ss
-        kids = tv[t, TV_KIDS]
-        deps = tv[t, TV_DEPS]
         w = wages[p, t]
-        k = k401[p, t]
-        wages_taxable = w - k
-        early = age < _EARLY_AGE
-        g_conv = gates[s, t, G_CONV] > 0.5
-        g_harvest = gates[s, t, G_HARVEST] > 0.5
-        g_bucket = gates[s, t, G_BUCKET] > 0.5
-        g_location = gates[s, t, G_LOCATION] > 0.5
-        g_withdraw = gates[s, t, G_WITHDRAW] > 0.5
-
-        # Gains and withdrawals deferred from paying last year's tax and fees land in this year.
-        realized = st[S_DGAIN]
-        ret_dist = st[S_DDIST]
-        st[S_DGAIN] = 0.0
-        st[S_DDIST] = 0.0
-        early_base = ret_dist if early else 0.0
-        cf_in = st[S_CF]
-
-        # Opening balances drive this year's dividends and interest.
-        dividends = markets.DIVIDEND_YIELD * st[S_BE]
-        interest = markets.BOND_INTEREST_YIELD * (st[S_BB] + st[S_GB])
-
-        # 1. Returns.
-        r_e = rets[p, t, 0]
-        r_b = rets[p, t, 1]
-        r_c = rets[p, t, 2]
-        st[S_PE] *= 1.0 + r_e
-        st[S_PB] *= 1.0 + r_b
-        st[S_PP] *= 1.0 + r_c
-        st[S_RE] *= 1.0 + r_e
-        st[S_RB] *= 1.0 + r_b
-        st[S_BE] *= 1.0 + r_e
-        st[S_BBASIS] += dividends  # reinvested dividends are bought at cost
-        st[S_BB] *= 1.0 + r_b
-        st[S_GB] *= 1.0 + r_b
-
-        # 2. Harvest losses.
-        harvest = 0.0
-        be = st[S_BE]
-        basis = st[S_BBASIS]
-        if g_harvest and be > 0.0:
-            if use_di:
-                decline = max(0.0, -r_e) * be / (1.0 + r_e)
-                dispersion = HARVEST_DISPERSION * be * min(1.0, basis / be)
-                harvest = min(HARVEST_DECLINE_SHARE * decline + dispersion, HARVEST_CAP_OF_VALUE * be, basis)
-            elif r_e < FUND_HARVEST_TRIGGER:
-                harvest = max(0.0, basis - be)
-            harvest = max(0.0, harvest)
-            realized -= harvest
-            st[S_BBASIS] = basis - harvest
-
-        # 3. Pay goals that are due: bucket first, then brokerage pro rata, then Roth, then pre-tax.
-        goal = tv[t, TV_GOAL]
-        if goal > 0.0:
-            due = goal
-            from_bucket = min(st[S_GB], due)
-            st[S_GB] -= from_bucket
-            due -= from_bucket
-            if due > 0.0:
-                sold, gain = _sell_brokerage(st, due)
-                realized += gain
-                due -= sold
-            if due > 0.0:
-                due -= _sell_roth(st, due)
-            if due > 0.0:
-                taken = _sell_pretax(st, due)
-                ret_dist += taken
-                if early:
-                    early_base += taken
-                due -= taken
-            st[S_UNFUNDED] += _shortfall(due)
-
-        # 4. Withdraw retirement spending (net of Social Security).
-        need = tv[t, TV_NEED]
-        if need > 0.0:
-            remaining = need
-            if early:
-                # Before 59 1/2: taxable account, then Roth, then pre-tax with the 10% penalty.
-                sold, gain = _sell_brokerage(st, remaining)
-                realized += gain
-                remaining -= sold
-                if remaining > 0.0:
-                    remaining -= _sell_roth(st, remaining)
-                if remaining > 0.0:
-                    taken = _sell_pretax(st, remaining)
-                    ret_dist += taken
-                    early_base += taken
-                    remaining -= taken
-            elif wd_bracket and g_withdraw:
-                # Pre-tax up to the bracket target, then brokerage, then Roth.
-                ordinary = _ordinary_income(wages_taxable, interest, taxable_ss, ret_dist, 0.0, realized, cf_in)
-                room = max(0.0, wd_top + _STD - ordinary)
-                taken = _sell_pretax(st, min(remaining, room))
-                ret_dist += taken
-                remaining -= taken
-                if remaining > 0.0:
-                    sold, gain = _sell_brokerage(st, remaining)
-                    realized += gain
-                    remaining -= sold
-                if remaining > 0.0:
-                    remaining -= _sell_roth(st, remaining)
-                if remaining > 0.0:
-                    taken = _sell_pretax(st, remaining)
-                    ret_dist += taken
-                    remaining -= taken
-            else:
-                # Pro rata across pre-tax, brokerage and Roth.
-                pre = st[S_PE] + st[S_PB] + st[S_PP]
-                brk = st[S_BE] + st[S_BB]
-                ros = st[S_RE] + st[S_RB]
-                total = pre + brk + ros
-                if total > 0.0:
-                    f = min(1.0, remaining / total)
-                    taken = _sell_pretax(st, f * pre)
-                    ret_dist += taken
-                    sold, gain = _sell_brokerage(st, f * brk)
-                    realized += gain
-                    got = _sell_roth(st, f * ros)
-                    remaining -= taken + sold + got
-            st[S_UNFUNDED] += _shortfall(remaining)
-
-        # 5. Roth conversion: fill the chosen bracket, if this year qualifies.
-        conv = 0.0
-        if conv_top > 0.0 and g_conv:
-            low_income = w < LOW_INCOME_SHARE * tv[t, TV_EXPWAGE]
-            if conv_every or tv[t, TV_RETIRED] > 0.5 or low_income:
-                ordinary = _ordinary_income(wages_taxable, interest, taxable_ss, ret_dist, 0.0, realized, cf_in)
-                room = max(0.0, conv_top + _STD - ordinary)
-                pre = st[S_PE] + st[S_PB] + st[S_PP]
-                # The tax is paid from the taxable account, never out of the converted dollars.
-                affordable = (st[S_BE] + st[S_BB]) / marginal_rate(conv_top - 1.0)
-                conv = min(room, pre, affordable)
-                if conv > 0.0:
-                    f = conv / pre
-                    st[S_RE] += f * st[S_PE]
-                    st[S_RB] += f * (st[S_PB] + st[S_PP])
-                    st[S_PE] *= 1.0 - f
-                    st[S_PB] *= 1.0 - f
-                    st[S_PP] *= 1.0 - f
-
-        # 6. Fund or release the goal bucket (bonds held in the taxable account).
-        bucket_flow = 0.0
-        if use_bucket and g_bucket:
-            target = tv[t, TV_BUCKET]
-            held = st[S_GB]
-            if held < target:
-                sold, gain = _sell_brokerage(st, target - held)
-                realized += gain
-                st[S_GB] += sold
-                bucket_flow = sold
-            elif held > target:
-                st[S_GB] = target
-                st[S_BB] += held - target
-                bucket_flow = target - held
-
-        # 7. Rebalance to the target allocation and asset location.
-        share = _stock_share(age, stock, glide_start, glide_drop)
-        if donabach_location and g_location:
-            realized += _rebalance(st, share * (1.0 - pc_share), pc_share, False)
-        else:
-            realized += _rebalance(st, share, 0.0, True)
-
-        # 8. Taxes.
-        r = tax_core(wages_taxable, interest, dividends, dividends, realized, ret_dist, conv, ss, early_base, kids, deps, cf_in)
-        total_tax = r.total_tax
-        portfolio_tax = total_tax - wage_tax[p, t]
-        st[S_CF] = r.cap_loss_carryforward_out
-        taxes_paid += total_tax
-
-        # 9. Pay the portfolio-caused tax from the brokerage account. Gains realized by selling
-        # to pay it are taxed next year; a negative amount (tax saved) is added to the account.
-        due = portfolio_tax
-        if due > 0.0:
-            sold, gain = _sell_brokerage(st, due)
-            st[S_DGAIN] += gain
-            due -= sold
-            if due > 0.0:
-                due -= _sell_roth(st, due)
-            if due > 0.0:
-                taken = _sell_pretax(st, due)
-                st[S_DDIST] += taken
-                due -= taken
-            st[S_UNFUNDED] += _shortfall(due)
-        elif due < 0.0:
-            st[S_BB] -= due
-
-        # 10. Advisory fee, charged pro rata to every account. Gains realized on the slice sold
-        # from brokerage equity are taxed next year.
-        total_assets = 0.0
-        for i in range(N_BALANCES):
-            if i != S_BBASIS:
-                total_assets += st[i]
-        fee = _advisory_fee(total_assets, row[SP_FEE_BREAKPOINTS], row[SP_FEE_FLAT])
-        if fee > 0.0 and total_assets > 0.0:
-            f = min(1.0, fee / total_assets)
-            st[S_DGAIN] += f * (st[S_BE] - st[S_BBASIS])
-            for i in range(N_BALANCES):
-                st[i] *= 1.0 - f
-
-        # 11. Contributions: 401(k) to the pre-tax account, savings to the brokerage account.
-        if k > 0.0:
-            pre = st[S_PE] + st[S_PB] + st[S_PP]
-            if pre > 0.0:
-                st[S_PE] += k * st[S_PE] / pre
-                st[S_PB] += k * st[S_PB] / pre
-                st[S_PP] += k * st[S_PP] / pre
-            else:
-                st[S_PE] += k
-        saved = BROKERAGE_SAVINGS_SHARE * w
-        if saved > 0.0:
-            brk = st[S_BE] + st[S_BB]
-            to_equity = min(saved, saved * st[S_BE] / brk) if brk > 0.0 else saved
-            st[S_BE] += to_equity
-            st[S_BBASIS] += to_equity
-            st[S_BB] += saved - to_equity
-
-        # After-tax wealth at the end of the year.
-        if record or do_log or t == n_years - 1:
-            pretax = st[S_PE] + st[S_PB] + st[S_PP]
-            owed = pretax * pretax_withdrawal_rate(pretax, ss_annual)
-            unrealized = max(0.0, st[S_BE] - st[S_BBASIS])
-            wealth = (
-                st[S_BE]
-                + st[S_BB]
-                + st[S_GB]
-                - _LTCG_RATE * unrealized
-                + st[S_RE]
-                + st[S_RB]
-                + pretax
-                - owed
-                + _LTCG_RATE * st[S_CF]
-                - _LTCG_RATE * max(0.0, st[S_DGAIN])
-                - st[S_UNFUNDED]
-            )
+        _policy_action(row, gates[s, t], tv, t, w, act)
+        _year_begin(st, ys, tv, t, act, rets[p, t, 0], rets[p, t, 1], rets[p, t, 2])
+        want = record or do_log or t == n_years - 1
+        res = _year_rest(st, ys, tv, t, hhc, row, act, w, k401[p, t], wage_tax[p, t], want, do_log, log)
+        taxes_paid += res[1]
+        if want:
+            wealth = res[0]
         if record:
             path_wealth[t] = wealth
 
-        if do_log:
-            equity_total = st[S_PE] + st[S_RE] + st[S_BE]
-            long_term = pretax + st[S_RE] + st[S_RB] + st[S_BE] + st[S_BB]
-            log[t, L_AGE] = age
-            log[t, L_WAGES] = w
-            log[t, L_K401] = k
-            log[t, L_SS] = ss
-            log[t, L_NEED] = need
-            log[t, L_GOAL] = goal
-            log[t, L_INTEREST] = interest
-            log[t, L_DIVIDENDS] = dividends
-            log[t, L_HARVEST] = harvest
-            log[t, L_RETDIST] = ret_dist
-            log[t, L_CONV] = conv
-            log[t, L_BUCKETFLOW] = bucket_flow
-            log[t, L_BUCKET] = st[S_GB]
-            log[t, L_STOCKTARGET] = share
-            log[t, L_EQSHARE] = equity_total / long_term if long_term > 0.0 else 0.0
-            log[t, L_NETGAIN] = realized
-            log[t, L_EARLYBASE] = early_base
-            log[t, L_CFIN] = cf_in
-            log[t, L_CFOUT] = r.cap_loss_carryforward_out
-            log[t, L_KIDS] = kids
-            log[t, L_DEPS] = deps
-            log[t, L_WAGESTAXABLE] = wages_taxable
-            log[t, L_AGI] = r.agi
-            log[t, L_TAXABLE] = r.taxable_income
-            log[t, L_MARGINAL] = r.marginal_federal_rate
-            log[t, L_FED] = r.federal_total
-            log[t, L_IL] = r.illinois_tax
-            log[t, L_TOTALTAX] = total_tax
-            log[t, L_WAGETAX] = wage_tax[p, t]
-            log[t, L_PORTTAX] = portfolio_tax
-            log[t, L_FEE] = fee
-            log[t, L_PRETAX] = pretax
-            log[t, L_ROTH] = st[S_RE] + st[S_RB]
-            log[t, L_BROKERAGE] = st[S_BE] + st[S_BB]
-            log[t, L_WEALTH] = wealth
-            log[t, L_UNREALIZED] = st[S_BE] - st[S_BBASIS]
-
     pretax = st[S_PE] + st[S_PB] + st[S_PP]
-    owed = pretax * pretax_withdrawal_rate(pretax, ss_annual)
+    owed = pretax * pretax_withdrawal_rate(pretax, hhc[HC_SS])
     return wealth, taxes_paid, owed, st[S_UNFUNDED]
 
 

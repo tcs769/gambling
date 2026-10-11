@@ -87,7 +87,7 @@
 }
 
 .value[data-missing="true"] {
-  color: var(--muted-text);
+  color: color-mix(in srgb, var(--muted-text) 60%, var(--espresso));
   font-style: italic;
   font-weight: 500;
 }

@@ -53,7 +53,8 @@
   padding: 9px 0;
 }
 
-.row[data-disabled="true"] {
+/* A question that does not apply right now: the choices fade, the question stays readable. */
+.row[data-disabled="true"] .choices {
   opacity: 0.5;
 }
 

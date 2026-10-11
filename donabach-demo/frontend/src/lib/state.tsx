@@ -46,6 +46,14 @@ export const DEFAULT_ANSWERS: Answers = {
 /** Each upload/reading stage stays on screen at least this long so it is legible on a recording. */
 const STAGE_MS = 450;
 const DEMO_KEY = "donabach-demo-mode";
+/** What the viewer typed survives an accidental reload (everything computed is rebuilt from it). */
+const SESSION_KEY = "donabach-session";
+
+interface SavedSession {
+  answers: Answers;
+  overrides: Record<string, number | string>;
+  acknowledged: string[];
+}
 
 export type DocStatus = "uploading" | "reading" | "ready" | "error";
 
@@ -101,6 +109,15 @@ class Store {
   private state: AppState = initial;
   private listeners = new Set<() => void>();
   readonly inflight = new Map<string, Promise<unknown>>();
+  /** Resolves once saved inputs have been restored (child effects run before the provider's). */
+  readonly restored: Promise<void>;
+  private markRestored!: () => void;
+
+  constructor() {
+    this.restored = new Promise<void>((resolve) => {
+      this.markRestored = resolve;
+    });
+  }
   /** Bumped by every what-if request and by reset, so a slow response cannot overwrite a newer one. */
   private whatIfTicket = 0;
   nextWhatIfTicket = (): number => ++this.whatIfTicket;
@@ -114,9 +131,54 @@ class Store {
   };
 
   patch = (change: Patch): void => {
-    this.state = { ...this.state, ...(typeof change === "function" ? change(this.state) : change) };
+    const before = this.state;
+    this.state = { ...before, ...(typeof change === "function" ? change(before) : change) };
+    if (
+      this.state.answers !== before.answers ||
+      this.state.overrides !== before.overrides ||
+      this.state.acknowledged !== before.acknowledged
+    ) {
+      this.persist();
+    }
     this.listeners.forEach((listener) => listener());
   };
+
+  private persist(): void {
+    if (typeof window === "undefined") return;
+    const { answers, overrides, acknowledged } = this.state;
+    try {
+      window.sessionStorage.setItem(SESSION_KEY, JSON.stringify({ answers, overrides, acknowledged } satisfies SavedSession));
+    } catch {
+      /* storage unavailable: the demo still works, it just forgets on reload */
+    }
+  }
+
+  restore(): void {
+    try {
+      const raw = window.sessionStorage.getItem(SESSION_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Partial<SavedSession>;
+      this.state = {
+        ...this.state,
+        answers: { ...DEFAULT_ANSWERS, ...saved.answers },
+        overrides: saved.overrides ?? {},
+        acknowledged: saved.acknowledged ?? [],
+      };
+      this.listeners.forEach((listener) => listener());
+    } catch {
+      /* corrupt or unavailable: start from the defaults */
+    } finally {
+      this.markRestored();
+    }
+  }
+
+  clearSaved(): void {
+    try {
+      window.sessionStorage.removeItem(SESSION_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -169,6 +231,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const saved = window.localStorage.getItem(DEMO_KEY);
     if (saved !== null) store.patch({ demoMode: saved === "true" });
+    store.restore();
   }, [store]);
 
   const actions = useMemo<Actions>(() => {
@@ -372,6 +435,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
 
       async ensureProfile() {
+        await store.restored;
         if (current().profile) return true;
         return once("ensure-profile", async () => {
           const s = current();
@@ -394,6 +458,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
 
       reset() {
+        store.clearSaved();
         patch({ ...initial, demoMode: current().demoMode });
       },
     };

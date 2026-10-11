@@ -155,12 +155,25 @@ check(/Prototype for illustration only/.test(text), "compare: results footer is 
 await page.screenshot({ path: `${OUT}/7-compare-full.png`, fullPage: true });
 await audit("7-compare");
 
-// --- Determinism in demo mode ---------------------------------------------------------------------
-const figure = async () => (await page.getByText("Typical outcome at 70").first().locator("xpath=..").innerText()).replace(/\s+/g, " ");
-const first = await figure();
+// --- Reload and determinism --------------------------------------------------------------------------
+const figure = async (p) => (await p.getByText("Typical outcome at 70").first().locator("xpath=..").innerText()).replace(/\s+/g, " ");
+const first = await figure(page);
 await page.reload({ waitUntil: "networkidle" });
 await page.getByText("Typical outcome at 70").first().waitFor({ timeout: 20000 });
-check((await figure()) === first, `demo mode: identical numbers after reload (${first.slice(0, 60)})`);
+check((await figure(page)) === first, `reload keeps the viewer's answers and gives identical numbers (${first.slice(0, 48)})`);
+
+// Two brand-new sessions (nothing saved) bootstrap from the sample documents: demo mode must give the
+// same numbers every time.
+const fresh = [];
+for (let i = 0; i < 2; i++) {
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const p = await ctx.newPage();
+  await p.goto(BASE + "/compare", { waitUntil: "networkidle" });
+  await p.getByText("Typical outcome at 70").first().waitFor({ timeout: 30000 });
+  fresh.push(await figure(p));
+  await ctx.close();
+}
+check(fresh[0] === fresh[1], `demo mode: two fresh sessions show identical numbers (${fresh[0].slice(0, 48)})`);
 
 await browser.close();
 for (const n of notes) console.log(` note  ${n}`);

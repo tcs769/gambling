@@ -1,0 +1,158 @@
+.intro {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  max-width: 100ch;
+  margin: -4px 0 18px;
+}
+
+/* The grid is laid out by the room the panel has (not the window): with the what-if panel open the
+   content column is narrow, and the same markup stacks instead of squeezing. */
+.measures {
+  container-type: inline-size;
+}
+
+.measure {
+  display: grid;
+  gap: 14px 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.measure + .measure {
+  margin-top: 20px;
+}
+
+.what {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.what h3 {
+  font-size: 1.2rem;
+}
+.what p {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  max-width: 62ch;
+}
+
+.cells {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+@container (min-width: 900px) {
+  .measure {
+    grid-template-columns: minmax(260px, 0.8fr) minmax(0, 2fr);
+  }
+  .cells {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---- One figure ---- */
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 16px 18px 16px;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.against {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+/* Proportional figures: tabular digits look loose at display sizes. */
+.value {
+  line-height: 1.15;
+  color: var(--espresso);
+}
+.figure {
+  font-size: 2.25rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.unit {
+  color: var(--muted-text);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.range {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.dollars {
+  margin-top: 6px;
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+.dollars strong {
+  font-weight: 650;
+}
+
+/* ---- The range on an axis: a point, its 90% range, zero marked ---- */
+.rangeBar {
+  position: relative;
+  height: 42px;
+  margin: 10px 12px 4px;
+}
+
+.rangeTrack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 14px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--line);
+}
+
+.rangeSpan {
+  position: absolute;
+  top: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--series-donabach);
+}
+
+.rangeZero {
+  position: absolute;
+  top: 4px;
+  height: 22px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--espresso);
+  opacity: 0.55;
+}
+
+.rangeZeroLabel {
+  position: absolute;
+  top: 24px;
+  transform: translateX(-50%);
+  color: var(--muted-text);
+  font-size: 0.875rem;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.rangePoint {
+  position: absolute;
+  top: 5px;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  border: 3px solid var(--cream);
+  border-radius: 50%;
+  background: var(--brown);
+}

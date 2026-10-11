@@ -21,9 +21,28 @@
   --warn-wash: rgba(154, 82, 0, 0.12);
   --bad-wash: rgba(174, 58, 46, 0.1);
 
-  /* Chart series (validated for color-blind separation and >= 3:1 against the panel). */
+  /* Chart series (validated for color-blind separation and >= 3:1 against the panel, #f1e8d4).
+     amber vs blue: Delta E 25.1 normal, 22.8 protan, 25.8 deutan, 20.0 tritan; contrast on the panel 3.15 and 4.17.
+
+     --series-typical is the third series (the typical advisor). It is ALWAYS drawn dashed as well, so the
+     line style carries identity and colour never has to. Picked by computing OKLab Delta E x100 (Machado
+     2009 simulations at severity 1.0, the dataviz validator's model) over a hue / lightness / chroma grid,
+     keeping only colours >= 3:1 on the panel, in the validator's lightness band (OKLCH L >= 0.43) with
+     chroma >= 0.10, and avoiding the good / bad status hues (green 154, red 29). The hue farthest from both
+     amber (79) and blue (254) is about 346; at the validator's lightness floor the best worst-case separation
+     came at 352, so that is the one used. The lightness band forces it darker than both lines, so it differs
+     in lightness as well as hue:
+       #822a57  OKLCH L 0.431, C 0.130, hue 352 (87 degrees from amber, 98 from blue)
+       contrast  7.13:1 on the panel, 8.12:1 on cream, 6.3:1 on the 13% amber band, 6.5:1 on the 8% blue band
+       Delta E vs amber / vs blue: normal 24.7 / 22.1, protan 25.9 / 20.1, deutan 22.0 / 15.2, tritan 18.8 / 25.7
+       lightness gap (OKLab L x100) vs amber / vs blue: normal 17.9 / 10.9, protan 20.4 / 18.8,
+                                                        deutan 18.3 / 9.1, tritan 18.1 / 11.4
+     Worst case is deutan against blue at 15.2: above the validator's 8 target for CVD and its 15 floor for
+     normal vision. `npm run check:colors` re-runs these gates on the tokens in this file (the dataviz
+     validator, `validate_palette.js "#a87a1f,#3570b5,#822a57" --surface "#f1e8d4" --pairs all`, passes too). */
   --series-donabach: #a87a1f;
   --series-ria: #3570b5;
+  --series-typical: #822a57;
 
   --font-serif: Cambria, Georgia, "Times New Roman", serif;
   --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;

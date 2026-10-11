@@ -16,10 +16,10 @@ export function Panel({ children, tone = "panel", as: Tag = "section", className
   );
 }
 
-export function PanelTitle({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
+export function PanelTitle({ children, aside, id }: { children: ReactNode; aside?: ReactNode; id?: string }) {
   return (
     <div className={styles.title}>
-      <h2>{children}</h2>
+      <h2 id={id}>{children}</h2>
       {aside && <div className={styles.aside}>{aside}</div>}
     </div>
   );

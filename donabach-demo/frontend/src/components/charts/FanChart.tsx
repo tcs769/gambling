@@ -15,6 +15,8 @@ import {
 import { money } from "@/lib/format";
 import {
   ANIMATION_MS,
+  DASH_KEY,
+  DASH_LINE,
   GRID_STROKE,
   INNER_BAND_OPACITY,
   OUTER_BAND_OPACITY,
@@ -38,6 +40,9 @@ import { FanTooltip } from "./FanTooltip";
 const DEFAULT_END_LABEL_ROOM = 178;
 /** Two end labels closer than this (in pixels) are nudged apart, symmetrically, so they stay readable. */
 const END_LABEL_GAP = 22;
+
+/** Whether a line has a 10th-to-90th percentile band at all (a series can be a median line alone). */
+const hasBand = (line: FanLineSpec) => (line.bandOpacity ?? OUTER_BAND_OPACITY) > 0;
 
 /** Spread label positions so none sit closer than `gap`, moving each as little as possible. */
 function spreadLabels(ys: readonly number[], gap: number): number[] {
@@ -85,7 +90,16 @@ function EndLabels({ lines, last }: { lines: readonly FanLineSpec[]; last: FanRo
           key={line.id}
           style={{ transform: `translate(${x}px, ${ys[i]}px)`, transition: `transform ${ANIMATION_MS}ms ease-in-out` }}
         >
-          <line x1="9" y1="0" x2="23" y2="0" stroke={line.color} strokeWidth="2" strokeLinecap="round" />
+          <line
+            x1="9"
+            y1="0"
+            x2="23"
+            y2="0"
+            stroke={line.color}
+            strokeWidth="2"
+            strokeLinecap={line.dashed ? "butt" : "round"}
+            strokeDasharray={line.dashed ? DASH_KEY : undefined}
+          />
           <text x="30" y="0" dy="0.35em" fontSize="14" fill="var(--muted-text)">
             <tspan fontWeight="700" fill="var(--espresso)">
               {money(q.p50)}
@@ -109,20 +123,31 @@ interface FanChartProps {
 }
 
 /**
- * Median lines with shaded bands (10th to 90th percentile, optionally 25th to 75th), by age.
- * A crosshair follows the cursor and the tooltip lists every line at that age. Use inside a
- * ChartFrame, which supplies the legend and the table twin.
+ * Median lines with shaded bands (10th to 90th percentile, optionally 25th to 75th), by age. A
+ * line can carry a lighter band, no band, or be dashed. A crosshair follows the cursor and the
+ * tooltip lists every line at that age. Use inside a ChartFrame, which supplies the legend and
+ * the table twin.
  */
 export function FanChart({ lines, rows, height, endLabelRoom = DEFAULT_END_LABEL_ROOM }: FanChartProps) {
   const ages = rows.map((row) => row.age);
   const last = rows[rows.length - 1];
+  // The axis has to reach the top of everything drawn: a band's upper edge, or just the median for a line without one.
   const top = Math.max(
     0,
-    ...rows.flatMap((row) => lines.map((line) => (row[outerKey(line.id)] as [number, number] | undefined)?.[1] ?? 0)),
+    ...rows.flatMap((row) =>
+      lines.map((line) =>
+        hasBand(line)
+          ? ((row[outerKey(line.id)] as [number, number] | undefined)?.[1] ?? 0)
+          : ((row[quantileKey(line.id)] as QuantileValues | undefined)?.p50 ?? 0),
+      ),
+    ),
   );
   const { ticks: valueTicks, domainMax } = niceScale(top);
-  // The first line in `lines` is the one the page is about: it is drawn last, on top.
-  const drawOrder = [...lines].reverse();
+  // The first line in `lines` is the one the page is about: it is drawn last, on top (unless a line sets its layer).
+  const drawOrder = lines
+    .map((line, i) => ({ line, layer: line.layer ?? -i }))
+    .sort((a, b) => a.layer - b.layer)
+    .map(({ line }) => line);
   return (
     <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 900, height }}>
       <ComposedChart data={rows} margin={{ top: 14, right: endLabelRoom, bottom: 4, left: 4 }}>
@@ -148,14 +173,14 @@ export function FanChart({ lines, rows, height, endLabelRoom = DEFAULT_END_LABEL
           tickLine={false}
           axisLine={false}
         />
-        {drawOrder.map((line) => (
+        {drawOrder.filter(hasBand).map((line) => (
           <Area
             key={`${line.id}-outer`}
             type="monotone"
             dataKey={outerKey(line.id)}
             stroke="none"
             fill={line.color}
-            fillOpacity={OUTER_BAND_OPACITY}
+            fillOpacity={line.bandOpacity ?? OUTER_BAND_OPACITY}
             activeDot={false}
             isAnimationActive="auto"
             animationDuration={ANIMATION_MS}
@@ -186,7 +211,8 @@ export function FanChart({ lines, rows, height, endLabelRoom = DEFAULT_END_LABEL
             stroke={line.color}
             strokeWidth={2}
             strokeLinejoin="round"
-            strokeLinecap="round"
+            strokeLinecap={line.dashed ? "butt" : "round"}
+            strokeDasharray={line.dashed ? DASH_LINE : undefined}
             dot={false}
             activeDot={{ r: 5, fill: line.color, stroke: SURFACE, strokeWidth: 2 }}
             isAnimationActive="auto"

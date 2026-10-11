@@ -18,10 +18,19 @@ export const SURFACE = "var(--panel)";
 
 export const SERIES_DONABACH = "var(--series-donabach)";
 export const SERIES_RIA = "var(--series-ria)";
+/** The third series, the typical advisor: always drawn dashed too, so colour never carries it alone. */
+export const SERIES_TYPICAL = "var(--series-typical)";
 
 /** Wash for the wide band (10th to 90th percentile) and the darker one inside it (25th to 75th). */
 export const OUTER_BAND_OPACITY = 0.13;
 export const INNER_BAND_OPACITY = 0.2;
+/** A lighter wash for a secondary series' band, so two bands can overlap and both stay readable. */
+export const LIGHT_BAND_OPACITY = 0.07;
+
+/** Dash patterns for a dashed series, sized for the chart line, the short key beside a label and the legend swatch. */
+export const DASH_LINE = "7 5";
+export const DASH_KEY = "5 3.5";
+export const DASH_SWATCH = "6 4";
 
 /**
  * Clean y-axis ticks from zero: steps of 1, 2, 2.5 or 5 times a power of ten, the smallest step
@@ -42,7 +51,7 @@ export function niceScale(max: number, maxIntervals = 7): { ticks: number[]; dom
 
 /**
  * Age ticks: the first age, then every fifth year, never two labels closer than three years.
- * (38 to 70 gives 38, 45, 50, ... 70.)
+ * (38 to 80 gives 38, 45, 50, ... 80.)
  */
 export function ageTicks(ages: readonly number[]): number[] {
   if (ages.length === 0) return [];

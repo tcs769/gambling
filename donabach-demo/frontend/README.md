@@ -10,6 +10,7 @@ Next.js (App Router) + TypeScript + Recharts. It talks to the Python API through
 API model, with the backend running: `npm run gen:api`.
 
     npm run e2e        # walk the whole demo in Chromium and check it (API and app must be running)
+                       # env: BASE_URL (default http://localhost:3000), OUT_DIR (screenshots), CHROMIUM_PATH
     npm run typecheck  # tsc --noEmit
 
 The PDF viewer loads pdf.js's legacy build (it bundles the polyfills pdf.js 6 needs); the matching worker is copied to

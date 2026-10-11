@@ -260,6 +260,33 @@ export interface components {
             active: boolean;
         };
         /**
+         * AdvantageView
+         * @description The plan's advantage over one baseline, measured two ways (spec A7), both annualized.
+         *
+         *     Each is the yearly growth-rate difference `(plan / baseline)^(1/years) - 1` that would open the
+         *     observed gap over the horizon: median uses median after-tax wealth, risk-adjusted uses
+         *     certainty-equivalent wealth (the planner's own objective). The `*_low` / `*_high` pair is the
+         *     5th to 95th percentile when the evaluation futures are resampled.
+         */
+        AdvantageView: {
+            /** Median */
+            median: number;
+            /** Risk Adjusted */
+            risk_adjusted: number;
+            /** Median Dollars */
+            median_dollars: number;
+            /** Risk Adjusted Dollars */
+            risk_adjusted_dollars: number;
+            /** Median Low */
+            median_low: number;
+            /** Median High */
+            median_high: number;
+            /** Risk Adjusted Low */
+            risk_adjusted_low: number;
+            /** Risk Adjusted High */
+            risk_adjusted_high: number;
+        };
+        /**
          * Answers
          * @description What the app asks (goals) and what it estimates (Roth, cash, Social Security).
          */
@@ -333,6 +360,28 @@ export interface components {
             x1: number;
             /** Bottom */
             bottom: number;
+        };
+        /**
+         * BaselineView
+         * @description One advisor the plan is compared with, measured on the same evaluation futures.
+         */
+        BaselineView: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "good_ria" | "typical_advisor";
+            /** Label */
+            label: string;
+            /** Definition */
+            definition: string;
+            outcome: components["schemas"]["OutcomeView"];
+            /** Lifetime Taxes */
+            lifetime_taxes: number;
+            /** Shortfall Chance */
+            shortfall_chance: number;
+            advantage: components["schemas"]["AdvantageView"];
+            fan: components["schemas"]["FanSeries"];
         };
         /** Body_upload_documents_documents_upload_post */
         Body_upload_documents_documents_upload_post: {
@@ -809,9 +858,16 @@ export interface components {
             household: components["schemas"]["Household"];
             /**
              * N Paths
+             * @description Futures the strategy search runs on
              * @default 400
              */
             n_paths: number;
+            /**
+             * N Eval Paths
+             * @description Fresh futures (never seen by the search) every result is measured on
+             * @default 200
+             */
+            n_eval_paths: number;
             /**
              * Demo Mode
              * @default true
@@ -820,6 +876,12 @@ export interface components {
             /** Seed */
             seed?: number | null;
             shock?: components["schemas"]["MarketShock"] | null;
+            /**
+             * Risk Aversion
+             * @description CRRA coefficient behind the score
+             * @default 3
+             */
+            risk_aversion: number;
         };
         /** PlanResponse */
         PlanResponse: {
@@ -835,6 +897,8 @@ export interface components {
             stats: components["schemas"]["StatCards"];
             fan: components["schemas"]["FanSeries"];
             ria_fan: components["schemas"]["FanSeries"];
+            /** Baselines */
+            baselines: components["schemas"]["BaselineView"][];
             /** Advantage */
             advantage: components["schemas"]["AdvantageStep"][];
             /** Searched */
@@ -881,8 +945,12 @@ export interface components {
         PlanSettings: {
             /** N Paths */
             n_paths: number;
+            /** N Eval Paths */
+            n_eval_paths: number;
             /** Seed */
             seed: number;
+            /** Eval Seed */
+            eval_seed: number;
             /** Demo Mode */
             demo_mode: boolean;
             /** Elapsed Seconds */
@@ -976,6 +1044,9 @@ export interface components {
             ria_lifetime_taxes: number;
             /** Years */
             years: number;
+            /** Shortfall Chance */
+            shortfall_chance: number;
+            advantage: components["schemas"]["AdvantageView"];
         };
         /** StrategyView */
         StrategyView: {
@@ -1102,12 +1173,22 @@ export interface components {
              */
             n_paths: number;
             /**
+             * N Eval Paths
+             * @default 200
+             */
+            n_eval_paths: number;
+            /**
              * Demo Mode
              * @default true
              */
             demo_mode: boolean;
             /** Seed */
             seed?: number | null;
+            /**
+             * Risk Aversion
+             * @default 3
+             */
+            risk_aversion: number;
             shock?: components["schemas"]["MarketShock"] | null;
         };
         /** WhatIfResponse */

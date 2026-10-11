@@ -32,6 +32,9 @@ export type OutcomeView = S["OutcomeView"];
 export type RankedRow = S["RankedRow"];
 export type FanSeries = S["FanSeries"];
 export type StatCards = S["StatCards"];
+export type AdvantageView = S["AdvantageView"];
+export type BaselineView = S["BaselineView"];
+export type PlanSettings = S["PlanSettings"];
 export type AdvantageStep = S["AdvantageStep"];
 export type RecommenderPanel = S["RecommenderPanel"];
 export type Recommendation = S["Recommendation"];
@@ -44,17 +47,31 @@ export type Preset = NonNullable<S["WhatIfRequest"]["presets"]>[number];
 export type MarketShock = S["MarketShock"];
 export type ModelsStatus = S["ModelsStatus"];
 
-/** The five choices that make up a strategy, in display order, with plain-language names. */
+/** The choices that make up a strategy, in display order, with plain-language names. */
 export const CHOICE_LABELS: Record<string, string> = {
   stock_share: "Stock share",
   conversion: "Roth conversions",
   private_credit: "Private credit sleeve",
   direct_indexing: "Direct indexing",
   goal_bonds: "Goal-matched bonds",
+  k401: "401(k) contributions",
+  goal_funding: "Paying for goals",
 };
 
+/**
+ * Words for each choice's values (the API's vocabulary, see `Strategy.choices()` in the backend).
+ * Private credit is a percent of long-term money ("0" to "15"); the stock share is "50" to "100".
+ * A value this table does not know is shown as the API sent it, never hidden.
+ */
 export const OPTION_LABELS: Record<string, Record<string, string>> = {
-  stock_share: { "70": "70% stocks", "80": "80% stocks", "90": "90% stocks", "100": "100% stocks" },
+  stock_share: {
+    "50": "50% stocks",
+    "60": "60% stocks",
+    "70": "70% stocks",
+    "80": "80% stocks",
+    "90": "90% stocks",
+    "100": "100% stocks",
+  },
   conversion: {
     none: "None",
     fill12_low: "Fill 12% bracket, low-income years",
@@ -64,7 +81,24 @@ export const OPTION_LABELS: Record<string, Record<string, string>> = {
     fill24_low: "Fill 24% bracket, low-income years",
     fill24_every: "Fill 24% bracket, every year",
   },
-  private_credit: { on: "10% sleeve", off: "Off" },
+  private_credit: { "0": "Off", "5": "5%", "10": "10%", "15": "15%" },
   direct_indexing: { on: "On", off: "Off" },
   goal_bonds: { on: "On", off: "Off" },
+  k401: { pretax: "Pre-tax", roth: "Roth", roth_low: "Roth in low-income years only" },
+  goal_funding: { sell: "Sell assets", borrow: "Borrow against the taxable account" },
 };
+
+/** A choice's value in words, falling back to the raw value. */
+export function optionLabel(choice: string, option: string): string {
+  return OPTION_LABELS[choice]?.[option] ?? option;
+}
+
+/** True for values that mean the lever is not used ("off", no conversions, a 0% sleeve). */
+export function optionIsOff(choice: string, option: string): boolean {
+  return option === "off" || (choice === "conversion" && option === "none") || (choice === "private_credit" && option === "0");
+}
+
+/** The baseline with this key (the API sends the good RIA first, then the typical advisor). */
+export function baselineOf(plan: PlanResponse, key: BaselineView["key"]): BaselineView | undefined {
+  return plan.baselines.find((b) => b.key === key);
+}

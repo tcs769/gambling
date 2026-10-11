@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Button, Icon } from "@/components/ui";
 import { CHART_HEIGHT } from "./chartTheme";
 import styles from "./ChartFrame.module.css";
@@ -13,6 +13,11 @@ interface ChartFrameProps {
   table: ReactNode;
   /** Names the figure for screen readers. */
   label: string;
+  /**
+   * The figure's text alternative, visible under it: what the chart says in words (for a fan, where
+   * each line ends). Screen readers get it as the figure's description.
+   */
+  summary?: ReactNode;
   /** Total height of the body, x-axis labels included. Chart and table share it, so toggling never moves the page. */
   height?: number;
 }
@@ -21,10 +26,11 @@ interface ChartFrameProps {
  * The container every chart lives in: legend and "View as table" toggle above, a body of fixed
  * height below. Chart and table share that height, so toggling between them never moves the page.
  */
-export function ChartFrame({ legend, chart, table, label, height = CHART_HEIGHT }: ChartFrameProps) {
+export function ChartFrame({ legend, chart, table, label, summary, height = CHART_HEIGHT }: ChartFrameProps) {
   const [view, setView] = useState<"chart" | "table">("chart");
+  const summaryId = useId();
   return (
-    <figure className={styles.frame} aria-label={label}>
+    <figure className={styles.frame} aria-label={label} aria-describedby={summary ? summaryId : undefined}>
       <div className={styles.toolbar}>
         <div className={styles.legend}>{legend}</div>
         <Button variant="ghost" className={styles.toggle} onClick={() => setView(view === "chart" ? "table" : "chart")}>
@@ -35,6 +41,11 @@ export function ChartFrame({ legend, chart, table, label, height = CHART_HEIGHT 
       <div className={styles.body} style={{ height }}>
         {view === "chart" ? chart : table}
       </div>
+      {summary && (
+        <figcaption id={summaryId} className={styles.summary}>
+          {summary}
+        </figcaption>
+      )}
     </figure>
   );
 }

@@ -1,0 +1,127 @@
+/* Laid out by the room the panel has, not the window: with the what-if panel open the content column
+   is narrow, and the cards stack instead of squeezing. */
+.wrap {
+  container-type: inline-size;
+}
+
+.cards {
+  display: grid;
+  gap: 16px;
+}
+
+.card {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  padding: 18px 20px 12px;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.card[data-tone="accent"] {
+  border-color: var(--gold);
+  background: linear-gradient(0deg, var(--gold-wash), var(--gold-wash)), var(--cream);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.head h3 {
+  font-size: 1.2rem;
+}
+
+.definition {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  align-content: start;
+  margin: 8px 0 12px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.metrics {
+  display: grid;
+  margin: 0;
+}
+
+.metric {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.card[data-tone="accent"] .metric {
+  border-top-color: rgba(184, 137, 43, 0.35);
+}
+
+.metric dt {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.35;
+}
+.figure {
+  margin: 0;
+  color: var(--espresso);
+  font-size: 1.375rem;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+/* With a what-if on screen, how far the figure moved sits on its own line under the label. */
+.move {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* Three cards side by side, their rows lined up: the plan's figure and each advisor's sit on one line. */
+@container (min-width: 900px) {
+  .cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    /* head, definition, and the four figures */
+    grid-template-rows: auto auto repeat(4, auto);
+    column-gap: 16px;
+    row-gap: 0;
+  }
+  .card {
+    grid-row: span 6;
+    grid-template-rows: subgrid;
+  }
+  .metrics {
+    grid-row: span 4;
+    grid-template-rows: subgrid;
+  }
+}
+
+.note {
+  margin-top: 16px;
+  color: var(--espresso);
+  font-size: 0.9375rem;
+}
+
+.glossary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px 24px;
+  margin: 10px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.glossary dt {
+  color: var(--brown);
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+.glossary dd {
+  margin: 0;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}

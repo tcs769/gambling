@@ -1,21 +1,25 @@
 import { Icon, Panel, Pill } from "@/components/ui";
-import { CHOICE_LABELS, OPTION_LABELS, type PlanResponse } from "@/lib/types";
+import { CHOICE_LABELS, optionIsOff, optionLabel, type PlanResponse } from "@/lib/types";
 import styles from "./Plan.module.css";
 
-/** The five choices of a strategy as small labelled chips: "Stock share · 70% stocks". */
+/**
+ * A strategy's choices as small labelled chips: "Stock share · 70% stocks", "401(k) contributions · Roth".
+ * Every choice the API sends is shown (a key this app has no name for keeps its raw name), in the order
+ * of CHOICE_LABELS.
+ */
 export function ChoiceChips({ choices, label }: { choices: Record<string, string>; label: string }) {
+  const known = Object.keys(CHOICE_LABELS).filter((choice) => choices[choice] !== undefined);
+  const unknown = Object.keys(choices).filter((choice) => !(choice in CHOICE_LABELS));
   return (
     <ul className={styles.choices} aria-label={label}>
-      {Object.keys(CHOICE_LABELS).map((choice) => {
+      {[...known, ...unknown].map((choice) => {
         const option = choices[choice];
-        if (option === undefined) return null;
-        const isOn = option === "on";
         return (
-          <li key={choice} className={styles.choice} data-off={option === "off"}>
-            <span className={styles.choiceLabel}>{CHOICE_LABELS[choice]}</span>
+          <li key={choice} className={styles.choice} data-off={optionIsOff(choice, option)}>
+            <span className={styles.choiceLabel}>{CHOICE_LABELS[choice] ?? choice}</span>
             <span className={styles.choiceValue}>
-              {isOn && <Icon name="check" size={15} strokeWidth={2.8} />}
-              {OPTION_LABELS[choice]?.[option] ?? option}
+              {option === "on" && <Icon name="check" size={15} strokeWidth={2.8} />}
+              {optionLabel(choice, option)}
             </span>
           </li>
         );
@@ -24,7 +28,7 @@ export function ChoiceChips({ choices, label }: { choices: Record<string, string
   );
 }
 
-/** The top card: the strategy in one sentence, why, who chose it, and its five choices. */
+/** The top card: the strategy in one sentence (the API's own), why, who chose it, and its choices. */
 export function StrategyCard({ plan }: { plan: PlanResponse }) {
   return (
     <Panel className={styles.strategy} aria-labelledby="strategy-sentence">
@@ -39,7 +43,7 @@ export function StrategyCard({ plan }: { plan: PlanResponse }) {
       <p className={styles.reason}>
         <strong>Why this plan.</strong> {plan.reason}
       </p>
-      <ChoiceChips choices={plan.strategy.choices} label="The five choices in this strategy" />
+      <ChoiceChips choices={plan.strategy.choices} label="The choices in this strategy" />
     </Panel>
   );
 }

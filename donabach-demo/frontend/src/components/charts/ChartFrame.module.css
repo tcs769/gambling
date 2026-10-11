@@ -24,3 +24,12 @@
   position: relative;
   width: 100%;
 }
+
+/* The text alternative: what the chart says, in words, where everyone can read it. */
+.summary {
+  margin-top: 12px;
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  max-width: 100ch;
+}

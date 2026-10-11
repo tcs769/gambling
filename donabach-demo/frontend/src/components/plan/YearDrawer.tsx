@@ -7,20 +7,20 @@ import { dollars, money, percent } from "@/lib/format";
 import type { Decision, Household, PlanResponse, TaxLine, YearDetail } from "@/lib/types";
 import styles from "./YearDrawer.module.css";
 
-/** What a decision is worth: the change in after-tax wealth at 70 if it is removed for this year. */
-function Worth({ decision }: { decision: Decision }) {
+/** What a decision is worth: the change in after-tax wealth at the horizon if it is removed for this year. */
+function Worth({ decision, horizon }: { decision: Decision; horizon: number }) {
   const value = decision.value;
   if (!decision.valued || value === null || value === undefined) {
     return <span className={styles.context}>Context, not valued separately</span>;
   }
-  if (Math.abs(value) < 0.5) return <Pill>No difference by 70</Pill>;
+  if (Math.abs(value) < 0.5) return <Pill>No difference by {horizon}</Pill>;
   return value > 0 ? (
     <Pill tone="good" icon={<Icon name="check" size={14} strokeWidth={2.8} />}>
-      Worth +{money(value)} by 70
+      Worth +{money(value)} by {horizon}
     </Pill>
   ) : (
     <Pill tone="bad" icon={<Icon name="alert" size={14} />}>
-      Costs {money(-value)} by 70
+      Costs {money(-value)} by {horizon}
     </Pill>
   );
 }
@@ -78,6 +78,7 @@ export function YearDrawer({ plan, household, selected, onSelect }: YearDrawerPr
   }, [selected]);
 
   if (!row) return null;
+  const horizon = plan.settings.horizon_age;
   const index = plan.rows.findIndex((r) => r.year_index === row.year_index);
   const previous = plan.rows[index - 1];
   const next = plan.rows[index + 1];
@@ -153,14 +154,14 @@ export function YearDrawer({ plan, household, selected, onSelect }: YearDrawerPr
             <section className={styles.section} aria-labelledby="year-decisions">
               <h3 id="year-decisions">Decisions this year</h3>
               <p className={styles.caption}>
-                Each value is how much after-tax wealth at 70 changes if that one decision is removed for this year.
+                Each value is how much after-tax wealth at {horizon} changes if that one decision is removed for this year.
               </p>
               <ul className={styles.decisions}>
                 {detail.decisions.map((decision) => (
                   <li key={decision.key} className={styles.decision}>
                     <div className={styles.decisionHead}>
                       <strong>{decision.label}</strong>
-                      <Worth decision={decision} />
+                      <Worth decision={decision} horizon={horizon} />
                     </div>
                     <p>{decision.description}</p>
                   </li>

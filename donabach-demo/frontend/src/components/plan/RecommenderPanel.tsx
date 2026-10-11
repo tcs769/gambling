@@ -8,10 +8,10 @@ import {
   Pill,
   type DataColumn,
 } from "@/components/ui";
-import { money, percent } from "@/lib/format";
+import { count, money, percent } from "@/lib/format";
 import {
   CHOICE_LABELS,
-  OPTION_LABELS,
+  optionLabel,
   type PlanResponse,
   type RankedRow,
   type RecommenderPanel as RecommenderData,
@@ -20,7 +20,7 @@ import {
 import { RankedStrategyCell } from "./RankedStrategy";
 import styles from "./Recommender.module.css";
 
-function StrategyBox({ heading, strategy }: { heading: string; strategy: StrategyView }) {
+function StrategyBox({ heading, strategy, horizon }: { heading: string; strategy: StrategyView; horizon: number }) {
   return (
     <div className={styles.strategyBox}>
       <div className={styles.boxHeading}>{heading}</div>
@@ -31,7 +31,7 @@ function StrategyBox({ heading, strategy }: { heading: string; strategy: Strateg
           <dd>{money(strategy.outcome.score)}</dd>
         </div>
         <div>
-          <dt>Typical outcome at 70</dt>
+          <dt>Typical outcome at {horizon}</dt>
           <dd>{money(strategy.outcome.median)}</dd>
         </div>
         <div>
@@ -51,7 +51,8 @@ const CANDIDATE_COLUMNS: DataColumn<RankedRow>[] = [
 ];
 
 /** What the connected model said, next to what the engine verified. Every number comes from the model or the engine. */
-function Connected({ panel }: { panel: RecommenderData }) {
+function Connected({ panel, plan }: { panel: RecommenderData; plan: PlanResponse }) {
+  const { horizon_age: horizon, n_paths: searchPaths, n_eval_paths: evalPaths } = plan.settings;
   const recommendation = panel.recommendation;
   if (!recommendation) return null;
   return (
@@ -64,11 +65,11 @@ function Connected({ panel }: { panel: RecommenderData }) {
               const others = (choice.distribution ?? [])
                 .filter((entry) => entry.option !== choice.option)
                 .sort((a, b) => b.probability - a.probability)
-                .map((entry) => `${OPTION_LABELS[choice.choice]?.[entry.option] ?? entry.option} ${percent(entry.probability)}`);
+                .map((entry) => `${optionLabel(choice.choice, entry.option)} (${percent(entry.probability)})`);
               return (
                 <li key={choice.choice}>
                   <span className={styles.choiceName}>{CHOICE_LABELS[choice.choice] ?? choice.choice}</span>
-                  <span className={styles.choiceOption}>{OPTION_LABELS[choice.choice]?.[choice.option] ?? choice.option}</span>
+                  <span className={styles.choiceOption}>{optionLabel(choice.choice, choice.option)}</span>
                   <span className={styles.bar} role="img" aria-label={`${percent(choice.probability)} confident`}>
                     <span className={styles.fill} style={{ width: `${choice.probability * 100}%` }} />
                   </span>
@@ -109,12 +110,13 @@ function Connected({ panel }: { panel: RecommenderData }) {
             )}
           </div>
           <div className={styles.versus}>
-            <StrategyBox heading="Model recommended" strategy={panel.model_strategy} />
-            <StrategyBox heading="Verified by the engine" strategy={panel.verified_strategy} />
+            <StrategyBox heading="Model recommended" strategy={panel.model_strategy} horizon={horizon} />
+            <StrategyBox heading="Verified by the engine" strategy={panel.verified_strategy} horizon={horizon} />
           </div>
           <p className={styles.quiet}>
-            Score is wealth at 70 adjusted for risk (certainty-equivalent wealth). The engine scored the model&apos;s
-            recommendation and its nearest alternatives on the same simulated futures.
+            Score is wealth at {horizon} adjusted for risk (certainty-equivalent wealth). The engine scored the model&apos;s
+            recommendation and its nearest alternatives on the same {count(searchPaths)} search futures; the plan&apos;s own
+            results on the Comparison screen are measured on {count(evalPaths)} fresh ones.
           </p>
         </section>
       )}
@@ -159,11 +161,11 @@ export function RecommenderPanel({ plan }: { plan: PlanResponse }) {
         Model recommendation
       </PanelTitle>
       {connected ? (
-        <Connected panel={panel} />
+        <Connected panel={panel} plan={plan} />
       ) : (
         <ModelNotConnected model="recommender" reason={panel.status.reason}>
           No confidence bars or factors are shown because no recommendation model is plugged in. The plan above comes from
-          searching all {plan.settings.strategies_searched} strategies on the same simulated futures instead.
+          searching all {count(plan.settings.strategies_searched)} strategies on simulated futures instead.
         </ModelNotConnected>
       )}
     </Panel>

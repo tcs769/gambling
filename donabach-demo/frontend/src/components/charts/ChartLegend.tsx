@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { INNER_BAND_OPACITY, OUTER_BAND_OPACITY } from "./chartTheme";
+import { DASH_SWATCH, INNER_BAND_OPACITY, OUTER_BAND_OPACITY } from "./chartTheme";
 import styles from "./ChartLegend.module.css";
 
 export interface LegendItem {
@@ -9,27 +9,40 @@ export interface LegendItem {
   color: string;
   /** line: a median; band: a shaded range; bandLine: both (a series with its range). */
   kind: "line" | "band" | "innerBand" | "bandLine";
+  /** The median is dashed: the swatch shows it, so the legend never relies on color alone. */
+  dashed?: boolean;
+  /** Opacity of the band in the swatch, when it is not the standard wash (a lighter band for a secondary series). */
+  bandOpacity?: number;
 }
 
-function Swatch({ color, kind }: { color: string; kind: LegendItem["kind"] }) {
-  const bandOpacity = kind === "innerBand" ? INNER_BAND_OPACITY : OUTER_BAND_OPACITY;
+export function Swatch({ color, kind, dashed, bandOpacity }: Pick<LegendItem, "color" | "kind" | "dashed" | "bandOpacity">) {
+  const opacity = bandOpacity ?? (kind === "innerBand" ? INNER_BAND_OPACITY : OUTER_BAND_OPACITY);
   return (
     <svg className={styles.swatch} width="30" height="16" viewBox="0 0 30 16" aria-hidden="true">
-      {kind !== "line" && <rect x="1" y="1" width="28" height="14" rx="3" fill={color} fillOpacity={bandOpacity} />}
+      {kind !== "line" && <rect x="1" y="1" width="28" height="14" rx="3" fill={color} fillOpacity={opacity} />}
       {(kind === "line" || kind === "bandLine") && (
-        <line x1="2" y1="8" x2="28" y2="8" stroke={color} strokeWidth="2" strokeLinecap="round" />
+        <line
+          x1="2"
+          y1="8"
+          x2="28"
+          y2="8"
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap={dashed ? "butt" : "round"}
+          strokeDasharray={dashed ? DASH_SWATCH : undefined}
+        />
       )}
     </svg>
   );
 }
 
 /** A legend for charts with more than one mark: a short swatch beside plain text. */
-export function ChartLegend({ items }: { items: LegendItem[] }) {
+export function ChartLegend({ items, label = "Legend" }: { items: LegendItem[]; label?: string }) {
   return (
-    <ul className={styles.legend}>
+    <ul className={styles.legend} aria-label={label}>
       {items.map((item) => (
-        <li key={item.id} className={styles.item}>
-          <Swatch color={item.color} kind={item.kind} />
+        <li key={item.id} className={styles.item} data-dashed={item.dashed ? "true" : undefined}>
+          <Swatch color={item.color} kind={item.kind} dashed={item.dashed} bandOpacity={item.bandOpacity} />
           <span>{item.label}</span>
         </li>
       ))}

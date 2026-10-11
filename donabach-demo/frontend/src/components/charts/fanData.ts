@@ -24,6 +24,15 @@ export interface FanLineSpec {
   fan: Quantiles;
   /** Also draw the darker 25th-to-75th percentile band. */
   innerBand?: boolean;
+  /** Opacity of the 10th-to-90th percentile band; 0 draws no band. Defaults to the standard wash. */
+  bandOpacity?: number;
+  /** Draw the median as a dashed line (and its keys dashed), so the series is told apart by more than colour. */
+  dashed?: boolean;
+  /**
+   * Drawing order: a higher layer is drawn later, on top. By default the first line in the list is on top
+   * (it is the one the page is about), the second under it, and so on.
+   */
+  layer?: number;
   /** Lines of detail under this line's median in the tooltip. */
   details?: (q: QuantileValues) => string[];
 }

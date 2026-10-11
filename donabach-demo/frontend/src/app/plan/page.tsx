@@ -42,7 +42,7 @@ export default function PlanPage() {
     return (
       <>
         {header}
-        <Pending status={status} error={error} retry={retry} label="Building your plan..." blocks={[307, 230, 595]} tail={43} />
+        <Pending status={status} error={error} retry={retry} label="Building your plan..." blocks={[382, 230, 640]} tail={43} />
         <ResultsFooter />
       </>
     );
@@ -61,6 +61,7 @@ export default function PlanPage() {
           <RecommenderPanel plan={plan} />
           <YearTable
             rows={plan.rows}
+            horizon={plan.settings.horizon_age}
             retirementAge={household.goals?.retirement_age}
             selected={selected}
             onSelect={(yearIndex) => {
@@ -70,7 +71,7 @@ export default function PlanPage() {
           />
           <div className={styles.next}>
             <ButtonLink href="/compare" arrow>
-              Compare with a typical advisor
+              Compare with two advisors
             </ButtonLink>
           </div>
         </div>

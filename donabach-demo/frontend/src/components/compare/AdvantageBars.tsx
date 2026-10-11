@@ -51,11 +51,11 @@ const COLUMNS: DataColumn<AdvantageStep>[] = [
 ];
 
 /**
- * "Where the advantage comes from": one bar per decision, starting from the typical advisor and
- * switching decisions on one at a time. Each bar is the change in typical wealth at 70; together
- * they add up to the whole advantage. Decisions this plan does not use have no bar.
+ * "Where the advantage comes from": one bar per decision, starting from the good RIA and switching
+ * decisions on one at a time. Each bar is the change in typical wealth at the horizon; together
+ * they add up to the whole gap in typical wealth. Decisions this plan does not use have no bar.
  */
-export function AdvantageBars({ steps }: { steps: AdvantageStep[] }) {
+export function AdvantageBars({ steps, horizon }: { steps: AdvantageStep[]; horizon: number }) {
   const chart = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<Hover | null>(null);
   const active = steps.filter((s) => s.active);
@@ -79,7 +79,7 @@ export function AdvantageBars({ steps }: { steps: AdvantageStep[] }) {
 
   return (
     <ChartFrame
-      label="Where the advantage comes from: the change in typical wealth at 70 from each decision"
+      label={`Where the advantage comes from: the change in typical wealth at ${horizon} from each decision`}
       height={height}
       chart={
         <div ref={chart} className={styles.chart} style={{ height }}>
@@ -88,13 +88,13 @@ export function AdvantageBars({ steps }: { steps: AdvantageStep[] }) {
               <span key={t} className={styles.grid} data-zero={t === 0} style={{ left: `${at(t)}%` }} />
             ))}
           </div>
-          <ol className={styles.rows} aria-label="Change in typical wealth at 70, by decision">
+          <ol className={styles.rows} aria-label={`Change in typical wealth at ${horizon}, by decision`}>
             {steps.map((step, i) => {
               const value = step.delta_median;
               const end = at(value);
               const negative = value < 0;
               const summary = step.active
-                ? `${step.label}: ${signedMoney(value)} in typical wealth at 70, ${signedMoney(step.delta_p10)} in the bad case`
+                ? `${step.label}: ${signedMoney(value)} in typical wealth at ${horizon}, ${signedMoney(step.delta_p10)} in the bad case`
                 : `${step.label}: not used in this plan`;
               return (
                 <li
@@ -153,7 +153,7 @@ export function AdvantageBars({ steps }: { steps: AdvantageStep[] }) {
               {tip.active ? (
                 <>
                   <div className={styles.tipValue}>{signedMoney(tip.delta_median)}</div>
-                  <div className={styles.tipDetail}>Change in typical outcome at 70</div>
+                  <div className={styles.tipDetail}>Change in typical outcome at {horizon}</div>
                   <div className={styles.tipDetail}>Bad case: {signedMoney(tip.delta_p10)}</div>
                   <div className={styles.tipDetail}>Running total: {signedMoney(tip.cumulative_median)}</div>
                 </>
@@ -169,7 +169,7 @@ export function AdvantageBars({ steps }: { steps: AdvantageStep[] }) {
           columns={COLUMNS}
           rows={steps}
           rowKey={(s) => s.label}
-          caption="Where the advantage comes from: the change in typical outcome and bad case at 70 from each decision, and the running total"
+          caption={`Where the advantage comes from: the change in typical outcome and bad case at ${horizon} from each decision, and the running total`}
           height={height}
         />
       }

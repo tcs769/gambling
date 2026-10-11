@@ -16,14 +16,17 @@ export function Delta({
   change,
   goodWhen,
   format,
+  epsilon = 0.5,
 }: {
   /** New value minus the base plan's value. */
   change: number;
   /** Which direction is good news for this number. */
   goodWhen: "up" | "down";
   format: (absoluteChange: number) => string;
+  /** A move smaller than this is "no change": half a dollar for money, a rounding step for a fraction. */
+  epsilon?: number;
 }) {
-  if (Math.abs(change) < 0.5) {
+  if (Math.abs(change) < epsilon) {
     return <span className={styles.delta}>No change from your plan</span>;
   }
   const up = change > 0;

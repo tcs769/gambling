@@ -22,6 +22,8 @@ const isMarked = (row: PlanRow) => row.roth_conversion > 0.5 || row.goal_paid > 
 
 interface YearTableProps {
   rows: readonly PlanRow[];
+  /** The age the plan runs to (the last row is the year before it). */
+  horizon: number;
   /** Marks the first year of retirement. */
   retirementAge?: number;
   selected: number | null;
@@ -29,7 +31,7 @@ interface YearTableProps {
 }
 
 /** The deterministic plan, year by year. Each row opens that year's decisions and tax return. */
-export function YearTable({ rows, retirementAge, selected, onSelect }: YearTableProps) {
+export function YearTable({ rows, horizon, retirementAge, selected, onSelect }: YearTableProps) {
   const columns: DataColumn<PlanRow>[] = [
     {
       key: "age",
@@ -64,8 +66,9 @@ export function YearTable({ rows, retirementAge, selected, onSelect }: YearTable
     <Panel>
       <PanelTitle aside="Click a year for its decisions and tax return">Year by year</PanelTitle>
       <p className={styles.tableNote}>
-        {rows.length} years, ages {first} to {last}. Scroll for the rest. A gold edge marks a year with a Roth conversion or a
-        goal payment.
+        {rows.length} years, ages {first} to {last}, running to {horizon}. Scroll for the rest. Each year is at expected
+        returns rather than a simulated future, so these figures are not the outcomes on the Comparison screen. A gold edge
+        marks a year with a Roth conversion or a goal payment.
       </p>
       <DataTable
         columns={columns}

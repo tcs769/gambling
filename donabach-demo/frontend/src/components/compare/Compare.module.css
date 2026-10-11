@@ -3,22 +3,6 @@
   gap: 20px;
 }
 
-/* ---- Stat cards ---- */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-/* Cards share rows (label, figure, notes), so the figures line up across the row even when a
-   label runs to two lines. */
-.stats > div {
-  display: grid;
-  grid-row: span 3;
-  grid-template-rows: subgrid;
-  row-gap: 4px;
-}
-
 .strong {
   color: var(--espresso);
   font-weight: 600;
@@ -26,11 +10,21 @@
 
 .delta {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 5px;
   margin-top: 4px;
+  /* Its own size and weight: it sits inside cells whose figures are large. */
+  font-size: 0.9375rem;
   font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-align: left;
   color: var(--muted-text);
+}
+/* The arrow sits level with the first line of text, even when the text wraps. */
+.delta svg {
+  flex-shrink: 0;
+  margin-top: 4px;
 }
 .delta[data-tone="good"] {
   color: color-mix(in srgb, var(--good) 75%, var(--espresso));
@@ -79,4 +73,24 @@
 }
 .expander .sectionNote {
   margin: 0;
+}
+
+/* ---- How we measure ---- */
+.measureList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 20px;
+  max-width: 100ch;
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+.measureList strong {
+  color: var(--brown);
+}
+
+/* The "How we measure" link jumps here: leave room for the sticky header above it. */
+.anchor {
+  scroll-margin-top: 88px;
 }

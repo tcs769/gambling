@@ -97,7 +97,7 @@ def perturbed_after(inputs, year):
     k401 = np.minimum(P.LIMIT_401K_EMPLOYEE * inputs.tv[:, sim.TV_NEARN][None, :], sim.KEEP_401K_SHARE_OF_WAGES * wages)
     wage_tax = np.zeros_like(inputs.wage_tax)
     with sim._KERNEL_LOCK:
-        sim._wage_tax_table(np.ascontiguousarray(wages), np.ascontiguousarray(k401), inputs.tv, wage_tax)
+        sim._wage_tax_table(np.ascontiguousarray(wages), np.ascontiguousarray(k401), inputs.tv, np.ascontiguousarray(inputs.wage_tax[:, :, 2]), wage_tax)
     return dataclasses.replace(inputs, rets=rets, wages=wages, k401=k401, wage_tax=wage_tax, logperm=logperm)
 
 

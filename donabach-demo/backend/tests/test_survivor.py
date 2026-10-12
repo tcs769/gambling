@@ -28,7 +28,7 @@ def test_the_mortality_table_is_ssas_and_its_life_expectancies_are_what_ssa_publ
     assert mortality.MALE_Q[65] == pytest.approx(0.016455) and mortality.FEMALE_Q[65] == pytest.approx(0.010188)
     assert _life_expectancy(mortality.MALE_Q, 65) == pytest.approx(18.12, abs=0.01)
     assert _life_expectancy(mortality.FEMALE_Q, 65) == pytest.approx(20.66, abs=0.01)
-    assert (mortality.UNISEX_Q == pytest.approx(0.5 * (mortality.MALE_Q + mortality.FEMALE_Q))).all()
+    assert np.allclose(mortality.UNISEX_Q, 0.5 * (mortality.MALE_Q + mortality.FEMALE_Q))
 
 
 def test_death_years_follow_the_table():

@@ -55,14 +55,13 @@ def picks(household: Household, strategies: list[Strategy]) -> dict[str, Strateg
     advisor = run_batch(futures, [RIA_BASELINE])
     adv_ruin = float(np.mean(advisor.unfunded[0] > 0))
     adv_p10 = float(np.percentile(advisor.wealth[0], 10))
-    screen_advisor = run_batch(subset_inputs(futures, 100), [RIA_BASELINE])
-    screen_ruin = float(np.mean(screen_advisor.unfunded[0] > 0))
-    screen_p10 = float(np.percentile(screen_advisor.wealth[0], 10))
-
     unconstrained = search(futures, strategies=strategies, criterion=median_wealth).best.strategy
 
-    def screen_mask(batch: BatchResult) -> np.ndarray:  # the screen keeps those that look feasible on its 100 futures (a little slack)
-        return (np.mean(batch.unfunded > 0, axis=1) <= screen_ruin + 0.02) & (_p10(batch.wealth) >= 0.9 * screen_p10)
+    def screen_mask(batch: BatchResult) -> np.ndarray:  # the screen keeps those that look feasible on its own futures (a little slack)
+        base = run_batch(subset_inputs(futures, batch.wealth.shape[1]), [RIA_BASELINE])
+        ruin_limit = float(np.mean(base.unfunded[0] > 0)) + 0.02
+        p10_limit = 0.9 * float(np.percentile(base.wealth[0], 10))
+        return (np.mean(batch.unfunded > 0, axis=1) <= ruin_limit) & (_p10(batch.wealth) >= p10_limit)
 
     result = search(futures, strategies=strategies, criterion=median_wealth, screen_mask=screen_mask)
     n = len(result.strategies)

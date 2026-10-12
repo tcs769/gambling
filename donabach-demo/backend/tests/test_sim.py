@@ -384,7 +384,7 @@ def test_a_job_loss_year_triggers_a_low_income_conversion():
     t = 5
     inp.wages[0, t] *= 0.4  # one earner's job loss would do less; this is a clear low-income year
     inp.k401[0, t] = np.minimum(P.LIMIT_401K_EMPLOYEE * 2, 0.20 * inp.wages[0, t])
-    sim._wage_tax_table(inp.wages, inp.k401, inp.tv, inp.wage_tax)
+    sim._wage_tax_table(inp.wages, inp.k401, inp.tv, np.zeros(inp.wages.shape), inp.wage_tax)
     low = run_detail(inp, menu_policy("90|fill22_low|off|off|off")).log
     assert low["conv"][t] > 0  # wages 100,000 < 80% of the 288,000 expected: low income
     assert np.all(low["conv"][:t] == 0.0)
@@ -498,9 +498,9 @@ def test_roth_in_low_income_years_only_switches_with_the_year():
     inp = deterministic()
     inp.wages[0, 5] *= 0.4  # a bad year: well under 80% of the expected wages
     inp.k401[0, 5] = min(P.LIMIT_401K_EMPLOYEE * 2, 0.20 * inp.wages[0, 5])  # the wage-tax table must follow
-    tax = np.zeros((1, inp.n_years, 2))
+    tax = np.zeros((1, inp.n_years, 3))
     with sim._KERNEL_LOCK:
-        sim._wage_tax_table(np.ascontiguousarray(inp.wages), np.ascontiguousarray(inp.k401), inp.tv, tax)
+        sim._wage_tax_table(np.ascontiguousarray(inp.wages), np.ascontiguousarray(inp.k401), inp.tv, np.zeros(inp.wages.shape), tax)
     inp.wage_tax = tax
     log = run_detail(inp, menu_policy("90|none|off|off|off|roth_low")).log
     assert log["k401_roth"][5] == pytest.approx(inp.k401[0, 5]) and inp.k401[0, 5] > 0

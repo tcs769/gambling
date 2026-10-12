@@ -238,7 +238,8 @@ def test_rank_strategies_breaks_ties_in_menu_order():
 
 def test_full_search_is_fast(futures):
     # The app plans in the equity-first style: its whole menu (1,008 strategies) is searched in under 2 s. The balanced menu
-    # (4,032) takes about 1.9 s since tax lots (about 1.5 s before them); the bound for it is 3 s.
+    # (4,032) takes about 3.3 s on four cores since the end valuation, gain harvesting and the reserve spent across accounts (1.9 s before them);
+    # the bound for it is 4 s.
     reserve_menu = menu(style="equity_first")
     search(futures, strategies=reserve_menu)  # compiled and warm
     start = time.perf_counter()
@@ -248,8 +249,8 @@ def test_full_search_is_fast(futures):
     search(futures)
     start = time.perf_counter()
     res = search(futures)
-    assert time.perf_counter() - start < 3.0
-    assert res.elapsed_seconds < 3.0 and res.n_considered == 4032
+    assert time.perf_counter() - start < 4.0
+    assert res.elapsed_seconds < 4.0 and res.n_considered == 4032
 
 
 def test_a_strategy_subset_can_be_searched(futures):

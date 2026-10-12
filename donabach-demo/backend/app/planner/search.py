@@ -32,13 +32,14 @@ from app.sim.simulate import BatchResult, Policy, SimInputs, run_batch
 RISK_AVERSION = 3.0
 WEALTH_FLOOR = 50_000.0
 
-SCREEN_PATHS = 100  # futures used to screen the whole menu
-SCREEN_KEEP = 150  # strategies that go on to be scored on every future
+SCREEN_PATHS = 100  # futures used to screen the whole menu (at 64 or 80 the staged search missed the exhaustive winner on the demo household)
+SCREEN_KEEP = 110  # strategies that go on to be scored on every future
 SCREEN_MIN_STRATEGIES = 400  # smaller menus are scored exhaustively
 REFINE_DIRECT_INDEXING = 8  # direct-indexing strategies scored on every future with the stock-level book
 DI_PER_GROUP_POOL = 6  # with groups: direct-indexing strategies of each group the screen passes on, ranked on every future with the aggregate rule
 DI_PER_GROUP = 2  # and the best of them that go on to be scored with the stock-level book
-DI_POOL = 36  # direct-indexing strategies the screen passes on, to be ranked on every future with the aggregate rule
+DI_SCREEN_PATHS = 100  # futures the direct-indexing strategies are screened on
+DI_POOL = 30  # direct-indexing strategies the screen passes on, to be ranked on every future with the aggregate rule
 
 
 def certainty_equivalent(
@@ -172,11 +173,19 @@ def search(
     started = time.perf_counter()
     considered = len(strategies)
     if not exhaustive and considered > SCREEN_MIN_STRATEGIES and inputs.n_paths > 2 * SCREEN_PATHS:
-        screen_batch = run_batch(subset_inputs(inputs, SCREEN_PATHS), [_aggregate(s.policy()) for s in strategies])
-        screen = wealth_of(screen_batch)
-        screen_scores = score_of(screen)
-        if screen_mask is not None:
-            screen_scores = np.where(screen_mask(screen_batch), screen_scores, -np.inf)
+        # The strategies that direct-index are screened on fewer futures: the screen only picks a pool of them (`DI_POOL`) that is then
+        # ranked on every future, and their selection is separate from the others' in any case.
+        by_stock = np.array([_by_stock(s) for s in strategies])
+        screen_scores = np.empty(len(strategies))
+        for members, paths in ((~by_stock, SCREEN_PATHS), (by_stock, DI_SCREEN_PATHS)):
+            idx = np.flatnonzero(members)
+            if idx.size == 0:
+                continue
+            part = run_batch(subset_inputs(inputs, paths), [_aggregate(strategies[i].policy()) for i in idx])
+            scores = score_of(wealth_of(part))
+            if screen_mask is not None:
+                scores = np.where(screen_mask(part), scores, -np.inf)
+            screen_scores[idx] = scores
         order = np.argsort(-screen_scores, kind="stable").tolist()
         if group_of is None:
             pool = [i for i in order if _by_stock(strategies[i])][: max(DI_POOL, refine)]

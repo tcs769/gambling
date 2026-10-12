@@ -71,7 +71,7 @@ def test_only_material_differences_are_marked_and_each_is_attributed_to_its_sour
 
 def test_the_summary_is_the_largest_difference_of_each_kind_without_the_wages():
     base = [_row(0), _row(1), _row(2)]
-    held = [_row(0, roth_conversion=10_000), _row(1, wages=0, roth_conversion=90_000, losses_harvested=5_000), _row(2)]
+    held = [_row(0, roth_conversion=10_000), _row(1, wages=0, roth_conversion=90_000, losses_harvested=15_000), _row(2)]
     _, changes = showcase_scenarios.compare_rows(base, held, held)
     lines = showcase_scenarios.summarize(changes, "event")
     assert lines[0].startswith("At 51 $90,000 is converted")

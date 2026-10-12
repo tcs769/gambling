@@ -14,7 +14,9 @@ import type {
   PlanResponse,
   PlanningStyle,
   Preset,
+  ScenarioInfo,
   ShowcaseResponse,
+  ShowcaseScenario,
   ShowcaseWaterfall,
   WhatIfResponse,
   YearDetail,
@@ -162,6 +164,13 @@ export const api = {
    */
   showcaseAnalysis: (enabled: readonly string[] | null, signal?: AbortSignal) =>
     post<ShowcaseWaterfall>("/showcase/analysis", { enabled }, signal),
+
+  /** The events the showcase household can be asked about ("Job loss next year"): key, label and what is modeled. */
+  showcaseScenarios: (signal?: AbortSignal) => request<ScenarioInfo[]>("/showcase/scenarios", { signal }),
+
+  /** The household after one event, planned again, against the advisor on the same shocked futures (worked out at start-up). */
+  showcaseScenario: (key: string, signal?: AbortSignal) =>
+    request<ShowcaseScenario>(`/showcase/scenarios/${encodeURIComponent(key)}`, { signal }),
 
   whatIf: (household: Household, presets: Preset[], edits: Partial<HouseholdEdits>, demoMode: boolean, nPaths = 400) =>
     post<WhatIfResponse>("/plan/whatif", {

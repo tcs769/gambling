@@ -24,11 +24,15 @@ export function nextStep(pathname: string): Step | undefined {
   return STEPS[stepIndex(pathname) + 1];
 }
 
-/** The showcase flow: a separate three-step walk (household, strategies, wealth) under /showcase. */
+/**
+ * The showcase flow: a separate four-step walk under /showcase. Wealth comes before the strategies because the flow shows the
+ * advisor's wealth first (alone), then the strategies, then the wealth of both again: that screen is one step, "Wealth".
+ */
 export const SHOWCASE_STEPS: Step[] = [
   { key: "household", label: "Household", href: "/showcase" },
-  { key: "strategies", label: "Strategies", href: "/showcase/strategies" },
   { key: "wealth", label: "Wealth", href: "/showcase/wealth" },
+  { key: "strategies", label: "Strategies", href: "/showcase/strategies" },
+  { key: "whatif", label: "What if", href: "/showcase/whatif" },
 ];
 
 /** True on /showcase and every page under it (not on a path that merely starts with the same letters). */

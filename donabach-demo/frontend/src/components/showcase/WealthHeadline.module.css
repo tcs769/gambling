@@ -22,6 +22,22 @@
   font-weight: 650;
 }
 
+/* One line under the cells, across the box: what the advisor does. */
+.about {
+  grid-column: 1 / -1;
+  padding: 12px 26px;
+  border-top: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+/* A headline that takes focus when something new is revealed in it (never by Tab). */
+.headline:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
 .cell {
   display: grid;
   align-content: start;
@@ -91,7 +107,8 @@
   }
 }
 @container (max-width: 420px) {
-  .valuation {
+  .valuation,
+  .about {
     padding: 10px 18px;
   }
   .cell {
@@ -100,4 +117,13 @@
   .big {
     font-size: 2.25rem;
   }
+}
+
+/* What the same figure was before the event (the what-if screen): quiet, under the figure's own lines. */
+.before {
+  margin-top: 4px;
+  color: var(--brown);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.4;
 }

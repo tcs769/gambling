@@ -29,8 +29,8 @@ from app.planner.strategies import menu
 from app.schemas import JobLoss, MarketShock
 from app.sim.simulate import build_inputs, run_batch, run_detail
 
-CHANGE_DOLLARS = 1_000.0  # a year's conversion, harvest or wages must differ by this much to count as changed
-CHANGE_SHARE = 0.02  # and the stock share by two points
+CHANGE_DOLLARS = 10_000.0  # a year's conversion, harvest or wages must differ by this much to count as changed (a presentation threshold: it marks, it changes nothing)
+CHANGE_SHARE = 0.05  # and the stock share by five points
 MAX_SUMMARY = 4
 
 

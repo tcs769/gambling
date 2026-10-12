@@ -31,7 +31,7 @@ export default function ShowcaseHouseholdPage() {
       <HouseholdCardView card={data.card} horizonAge={data.waterfall.horizon_age} />
       <FlowNav
         back={{ href: "/", label: "Back to the demo home" }}
-        next={{ href: "/showcase/strategies", label: "See the strategies" }}
+        next={{ href: "/showcase/wealth", label: "See what a good advisor gets them" }}
       />
       <ResultsFooter note={data.footer_note} />
     </>

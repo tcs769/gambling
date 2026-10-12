@@ -11,7 +11,7 @@ import styles from "./Shell.module.css";
 
 export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  // The showcase flow (/showcase) has its own three steps in the header, and none of the demo's switches: its numbers
+  // The showcase flow (/showcase) has its own four steps in the header, and none of the demo's switches: its numbers
   // are fixed on the API's side, so Demo mode has nothing to do there.
   const showcase = inShowcase(pathname);
   return (

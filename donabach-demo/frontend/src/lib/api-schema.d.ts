@@ -253,6 +253,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/showcase/scenarios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Showcase Scenarios
+         * @description The events the showcase household can be put through (a job lost next year, a 30% fall in stocks next year).
+         */
+        get: operations["get_showcase_scenarios_showcase_scenarios_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/showcase/scenarios/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Showcase Scenario
+         * @description The showcase household after the event, planned again: wealth against the advisor on the same shocked futures, what the
+         *     plan does each year beside what it did before, and the years that differ. Precomputed at start-up, then kept.
+         */
+        get: operations["get_showcase_scenario_showcase_scenarios__key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1445,6 +1486,101 @@ export interface components {
             /** Candidates */
             candidates?: components["schemas"]["RankedRow"][];
         };
+        /** ScenarioChange */
+        ScenarioChange: {
+            /** Age */
+            age: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "event" | "replan";
+            /** Before */
+            before: number;
+            /** After */
+            after: number;
+            /** Text */
+            text: string;
+        };
+        /** ScenarioInfo */
+        ScenarioInfo: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Event */
+            event: string;
+        };
+        /**
+         * ScenarioReplan
+         * @description What re-planning is worth after the event: the plan chosen before it and the plan chosen knowing about it, both on the same
+         *     2,000 shocked futures neither was searched on. It can be small or negative: it is whatever the engine measures.
+         */
+        ScenarioReplan: {
+            /** Original Plan Median At Horizon */
+            original_plan_median_at_horizon: number;
+            /** Replanned Median At Horizon */
+            replanned_median_at_horizon: number;
+            /** Median Rate */
+            median_rate: number;
+            /** Median Dollars */
+            median_dollars: number;
+        };
+        /**
+         * ScenarioYear
+         * @description One year on the expected path, for three plans: the plan before the event (no event), the same plan once the event happens
+         *     (its rules respond to the new situation), and the plan chosen again knowing about the event (expected returns, no other shocks).
+         */
+        ScenarioYear: {
+            /** Year Index */
+            year_index: number;
+            /** Age */
+            age: number;
+            /** Wages */
+            wages: number;
+            /** Base Wages */
+            base_wages: number;
+            /** Roth Conversion */
+            roth_conversion: number;
+            /** Held Roth Conversion */
+            held_roth_conversion: number;
+            /** Base Roth Conversion */
+            base_roth_conversion: number;
+            /** Losses Harvested */
+            losses_harvested: number;
+            /** Held Losses Harvested */
+            held_losses_harvested: number;
+            /** Base Losses Harvested */
+            base_losses_harvested: number;
+            /** Gains Harvested Tax Free */
+            gains_harvested_tax_free: number;
+            /** Held Gains Harvested Tax Free */
+            held_gains_harvested_tax_free: number;
+            /** Base Gains Harvested Tax Free */
+            base_gains_harvested_tax_free: number;
+            /** Stock Share */
+            stock_share: number;
+            /** Held Stock Share */
+            held_stock_share: number;
+            /** Base Stock Share */
+            base_stock_share: number;
+            /** Total Tax */
+            total_tax: number;
+            /** Base Total Tax */
+            base_total_tax: number;
+            /** Wealth */
+            wealth: number;
+            /** Base Wealth */
+            base_wealth: number;
+            /** Responded */
+            responded: string[];
+            /** Replanned */
+            replanned: string[];
+        };
         /** ShowcaseAdvantage */
         ShowcaseAdvantage: {
             /** Median Rate */
@@ -1560,6 +1696,36 @@ export interface components {
             typical_rate: number | null;
             /** Footer Note */
             footer_note: string;
+        };
+        /**
+         * ShowcaseScenario
+         * @description The showcase household after an event, planned again, against the advisor on the same shocked futures.
+         */
+        ShowcaseScenario: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Event */
+            event: string;
+            /** Plan Label */
+            plan_label: string;
+            /** Plan Sentence */
+            plan_sentence: string;
+            /** Original Plan Label */
+            original_plan_label: string;
+            /** Plan Changed */
+            plan_changed: boolean;
+            wealth: components["schemas"]["ShowcaseWealth"];
+            replan: components["schemas"]["ScenarioReplan"];
+            /** Years */
+            years: components["schemas"]["ScenarioYear"][];
+            /** Changes */
+            changes: components["schemas"]["ScenarioChange"][];
+            /** Summary */
+            summary: string[];
+            /** Replan Summary */
+            replan_summary: string[];
         };
         /**
          * ShowcaseWaterfall
@@ -2366,6 +2532,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ShowcaseWaterfall"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_showcase_scenarios_showcase_scenarios_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScenarioInfo"][];
+                };
+            };
+        };
+    };
+    get_showcase_scenario_showcase_scenarios__key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShowcaseScenario"];
                 };
             };
             /** @description Validation Error */

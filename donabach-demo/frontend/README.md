@@ -48,33 +48,60 @@ series tokens in `src/app/globals.css`; `npm run check:colors` covers all four.
 
 ## The showcase flow (`/showcase`)
 
-A separate three-step walk on one household, for showing the idea in a few minutes without any documents. The home page
-(Upload) has an "Open the showcase" link; inside the flow the header shows three steps (Household, Strategies, Wealth) in
+A separate four-screen walk on one household, for showing the idea in a few minutes without any documents (it is the flow
+recorded for the demo video: household, what a good advisor gets them, what Donabach does, then "what if"). The home page
+(Upload) has an "Open the showcase" link; inside the flow the header shows four steps (Household, Wealth, Strategies, What if) in
 place of the demo's seven, with the brand still leading home, and every screen ends in a primary "next" button with a back
-link beside it. The flow is light, like the rest of the demo, whatever the system asks for (`color-scheme: light` on `:root`).
+link beside it. The flow is light, like the rest of the demo (`color-scheme: light` on `:root`). The order is
+**household -> wealth, advisor only -> strategies (waterfall) -> wealth, both lines -> what if**.
 
 1. **`/showcase`, the household card**: the household's name, type and tagline, who is in it (wages, children), annual income
    and total saved, where the savings are (a stacked bar of taxable / pre-tax / Roth / cash with a legend, and the taxable
    account's basis and unrealized gain called out), what they are saving for (home, college, retirement and Social Security
-   on a line from today to the horizon age, each with the API's detail sentence) and what stands out (the API's notes).
-2. **`/showcase/strategies`, the waterfall**: from a good advisor's result to Donabach's, one floating bar per strategy in the
+   on a line from today to the horizon age, each with the API's detail sentence) and what stands out (the API's notes). Next:
+   "See what a good advisor gets them".
+2. **`/showcase/wealth`, the advisor alone**: the screen starts with only a good advisor's result: the typical household's
+   after-tax wealth at the horizon, a bad market's (10th percentile), the chance of running out of money and one line on what the
+   advisor does (an age-based portfolio, standard fees, accounts managed separately: words only, no number), and a chart of the
+   advisor's two lines. Donabach is **not in the page** (not hidden by CSS: its lines, headline, heirs block and bad-market
+   comparison are not rendered) until the **"Show what Donabach does"** button is pressed, or the strategies are opened. Pressing it
+   draws Donabach's lines in beside the advisor's, moves focus to the headline and announces it to screen readers. "Revealed" is
+   state in the `ShowcaseProvider` (not the address): it stays for the session and a reload starts again with the advisor alone.
+   Next: "See what Donabach does".
+3. **`/showcase/strategies`, the waterfall**: from a good advisor's result to Donabach's, one floating bar per strategy in the
    order the API switched them on, ending in a total bar. It is the **median advantage only**: no risk-adjusted number or
    word is on this screen (the API's waterfall has no such field). Every row writes both the percent a year and the dollars
    at the horizon, and a segmented control chooses which of the two the bar's length shows. Every strategy has a switch (a
    checkbox with the switch role, labelled with its name, with a button that opens the API's sentence on what it does).
    The total and the two medians are in large type above, the same numbers are a toggle away as a table, and the figure
-   has a text alternative.
-3. **`/showcase/wealth`, wealth over time**: the whole plan with every strategy on, and it says so under the title. It does
+   has a text alternative. Opening this screen reveals Donabach on the wealth screen. Next: "See wealth over time".
+4. **`/showcase/wealth` again, both lines**: the whole plan with every strategy on, and it says so under the title. It does
    not follow the switches and never asks the API for anything: it shows the household answer's `wealth` as it came. The
    median advantage and the risk-adjusted one (shown here once, with the API's label, figure, dollars and one-line explanation,
    word for word), then after-tax wealth by age for Donabach and the advisor as four lines (the typical future solid, the
    bad-market 10th percentile dashed, one colour for each entity), a tooltip with all four at an age, end labels, a table twin,
-   the two 10th-percentile values at the horizon and the chance of running out of money for both.
+   the two 10th-percentile values at the horizon and the chance of running out of money for both. Next: "Change the household".
+5. **`/showcase/whatif`, what if things change**: a radio group (**No change** | **Job loss next year** | **Market drops 30% next
+   year**, the events' labels from `GET /showcase/scenarios`; arrow keys move the choice). No change is the unchanged household
+   (`data.wealth`, no request). Choosing an event shows, from the API only: the event sentence (what happens and what is not
+   modeled), a compact headline pair (Donabach's and the advisor's median at the horizon, the median advantage a year and in
+   dollars, the risk-adjusted advantage once, the heirs valuation as one line, and "Before the event: +X% a year" for the
+   unchanged household), **What Donabach changes** (the `summary` sentences, "Planning again also changes" with the
+   `replan_summary` sentences, and one line on what choosing the plan again is worth, with its sign in a word: "is worth" or
+   "costs"), **Year by year** (a table from today to the end of the plan: Age, Wages, Roth conversion, Gains realized tax-free,
+   Losses harvested, Stock share, each cell the plan after the event with "before: X" under it where the API's `responded` /
+   `replanned` flags say it differs; a changed year has a tint, an edge and a visible "Changed" tag with an icon and text for
+   screen readers; "Show only the years that changed" is on at first; the first changed row is scrolled to) and the wealth over
+   time for the event (the same figure as the wealth screen, both lines). Both events are fetched as soon as the flow opens
+   (once each, then kept), so choosing one is instant; one that is not ready shows a loading state, and one the API refuses
+   shows its message with a retry, in the results area only. The screens say the plan "adapts" and "re-plans", never
+   "predicts": the income forecast model is not connected.
 
-The data is two calls. `GET /showcase` answers with the household, its card, the plan in words, the waterfall with every
+The data is four calls. `GET /showcase` answers with the household, its card, the plan in words, the waterfall with every
 strategy on (`waterfall`: median advantage only), the whole plan's wealth over time (`wealth`: both measures of the advantage,
 worked out once) and the footer's note. `POST /showcase/analysis {enabled}` answers with the median-only waterfall for only
-those strategies on. No number on these screens is typed in the app, and nothing about the household is: the e2e checks them
+those strategies on. `GET /showcase/scenarios` lists the events and `GET /showcase/scenarios/{key}` answers with one (its
+wealth, the years, the changes and the summaries). No number on these screens is typed in the app, and nothing about the household is: the e2e checks them
 against the API's own answers, and it (and the screens) were run against households of other shapes (one earner or two, with
 or without a taxable account or children, an early retirement, two goals in the same year, a short horizon, strategies that
 cost a little, a strategy that does nothing once another is off).
@@ -105,7 +132,8 @@ switches go back to what the numbers on screen are for. Moving to the wealth scr
 changes nothing there: it shows the whole plan at once, and the change lands on the strategies screen when it arrives.
 
 `e2e/showcase.mjs` holds the checks, called at the end of `walkthrough.mjs`; run alone it takes a little over a minute
-(`BASE_URL=... CHROMIUM_PATH=... node e2e/showcase.mjs`). They look at every screen at 390, 768 and 1280 (overflow, text size,
+(`BASE_URL=... CHROMIUM_PATH=... node e2e/showcase.mjs`). `e2e/whatif.mjs` holds the round-three checks (the advisor-only start and
+the reveal, the flow order and every way on and back, the what-if screen, its error and loading states) and runs the same way. They look at every screen at 390, 768 and 1280 (overflow, text size,
 contrast of every piece of text, what spills out of its panel) and at 1280 with the system asking for dark (still light:
 same colour scheme, page colour and tokens).
 

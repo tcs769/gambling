@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { ChangeError } from "@/components/showcase/ChangeError";
 import { FlowNav } from "@/components/showcase/FlowNav";
 import { ShowcasePending } from "@/components/showcase/ShowcasePending";
@@ -18,6 +19,11 @@ import { useShowcase } from "@/lib/showcase";
  */
 export default function ShowcaseStrategiesPage() {
   const { status, data, waterfall, enabled, computing, actions } = useShowcase();
+
+  // Opening the strategies (from the advisor-only wealth view: the way on, the header or the back button) is the same as
+  // pressing "Show what Donabach does": the viewer has moved on, and the way on from here leads to wealth with both lines.
+  const { reveal } = actions;
+  useEffect(() => reveal(), [reveal]);
 
   if (status !== "ready" || !data || !waterfall) {
     return (

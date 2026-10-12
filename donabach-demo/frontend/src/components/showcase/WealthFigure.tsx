@@ -44,9 +44,13 @@ function columnsFor(series: readonly WealthSeries[]): DataColumn<WealthRow>[] {
  * Wealth over time against the advisor: the chart (Donabach and the advisor, each as a typical and a bad-market line),
  * its legend with a line on what the dashed lines are, the same numbers as a table, and in words where each line ends.
  */
-export function WealthFigure({ wealth }: { wealth: ShowcaseWealth }) {
+export function WealthFigure({ wealth, advisorOnly = false }: { wealth: ShowcaseWealth; advisorOnly?: boolean }) {
   const [measure, width] = useElementWidth<HTMLDivElement>();
-  const series = useMemo(() => wealthSeries(wealth.advisor_label), [wealth.advisor_label]);
+  // Before Donabach is shown, only the advisor's two lines are drawn, and nothing about Donabach is in the figure at all.
+  const series = useMemo(
+    () => wealthSeries(wealth.advisor_label).filter((line) => !advisorOnly || line.key.startsWith("advisor")),
+    [wealth.advisor_label, advisorOnly],
+  );
   const rows = useMemo(() => wealthRows(wealth), [wealth]);
   const columns = useMemo(() => columnsFor(series), [series]);
   const advisor = wealth.advisor_label.toLowerCase();
@@ -63,13 +67,25 @@ export function WealthFigure({ wealth }: { wealth: ShowcaseWealth }) {
 
   return (
     <ChartFrame
-      label={`After-tax wealth by age: Donabach and a ${advisor}, each as a solid line for the typical (median) future and a dashed line for a bad-market (10th percentile) future`}
+      label={
+        advisorOnly
+          ? `After-tax wealth by age with a ${advisor}: a solid line for the typical (median) future and a dashed line for a bad-market (10th percentile) future`
+          : `After-tax wealth by age: Donabach and a ${advisor}, each as a solid line for the typical (median) future and a dashed line for a bad-market (10th percentile) future`
+      }
       summary={
-        <>
-          At age {horizon} the typical (median) after-tax wealth is {money(advantage.plan_median_at_horizon)} with
-          Donabach and {money(advantage.advisor_median_at_horizon)} with a {advisor}. In a bad market (the 10th
-          percentile) it is {money(advantage.plan_p10_at_horizon)} and {money(advantage.advisor_p10_at_horizon)}.
-        </>
+        advisorOnly ? (
+          <>
+            At age {horizon} the typical (median) after-tax wealth with a {advisor} is{" "}
+            {money(advantage.advisor_median_at_horizon)}. In a bad market (the 10th percentile) it is{" "}
+            {money(advantage.advisor_p10_at_horizon)}.
+          </>
+        ) : (
+          <>
+            At age {horizon} the typical (median) after-tax wealth is {money(advantage.plan_median_at_horizon)} with
+            Donabach and {money(advantage.advisor_median_at_horizon)} with a {advisor}. In a bad market (the 10th
+            percentile) it is {money(advantage.plan_p10_at_horizon)} and {money(advantage.advisor_p10_at_horizon)}.
+          </>
+        )
       }
       legend={
         <div className={styles.legendStack}>
@@ -96,9 +112,13 @@ export function WealthFigure({ wealth }: { wealth: ShowcaseWealth }) {
           columns={columns}
           rows={rows}
           rowKey={(row) => row.age}
-          caption={`After-tax wealth by age: the typical (median) and the bad-market (10th percentile) future for Donabach and a ${advisor}`}
+          caption={
+            advisorOnly
+              ? `After-tax wealth by age: the typical (median) and the bad-market (10th percentile) future with a ${advisor}`
+              : `After-tax wealth by age: the typical (median) and the bad-market (10th percentile) future for Donabach and a ${advisor}`
+          }
           height={CHART_HEIGHT}
-          minWidth={560}
+          minWidth={advisorOnly ? 360 : 560}
           dense
         />
       }

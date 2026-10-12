@@ -27,6 +27,7 @@ import { resolve } from "node:path";
 import { chromium } from "playwright-core";
 import { runGiving } from "./giving.mjs";
 import { runShowcase } from "./showcase.mjs";
+import { runWhatIf } from "./whatif.mjs";
 import { runStyles } from "./styles.mjs";
 import { runValuations } from "./valuations.mjs";
 
@@ -1186,6 +1187,8 @@ check(fresh[0] === fresh[1], `demo mode: two fresh sessions show identical numbe
 // --- The showcase flow: household card, strategy waterfall, wealth over time (e2e/showcase.mjs) ----------------------
 // Its own section of checks, all read from the API's /showcase responses; they count with the rest.
 await runShowcase({ browser, base: BASE, out: OUT, check, notes });
+// Round three: the advisor-only wealth screen, the flow order and the what-if screen (e2e/whatif.mjs).
+await runWhatIf({ browser, base: BASE, out: OUT, check, notes });
 
 // --- Round two: both valuations, charitable giving, planning styles (e2e/valuations.mjs, giving.mjs, styles.mjs) --------------------
 // Each reads its expectations from what the API sent the browser; they count with the rest.

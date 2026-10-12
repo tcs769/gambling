@@ -1,4 +1,4 @@
-/* Page-level layout shared by the three showcase screens. */
+/* Page-level layout shared by the showcase screens. */
 
 /* One column that may be narrower than its widest panel's content: a wide table scrolls inside its panel. */
 .stack {
@@ -35,4 +35,10 @@
   max-width: 100ch;
   padding: 0 4px 14px;
   line-height: 1.6;
+}
+
+/* The button that shows Donabach on the advisor-only wealth screen, under the advisor's figures. */
+.reveal {
+  display: flex;
+  justify-content: center;
 }

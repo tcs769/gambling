@@ -7,7 +7,7 @@ import { Icon } from "../ui/Icon";
 import styles from "./ShowcaseNav.module.css";
 
 /**
- * The header's navigation inside the showcase flow: three steps instead of the demo's seven. Every step is reachable
+ * The header's navigation inside the showcase flow: four steps instead of the demo's seven. Every step is reachable
  * at any time (each screen loads what it needs). Below about 520px only the step you are on keeps its word, and the
  * others are numbered dots that still carry their names for a screen reader.
  */

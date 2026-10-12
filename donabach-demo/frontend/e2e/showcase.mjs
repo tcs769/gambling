@@ -185,7 +185,7 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     const context = await browser.newContext({ viewport: { width, height }, colorScheme: scheme });
     const page = await context.newPage();
     const issues = [];
-    const requests = { showcase: 0, analysis: [] };
+    const requests = { showcase: 0, analysis: [], scenarioList: 0, scenarios: {} };
     page.on("console", (m) => {
       if (m.type() === "error") issues.push(m.text());
     });
@@ -193,6 +193,9 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     page.on("request", (r) => {
       const { pathname } = new URL(r.url());
       if (r.method() === "GET" && pathname === "/api/showcase") requests.showcase++;
+      if (r.method() === "GET" && pathname === "/api/showcase/scenarios") requests.scenarioList++;
+      const one = pathname.match(/^\/api\/showcase\/scenarios\/([^/]+)$/);
+      if (r.method() === "GET" && one) requests.scenarios[one[1]] = (requests.scenarios[one[1]] ?? 0) + 1;
       if (r.method() === "POST" && pathname === "/api/showcase/analysis")
         requests.analysis.push(JSON.parse(r.postData() ?? "{}"));
     });
@@ -301,6 +304,22 @@ export async function runShowcase({ browser, base, out, check, notes }) {
         { timeout: 10000 },
       )
       .catch(() => notes.push("showcase: the chart lines were still animating at the check"));
+
+  /** The page's main text without its live regions (the announcement of what was just shown is not part of the screen). */
+  const mainText = (page) =>
+    page.evaluate(() => {
+      const main = document.querySelector("main");
+      let text = main?.innerText ?? "";
+      for (const live of main?.querySelectorAll("[role=status]") ?? [])
+        if (live.innerText) text = text.replace(live.innerText, "");
+      return text.replace(/\s+/g, " ").trim();
+    });
+  /** Press "Show what Donabach does" on the advisor-only wealth screen and wait for Donabach's lines. */
+  const revealWealth = async (page) => {
+    await page.getByRole("button", { name: "Show what Donabach does" }).click();
+    await page.getByRole("heading", { level: 2, name: "Median advantage" }).waitFor({ timeout: 10000 });
+    await settleLines(page, 4);
+  };
 
   // === The home page leads in, and asks for the household before the link is followed ====================================
   {
@@ -423,11 +442,11 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     const nav = page.getByRole("navigation", { name: "Showcase progress" });
     const steps = (await nav.locator("li").allInnerTexts()).map(squash);
     check(
-      JSON.stringify(steps) === JSON.stringify(["1 Household", "2 Strategies", "3 Wealth"]) &&
+      JSON.stringify(steps) === JSON.stringify(["1 Household", "2 Wealth", "3 Strategies", "4 What if"]) &&
         (await nav.locator('[aria-current="step"]').innerText()).includes("Household") &&
         (await page.getByRole("navigation", { name: "Progress", exact: true }).count()) === 0 &&
         (await page.getByRole("link", { name: "Donabach home" }).getAttribute("href")) === "/",
-      "showcase header: a three-step navigation (Household, Strategies, Wealth) with this step marked, instead of the seven steps; the brand links home",
+      "showcase header: a four-step navigation (Household, Wealth, Strategies, What if) with this step marked, instead of the seven steps; the brand links home",
     );
 
     // People, children, income and savings.
@@ -545,10 +564,10 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       (await page.getByRole("link", { name: /Back to the demo home/ }).getAttribute("href")) === "/",
       "showcase household: a back link goes to the demo's home",
     );
-    const next = page.getByRole("link", { name: /See the strategies/ });
+    const next = page.getByRole("link", { name: /See what a good advisor gets them/ });
     check(
-      (await next.getAttribute("href")) === "/showcase/strategies",
-      "showcase household: the primary button goes on to the strategies",
+      (await next.getAttribute("href")) === "/showcase/wealth",
+      "showcase household: the primary button goes on to what a good advisor gets them (the advisor-only wealth screen)",
     );
     await audit(page, issues, "showcase 1 household", "showcase-1-household");
 
@@ -561,11 +580,8 @@ export async function runShowcase({ browser, base, out, check, notes }) {
 
     // Moving on keeps the household (it is loaded once for the whole flow).
     await next.click();
-    await page.waitForURL("**/showcase/strategies");
-    await page
-      .locator(keys.length > 0 ? "li[data-key]" : "main h1")
-      .first()
-      .waitFor({ timeout: 30000 });
+    await page.waitForURL("**/showcase/wealth");
+    await page.locator(".recharts-wrapper").first().waitFor({ timeout: 30000 });
     check(
       requests.showcase === 1,
       `showcase flow: the household is asked of the API once for the whole flow (${requests.showcase} request)`,
@@ -573,18 +589,19 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await context.close();
   }
 
-  // === The three screens at a phone's width, a tablet's and a desktop's =================================================
+  // === The screens at a phone's width, a tablet's and a desktop's =================================================
   const screens = [
     ["/showcase", "household", "article"],
     ["/showcase/strategies", "strategies", keys.length > 0 ? "li[data-key]" : "main h1"],
     ["/showcase/wealth", "wealth", ".recharts-wrapper"],
+    ["/showcase/whatif", "whatif", "fieldset"],
   ];
   for (const [path, label, waitFor] of screens) {
     for (const width of [390, 768, 1280]) {
       const { context, page, issues } = await newPage(width);
       await page.goto(base + path, { waitUntil: "networkidle" });
       await page.locator(waitFor).first().waitFor({ timeout: 90000 });
-      await page.waitForTimeout(label === "wealth" ? 2500 : 600);
+      await page.waitForTimeout(label === "wealth" || label === "whatif" ? 2500 : 600);
       const name = `showcase ${label} at ${width}px`;
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       check(overflow <= 0, `${name}: no horizontal overflow (${overflow}px)`);
@@ -645,7 +662,7 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     const dark = await newPage(1280, "dark");
     await dark.page.goto(base + path, { waitUntil: "networkidle" });
     await dark.page.locator(waitFor).first().waitFor({ timeout: 90000 });
-    await dark.page.waitForTimeout(label === "wealth" ? 2500 : 600);
+    await dark.page.waitForTimeout(label === "wealth" || label === "whatif" ? 2500 : 600);
     const asked = await lightFacts(dark.page);
     const plain = await newPage(1280, "light");
     await plain.page.goto(base + path, { waitUntil: "networkidle" });
@@ -1071,14 +1088,17 @@ export async function runShowcase({ browser, base, out, check, notes }) {
   }
 
   // === Screen 3: wealth over time: the whole plan, whatever was switched on the way =====================================
-  // A direct visit shows the screen as the API's whole plan makes it: the baseline the next checks compare with.
+  // A direct visit starts with the advisor alone; pressing the button shows the screen as the API's whole plan makes it: the
+  // baseline the next checks compare with.
   let baseline = "";
   {
     const { context, page, requests } = await newPage();
     await page.goto(base + "/showcase/wealth", { waitUntil: "networkidle" });
     await page.locator(".recharts-wrapper").first().waitFor({ timeout: 90000 });
-    await settleLines(page, 4);
-    baseline = squash(await page.locator("main").innerText());
+    await revealWealth(page);
+    await page.mouse.move(2, 2);
+    await page.waitForTimeout(800);
+    baseline = await mainText(page);
     check(
       requests.showcase === 1 &&
         requests.analysis.length === 0 &&
@@ -1106,7 +1126,7 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await settleLines(page, 4);
     await page.mouse.move(2, 2); // the pointer that clicked the link may be over the chart, whose tooltip is not part of the screen
     await page.waitForTimeout(1200);
-    const main = squash(await page.locator("main").innerText());
+    const main = await mainText(page);
     check(
       requests.showcase === 1,
       `showcase wealth: moving between the screens does not load the household again (${requests.showcase} request)`,
@@ -1283,8 +1303,8 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await footerLine(page, "showcase wealth");
     await audit(page, issues, "showcase 3 wealth", "showcase-3-wealth");
     check(
-      (await page.getByRole("link", { name: /Explore the full demo/ }).getAttribute("href")) === "/",
-      "showcase wealth: the primary button leads on to the full demo",
+      (await page.getByRole("link", { name: /Change the household/ }).getAttribute("href")) === "/showcase/whatif",
+      "showcase wealth: the primary button leads on to the what-if screen",
     );
     check(
       requests.analysis.length === posted,
@@ -1339,7 +1359,7 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await settleLines(page, 4);
     await page.mouse.move(2, 2);
     await page.waitForTimeout(500);
-    const pending = squash(await page.locator("main").innerText());
+    const pending = await mainText(page);
     check(
       pending === baseline &&
         !/Recomputing/.test(pending) &&
@@ -1351,7 +1371,7 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await answered;
     await page.waitForTimeout(500);
     check(
-      squash(await page.locator("main").innerText()) === baseline && requests.analysis.length === 1,
+      (await mainText(page)) === baseline && requests.analysis.length === 1,
       "showcase wealth: when the answer arrives the screen is unchanged, and no second request went out",
     );
     await page.getByRole("link", { name: /Back to the strategies/ }).click();
@@ -1391,6 +1411,8 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     );
     await page.goto(base + "/showcase/wealth", { waitUntil: "networkidle" });
     await page.locator(".recharts-wrapper").first().waitFor({ timeout: 30000 });
+    await page.getByRole("button", { name: "Show what Donabach does" }).click();
+    await page.getByRole("heading", { level: 2, name: "Median advantage" }).waitFor({ timeout: 10000 });
     await page.waitForTimeout(150);
     const dashes = await page.evaluate(() =>
       [...document.querySelectorAll("path.recharts-line-curve")].map((l) => l.getAttribute("stroke-dasharray") ?? ""),
@@ -1402,7 +1424,7 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await context.close();
   }
 
-  // === Every screen is there at once: Household -> Strategies -> Wealth -> Strategies, once the household has loaded ====
+  // === Every screen is there at once: Household -> Wealth -> Strategies -> Wealth -> What if and back, once the household has loaded ====
   {
     const { context, page, requests } = await newPage();
     await page.goto(base + "/showcase", { waitUntil: "networkidle" });
@@ -1411,8 +1433,11 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await page.evaluate(watchPlaceholders);
     const strategiesTarget = keys.length > 0 ? "li[data-key]" : "main h1";
     const hops = [
-      ["See the strategies", "/showcase/strategies", strategiesTarget],
+      ["See what a good advisor gets them", "/showcase/wealth", ".recharts-wrapper"],
+      ["See what Donabach does", "/showcase/strategies", strategiesTarget],
       ["See wealth over time", "/showcase/wealth", ".recharts-wrapper"],
+      ["Change the household", "/showcase/whatif", "fieldset"],
+      ["Back to wealth over time", "/showcase/wealth", ".recharts-wrapper"],
       ["Back to the strategies", "/showcase/strategies", strategiesTarget],
       ["Back to the household", "/showcase", "article"],
     ];
@@ -1447,7 +1472,7 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     );
     check(
       !placeholder && requests.showcase === 1 && requests.analysis.length === 0,
-      `showcase flow: going Household, Strategies, Wealth, Strategies and back shows no loading placeholder and asks the API for nothing more (${requests.showcase} household request, ${requests.analysis.length} analyses)`,
+      `showcase flow: going Household, Wealth, Strategies, Wealth, What if and back shows no loading placeholder and asks the API for nothing more (${requests.showcase} household request, ${requests.analysis.length} analyses)`,
     );
     await context.close();
   }
@@ -1475,7 +1500,11 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await page.locator("article").first().waitFor({ timeout: 90000 });
     const firstLine = async () => squash((await page.locator("footer p").first().innerText()) ?? "");
     const lines = [["household", await firstLine()]];
-    await page.getByRole("link", { name: /See the strategies/ }).click();
+    await page.getByRole("link", { name: /See what a good advisor gets them/ }).click();
+    await page.waitForURL("**/showcase/wealth");
+    await page.locator(".recharts-wrapper").first().waitFor({ timeout: 30000 });
+    lines.push(["advisor wealth", await firstLine()]);
+    await page.getByRole("link", { name: /See what Donabach does/ }).click();
     await page.waitForURL("**/showcase/strategies");
     await page
       .locator(keys.length > 0 ? "li[data-key]" : "footer p")
@@ -1486,6 +1515,10 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await page.waitForURL("**/showcase/wealth");
     await page.locator(".recharts-wrapper").first().waitFor({ timeout: 30000 });
     lines.push(["wealth", await firstLine()]);
+    await page.getByRole("link", { name: /Change the household/ }).click();
+    await page.waitForURL("**/showcase/whatif");
+    await page.locator("fieldset").first().waitFor({ timeout: 30000 });
+    lines.push(["what if", await firstLine()]);
     check(
       lines.every(([, line]) => line === made),
       `showcase footer: the screens write the API's footer_note as it is, with no number of their own (${lines.map(([name]) => name).join(", ")}: "${made}")`,

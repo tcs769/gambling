@@ -73,6 +73,13 @@ export type ShowcaseWealth = S["ShowcaseWealth"];
 export type ShowcaseHeirs = S["ShowcaseHeirs"];
 export type ShowcaseAdvantage = S["ShowcaseAdvantage"];
 export type WealthLines = S["WealthLines"];
+// What if things change (/showcase/whatif): the household after an event, planned again, against the advisor on the same
+// shocked futures, with the years that changed.
+export type ScenarioInfo = S["ScenarioInfo"];
+export type ShowcaseScenario = S["ShowcaseScenario"];
+export type ScenarioYear = S["ScenarioYear"];
+export type ScenarioChange = S["ScenarioChange"];
+export type ScenarioReplan = S["ScenarioReplan"];
 export type HouseholdCard = S["HouseholdCard"];
 export type CardPerson = S["CardPerson"];
 export type CardAccount = S["CardAccount"];

@@ -4,8 +4,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import styles from "./ShowcasePage.module.css";
 
-/** The flow's three screens, each one click from the others. */
-const SCREENS = ["/showcase", "/showcase/strategies", "/showcase/wealth"];
+/** The flow's screens, each one click from the others. */
+const SCREENS = ["/showcase", "/showcase/wealth", "/showcase/strategies", "/showcase/whatif"];
 
 /**
  * One screen of the showcase flow, easing in as the demo's screens do. The shell keeps a single `main` for the whole

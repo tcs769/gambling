@@ -1,6 +1,6 @@
 "use client";
 
-// The showcase flow's shared state (/showcase, /showcase/strategies, /showcase/wealth). It lives in the layout of
+// The showcase flow's shared state (/showcase, /showcase/wealth, /showcase/strategies, /showcase/whatif). It lives in the layout of
 // /showcase, so the screens share one household and one set of switches. Nothing here invents a number: it stores what
 // the API returned.
 //
@@ -22,9 +22,15 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ApiError, api } from "./api";
-import type { ShowcaseResponse, ShowcaseWaterfall } from "./types";
+import type { ScenarioInfo, ShowcaseResponse, ShowcaseScenario, ShowcaseWaterfall } from "./types";
 
 export type ShowcaseStatus = "loading" | "ready" | "failed";
+
+/** One event the household can be asked about ("Job loss next year"): its answer, on its way, or the API's refusal. */
+export type ScenarioState =
+  | { status: "loading" }
+  | { status: "ready"; scenario: ShowcaseScenario }
+  | { status: "failed"; error: string };
 
 interface Shown {
   /** `setKey` of the set this waterfall is for (what was asked, whatever order or spelling the API answered in). */
@@ -50,6 +56,10 @@ export interface ShowcaseActions {
   dismissError: () => void;
   /** Ask for the household again after it could not be loaded. */
   reload: () => void;
+  /** Show Donabach on the wealth screen (it starts with the advisor alone). Once shown it stays for the session. */
+  reveal: () => void;
+  /** Ask again for an event (or for the list of events) that could not be loaded. */
+  retryScenario: (key: string) => void;
 }
 
 export interface ShowcaseValue {
@@ -71,6 +81,14 @@ export interface ShowcaseValue {
   computing: boolean;
   /** The API's message when the last change could not be applied (the switches went back to what is on screen). */
   changeError: string | null;
+  /** Has Donabach been shown on the wealth screen? False until the button is pressed or the strategies are opened from there. */
+  revealed: boolean;
+  /** The events the household can be asked about, in the API's order and words (null until the list arrives). */
+  scenarios: readonly ScenarioInfo[] | null;
+  /** Why the list of events could not be loaded, in the API's words. */
+  scenariosError: string | null;
+  /** Each event's answer by key. They are asked for as soon as the flow opens, so choosing one is usually instant. */
+  scenarioStates: Readonly<Record<string, ScenarioState>>;
   actions: ShowcaseActions;
 }
 
@@ -117,6 +135,53 @@ function household(): Promise<ShowcaseResponse> {
   return asked ? Promise.resolve(asked) : loadHousehold();
 }
 
+// The events ("Job loss next year", "Market drops 30% next year") are asked for the same way: one request each at a time,
+// shared by every mount that asks, and the answer kept for a minute. The API has worked them out at start-up, so each
+// answers at once. They are asked for as soon as the flow opens (the provider mounts), so that choosing one on the
+// what-if screen shows it with no wait.
+const scenarioListing: {
+  loading: Promise<ScenarioInfo[]> | null;
+  loaded: { value: ScenarioInfo[]; at: number } | null;
+} = {
+  loading: null,
+  loaded: null,
+};
+const scenarioAnswers = new Map<
+  string,
+  { loading: Promise<ShowcaseScenario> | null; loaded: { value: ShowcaseScenario; at: number } | null }
+>();
+
+function scenarioList(): Promise<ScenarioInfo[]> {
+  const { loaded } = scenarioListing;
+  if (loaded && Date.now() - loaded.at < FRESH_FOR_MS) return Promise.resolve(loaded.value);
+  scenarioListing.loading ??= api
+    .showcaseScenarios()
+    .then((value) => {
+      scenarioListing.loaded = { value, at: Date.now() };
+      return value;
+    })
+    .finally(() => {
+      scenarioListing.loading = null;
+    });
+  return scenarioListing.loading;
+}
+
+function scenarioAnswer(key: string): Promise<ShowcaseScenario> {
+  const entry = scenarioAnswers.get(key) ?? { loading: null, loaded: null };
+  scenarioAnswers.set(key, entry);
+  if (entry.loaded && Date.now() - entry.loaded.at < FRESH_FOR_MS) return Promise.resolve(entry.loaded.value);
+  entry.loading ??= api
+    .showcaseScenario(key)
+    .then((value) => {
+      entry.loaded = { value, at: Date.now() };
+      return value;
+    })
+    .finally(() => {
+      entry.loading = null;
+    });
+  return entry.loading;
+}
+
 /**
  * Start asking the API for the household now, so it is here when the flow opens. It does nothing when the household is
  * already here (or on its way); a failure is left for the flow to report when it asks itself.
@@ -146,6 +211,21 @@ export function ShowcaseProvider({ children }: { children: ReactNode }) {
     return asked ? readyState(asked) : EMPTY;
   });
   const [attempt, setAttempt] = useState(0);
+  // Donabach is shown on the wealth screen once the button is pressed or the strategies are opened from the advisor-only
+  // view; it is state, not the address, so a reload starts again with the advisor alone.
+  const [revealed, setRevealed] = useState(false);
+  const [scenarios, setScenarios] = useState<readonly ScenarioInfo[] | null>(null);
+  const [scenariosError, setScenariosError] = useState<string | null>(null);
+  const [scenarioStates, setScenarioStates] = useState<Readonly<Record<string, ScenarioState>>>({});
+  const [scenarioAttempt, setScenarioAttempt] = useState(0);
+  const scenariosRef = useRef<readonly ScenarioInfo[] | null>(null);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   // Everything the API has answered, by the set it is for.
   const answers = useRef(new Map<string, ShowcaseWaterfall>());
@@ -185,6 +265,40 @@ export function ShowcaseProvider({ children }: { children: ReactNode }) {
       current = false;
     };
   }, [attempt]);
+
+  /** Ask for one event, marking it as on its way until the answer (or the refusal) arrives. */
+  const loadScenario = useCallback((key: string) => {
+    setScenarioStates((all) => ({ ...all, [key]: { status: "loading" } }));
+    scenarioAnswer(key).then(
+      (scenario) => {
+        if (mounted.current) setScenarioStates((all) => ({ ...all, [key]: { status: "ready", scenario } }));
+      },
+      (error: unknown) => {
+        if (mounted.current)
+          setScenarioStates((all) => ({ ...all, [key]: { status: "failed", error: errorMessage(error) } }));
+      },
+    );
+  }, []);
+
+  // The events: the list, then each one, as soon as the flow opens.
+  useEffect(() => {
+    let current = true;
+    scenarioList().then(
+      (list) => {
+        if (!current) return;
+        scenariosRef.current = list;
+        setScenarios(list);
+        setScenariosError(null);
+        for (const info of list) loadScenario(info.key);
+      },
+      (error: unknown) => {
+        if (current) setScenariosError(errorMessage(error));
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [scenarioAttempt, loadScenario]);
 
   // Nobody is waiting for an answer once the flow is left.
   useEffect(() => () => pending.current?.abort(), []);
@@ -241,8 +355,15 @@ export function ShowcaseProvider({ children }: { children: ReactNode }) {
         setState((s) => ({ ...s, loadError: null }));
         setAttempt((n) => n + 1);
       },
+      reveal: () => setRevealed(true),
+      retryScenario: (key) => {
+        if (scenariosRef.current === null) {
+          setScenariosError(null);
+          setScenarioAttempt((n) => n + 1);
+        } else loadScenario(key);
+      },
     }),
-    [apply],
+    [apply, loadScenario],
   );
 
   const value = useMemo<ShowcaseValue>(() => {
@@ -256,9 +377,13 @@ export function ShowcaseProvider({ children }: { children: ReactNode }) {
       enabled,
       computing: !!shown && shown.key !== setKey(enabled),
       changeError,
+      revealed,
+      scenarios,
+      scenariosError,
+      scenarioStates,
       actions,
     };
-  }, [state, actions]);
+  }, [state, actions, revealed, scenarios, scenariosError, scenarioStates]);
 
   return <ShowcaseContext.Provider value={value}>{children}</ShowcaseContext.Provider>;
 }

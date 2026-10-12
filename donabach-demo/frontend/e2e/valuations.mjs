@@ -309,6 +309,8 @@ export async function runValuations({ browser, base, out, check, notes }) {
     const { context, page, issues } = await openPage(browser, { width: 1440 });
     await page.goto(base + "/showcase/wealth", { waitUntil: "networkidle" });
     await page.locator(".recharts-wrapper").first().waitFor({ timeout: 90000 });
+    await page.getByRole("button", { name: "Show what Donabach does" }).click();
+    await page.getByRole("heading", { level: 2, name: "Median advantage" }).waitFor({ timeout: 10000 });
     await page.waitForTimeout(1500);
     const mainBefore = squash(await page.locator("main").innerText());
     const headline = squash(await page.locator('section[aria-label^="Donabach\'s advantage"]').innerText());
@@ -397,6 +399,8 @@ export async function runValuations({ browser, base, out, check, notes }) {
     const phone = await openPage(browser, { width: 390 });
     await phone.page.goto(base + "/showcase/wealth", { waitUntil: "networkidle" });
     await phone.page.locator(".recharts-wrapper").first().waitFor({ timeout: 90000 });
+    await phone.page.getByRole("button", { name: "Show what Donabach does" }).click();
+    await phone.page.getByRole("heading", { level: 2, name: "Median advantage" }).waitFor({ timeout: 10000 });
     await phone.page.waitForTimeout(1500);
     const phoneLayout = await layoutOf(phone.page);
     check(

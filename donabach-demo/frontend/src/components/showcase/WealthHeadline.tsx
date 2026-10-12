@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import { MEASURES } from "@/components/compare/AdvantagePanel";
 import { count, money, signedMoney } from "@/lib/format";
 import type { ShowcaseWealth } from "@/lib/types";
@@ -16,12 +17,21 @@ export function moreOrLess(dollars: number, horizon: number): string {
  * more, so a plan that takes more risk is credited less for what it earns. Each is a yearly rate, what it comes to in
  * dollars at the horizon, and one line that says what it is (the risk-adjusted label and line are the API's own words).
  */
-export function WealthHeadline({ wealth }: { wealth: ShowcaseWealth }) {
+export function WealthHeadline({
+  wealth,
+  focusRef,
+}: {
+  wealth: ShowcaseWealth;
+  /** Lets the screen move focus here when Donabach is first shown (the section can take focus, but is not in the tab order). */
+  focusRef?: Ref<HTMLElement>;
+}) {
   const { advantage, horizon_age: horizon } = wealth;
   const range = advantage.median_low !== 0 || advantage.median_high !== 0;
   return (
     <div className={styles.frame}>
       <section
+        ref={focusRef}
+        tabIndex={focusRef ? -1 : undefined}
         className={styles.headline}
         aria-label={`Donabach's advantage over a ${wealth.advisor_label.toLowerCase()}`}
       >

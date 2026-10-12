@@ -147,7 +147,7 @@ class PlanRequest(BaseModel):
     seed: int | None = None
     shock: MarketShock | None = None
     risk_aversion: float = Field(3.0, ge=0.5, le=10.0, description="CRRA coefficient behind the score")
-    planning_style: Literal["balanced", "equity_first"] = Field(
+    planning_style: Literal["balanced", "equity_first", "liability_matched"] = Field(
         "equity_first",
         description="equity_first: a spending reserve of bonds and private credit, everything else in stocks; balanced: a stock share with a glide path",
     )
@@ -260,6 +260,22 @@ class BaselineView(BaseModel):
     fan: FanSeries
 
 
+class LiabilityView(BaseModel):
+    """The liability-matched plan against its two limits, measured on the futures it was chosen on (`chosen_on`) and on fresh ones."""
+
+    reserve_years: int
+    forced_sale_limit: float  # the most futures in which stocks may be sold in a falling year to pay for goals or spending
+    forced_sale_chance: float  # on fresh futures
+    advisor_forced_sale_chance: float
+    ruin_chance: float
+    advisor_ruin_chance: float
+    chosen_on_forced_sale_chance: float
+    chosen_on_ruin_chance: float
+    chosen_on_advisor_ruin_chance: float
+    feasible: bool  # False: nothing in the menu met both limits and this plan came closest
+    stock_share_by_age: list[tuple[int, float]]  # share of long-term money in stocks, year by year (the expected path)
+
+
 class StatCards(BaseModel):
     typical_outcome: OutcomeView
     ria_typical_outcome: OutcomeView
@@ -273,6 +289,8 @@ class StatCards(BaseModel):
     shortfall_chance: float  # share of futures in which the plan could not fund spending or a goal
     advantage: AdvantageView  # over the good RIA, liquidated at the horizon
     advantage_heirs: AdvantageView  # over the good RIA, with the estate passed to heirs
+    forced_sale_chance: float = 0.0  # share of futures in which the plan sold stocks in a falling year to pay for goals or spending
+    ria_forced_sale_chance: float = 0.0
 
 
 class PlanSettings(BaseModel):
@@ -288,7 +306,7 @@ class PlanSettings(BaseModel):
     risk_aversion: float  # CRRA coefficient behind the score
     wealth_floor: float  # wealth below this counts as this much when scoring
     market_shock: MarketShock | None = None
-    planning_style: Literal["balanced", "equity_first"] = "equity_first"  # which family of strategies was searched
+    planning_style: Literal["balanced", "equity_first", "liability_matched"] = "equity_first"  # which family of strategies was searched
     heirs_rate: float = 0.24  # the flat tax rate on pre-tax accounts in the "passed to heirs" valuation
     liquidated_label: str = "Liquidated at 80"
     heirs_label: str = "Passed to heirs at 80"
@@ -401,6 +419,7 @@ class PlanResponse(BaseModel):
     fan: FanSeries
     ria_fan: FanSeries
     baselines: list[BaselineView]  # good RIA, then typical advisor
+    liability: LiabilityView | None = None  # the liability-matched style's limits and how the plan stands against them
     advantage: list[AdvantageStep]
     searched: list[RankedRow]
     settings: PlanSettings
@@ -450,7 +469,7 @@ class WhatIfRequest(BaseModel):
     demo_mode: bool = True
     seed: int | None = None
     risk_aversion: float = Field(3.0, ge=0.5, le=10.0)
-    planning_style: Literal["balanced", "equity_first"] = "equity_first"
+    planning_style: Literal["balanced", "equity_first", "liability_matched"] = "equity_first"
     adaptive: bool = True
     adaptive_rollouts: int = Field(32, ge=4, le=128)
     shock: MarketShock | None = None  # an existing shock to keep (from a previous what-if)

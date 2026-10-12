@@ -148,6 +148,7 @@ from app.sim.state import (  # noqa: E402, F401
     S_DDIST,
     S_DGAIN,
     S_DGAIN_ST,
+    S_FSALE,
     S_GB,
     S_LOAN,
     S_LOTC,
@@ -271,8 +272,8 @@ HC_VALUATION = 6  # 0 the tax engine values what is owed on liquidation (`liquid
 NHC = 7
 
 # Kernel result columns.
-R_WEALTH, R_TAXES, R_PRETAX_OWED, R_UNFUNDED, R_WEALTH_HEIRS = range(5)
-NRESULT = 5
+R_WEALTH, R_TAXES, R_PRETAX_OWED, R_UNFUNDED, R_WEALTH_HEIRS, R_FORCED = range(6)
+NRESULT = 6
 
 # Detailed year-log columns (deterministic path).
 LOG_COLUMNS = (
@@ -754,6 +755,25 @@ def _sell_pretax(st, amount, ne=0.0):
     st[S_PB] *= 1.0 - f
     st[S_PP] *= 1.0 - f
     return f * total
+
+
+@jit
+def _sell_safe(st, amount, account):
+    """Sell only the bonds and private credit of one account (0 pre-tax, 1 brokerage, 2 Roth), pro rata. Returns the amount sold."""
+    if account < 0.5:
+        b, p = S_PB, S_PP
+    elif account < 1.5:
+        b, p = S_BB, S_BP
+    else:
+        b, p = S_RB, S_RP
+    safe = st[b] + st[p]
+    if amount <= 0.0 or safe <= 0.0:
+        return 0.0
+    sold = min(amount, safe)
+    g = sold / safe
+    st[b] *= 1.0 - g
+    st[p] *= 1.0 - g
+    return sold
 
 
 @jit
@@ -1304,6 +1324,8 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         diag[D_PTW + W_REQUIRED] += rmd
     pt_mark = ret_dist
 
+    equity_before = st[S_PE] + st[S_RE] + st[S_BE]  # for the forced-sale count below (what goals and spending sell)
+
     # 3b. Pay goals that are due: RMD cash, bucket, then brokerage pro rata, then Roth, then pre-tax.
     goal = tv[t, TV_GOAL]
     borrowed = 0.0
@@ -1319,6 +1341,14 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
             # Borrow against the taxable account instead of selling, up to 30% of its value.
             borrowed = _borrow_for_goal(st, due)
             due -= borrowed
+        if due > 0.0 and ne > 0.5 and ys[Y_EQRET] < 0.0:
+            # the reserve is spent first when stocks have fallen, in whichever account it sits (see step 4)
+            due -= _sell_safe(st, due, 1.0)
+            due -= _sell_safe(st, due, 2.0)
+            if not early:
+                taken = _sell_safe(st, due, 0.0)
+                ret_dist += taken
+                due -= taken
         if due > 0.0:
             sold, gain = _sell_brokerage(st, due, ne)
             realized += gain
@@ -1366,6 +1396,17 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         from_rmd = min(rmd_cash, need)
         rmd_cash -= from_rmd
         remaining = need - from_rmd
+        if remaining > 0.0 and ne > 0.5 and ys[Y_EQRET] < 0.0:
+            # A spending reserve is there to be spent when stocks have fallen, wherever the account holding it is: the bonds and
+            # private credit of every account go first (pre-tax within the bracket target, unless before 59 1/2, then the taxable
+            # account, then the Roth), and stocks are sold only for what they cannot cover.
+            if not early:
+                ordinary = _ordinary_income(wages_taxable, interest_o, taxable_ss, ret_dist, 0.0, realized, ys[Y_REALIZED_ST] + st[S_STACC], cf_in)
+                taken = _sell_safe(st, min(remaining, max(0.0, wd_top + std - ordinary)), 0.0)
+                ret_dist += taken
+                remaining -= taken
+            remaining -= _sell_safe(st, remaining, 1.0)
+            remaining -= _sell_safe(st, remaining, 2.0)
         if remaining <= 0.0:
             pass
         elif early:
@@ -1414,6 +1455,8 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         st[S_UNFUNDED] += _shortfall(remaining)
     if rmd_cash > 0.0:
         st[S_BB] += rmd_cash  # an RMD that exceeds spending is reinvested in the taxable account
+    if ys[Y_EQRET] < 0.0 and equity_before - (st[S_PE] + st[S_RE] + st[S_BE]) > 1.0:
+        st[S_FSALE] += 1.0  # stocks were sold to pay for goals or spending in a year they fell
     if track:
         dg_sold = max(0.0, be_mark - st[S_BE])
         dg_gain = realized - realized_mark
@@ -1863,7 +1906,7 @@ def _simulate_path(s, p, strat, gates, tv, init, hhc, rets, wages, k401, wage_ta
     if do_diag:
         diag[D_END_BE] = st[S_BE]
         diag[D_END_BASIS] = st[S_BBASIS]
-    return wealth, taxes_paid, owed, st[S_UNFUNDED], heirs
+    return wealth, taxes_paid, owed, st[S_UNFUNDED], heirs, st[S_FSALE]
 
 
 @jit(parallel=True, nogil=True)
@@ -1883,6 +1926,7 @@ def _simulate_batch(strat, gates, tv, init, hhc, rets, wages, k401, wage_tax, zs
         out[s, p, R_PRETAX_OWED] = res[2]
         out[s, p, R_UNFUNDED] = res[3]
         out[s, p, R_WEALTH_HEIRS] = res[4]
+        out[s, p, R_FORCED] = res[5]
 
 
 @jit(parallel=True, nogil=True)
@@ -2212,6 +2256,7 @@ class BatchResult:
     log: dict[str, np.ndarray] | None = None  # year log of the requested (policy, path)
     wealth_heirs: np.ndarray | None = None  # (policies, paths) the second valuation at the horizon: passed to heirs (`heirs_wealth`)
     diag: np.ndarray | None = None  # (policies, paths, DG_SIZE) diagnostics, when asked for (`app.sim.diag`)
+    forced_years: np.ndarray | None = None  # (policies, paths) years the household sold stock for goals or spending in a year stocks fell
 
 
 def run_batch(
@@ -2253,6 +2298,7 @@ def run_batch(
         path_wealth=path_wealth if record_paths else None,
         log={name: log[:, i].copy() for i, name in enumerate(LOG_COLUMNS)} if log_for else None,
         wealth_heirs=out[:, :, R_WEALTH_HEIRS],
+        forced_years=out[:, :, R_FORCED],
         diag=diag if diagnostics else None,
     )
 

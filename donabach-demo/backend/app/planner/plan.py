@@ -17,6 +17,7 @@ from app.api_models import (
     AdvantageView,
     BaselineView,
     FanSeries,
+    LiabilityView,
     OutcomeView,
     PlanResponse,
     PlanRow,
@@ -30,8 +31,18 @@ from app.api_models import ModelStatus as ModelStatusView
 from app.ml import adapters
 from app.ml.adapters import ModelContractError, NotConnected
 from app.planner import explain, guided
-from app.planner.baseline import BASELINES, GOOD_RIA, GOOD_RIA_SENTENCE
-from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, Outcome, RankedStrategy, SearchResult, search
+from app.planner.baseline import BASELINES, GOOD_RIA, GOOD_RIA_SENTENCE, RIA_BASELINE
+from app.planner.search import (
+    FORCED_SALE_LIMIT,
+    RISK_AVERSION,
+    WEALTH_FLOOR,
+    MatchedChoice,
+    Outcome,
+    RankedStrategy,
+    SearchResult,
+    matched_choice,
+    search,
+)
 from app.planner.strategies import Strategy, menu
 from app.schemas import HORIZON_AGE, Household, MarketShock
 from app.sim import markets
@@ -216,12 +227,23 @@ def build_plan(
     evaluation = build_inputs(household, n_paths=n_eval_paths, seed=eval_seed, shock=shock)
     det = build_inputs(household, deterministic=True, shock=shock)
 
-    panel, guided_result, model_pick = _recommender_panel(household, futures, style)
-    if guided_result is not None:
-        result, label = guided_result, GUIDED_LABEL
+    matched: MatchedChoice | None = None
+    if style == "liability_matched":
+        # the planner's own search, under two limits (a forced sale in a falling year at most 2% of futures, ruin no more likely than
+        # with the good advisor); the recommender model, trained on the other families, is not consulted
+        panel = RecommenderPanel(status=ModelStatusView(model="recommender", connected=False, reason="Not consulted for the liability-matched style.", expected_path=""))
+        model_pick = None
+        result = search(futures, strategies=menu(style=style), extra_policies=[RIA_BASELINE], risk_aversion=risk_aversion, group_of=lambda s: s.reserve_years)
+        label = SEARCH_LABEL
+        matched = matched_choice(result, result.batch.unfunded[len(result.strategies)])
+        chosen = matched.strategy
     else:
-        result, label = search(futures, strategies=menu(style=style), risk_aversion=risk_aversion), SEARCH_LABEL
-    chosen = result.best.strategy
+        panel, guided_result, model_pick = _recommender_panel(household, futures, style)
+        if guided_result is not None:
+            result, label = guided_result, GUIDED_LABEL
+        else:
+            result, label = search(futures, strategies=menu(style=style), risk_aversion=risk_aversion), SEARCH_LABEL
+        chosen = result.best.strategy
 
     # The chosen strategy and both advisors on futures the search never saw, with the full wealth
     # path for the fan charts. Choosing the best of thousands of strategies on the futures they are
@@ -275,11 +297,28 @@ def build_plan(
         ria_lifetime_taxes=ria.lifetime_taxes,
         years=years,
         shortfall_chance=float(np.mean(batch.unfunded[0] > 0)),
+        forced_sale_chance=float(np.mean(batch.forced_years[0] > 0)),
+        ria_forced_sale_chance=float(np.mean(batch.forced_years[ria_index] > 0)),
         advantage=ria.advantage,
         advantage_heirs=ria.advantage_heirs,
     )
 
     log = run_detail(det, chosen.policy()).log
+    liability = None
+    if matched is not None:
+        liability = LiabilityView(
+            reserve_years=chosen.reserve_years,
+            forced_sale_limit=FORCED_SALE_LIMIT,
+            forced_sale_chance=stats.forced_sale_chance,
+            advisor_forced_sale_chance=stats.ria_forced_sale_chance,
+            ruin_chance=stats.shortfall_chance,
+            advisor_ruin_chance=ria.shortfall_chance,
+            chosen_on_forced_sale_chance=matched.forced_sale_chance,
+            chosen_on_ruin_chance=matched.ruin_chance,
+            chosen_on_advisor_ruin_chance=matched.advisor_ruin_chance,
+            feasible=matched.feasible,
+            stock_share_by_age=[(int(a), float(e)) for a, e in zip(log["age"], log["equity_share"], strict=True)],
+        )
     return PlanResponse(
         planner_label=label,
         strategy=strategy_view(chosen, plan_outcome),
@@ -296,6 +335,7 @@ def build_plan(
         fan=fan_series(batch.path_wealth[0], start_wealth, age),
         ria_fan=baselines[ria_index - 1].fan,
         baselines=baselines,
+        liability=liability,
         advantage=explain.advantage_steps(evaluation, chosen),
         searched=ranked_rows(result.ranked, chosen, model_pick),
         settings=PlanSettings(

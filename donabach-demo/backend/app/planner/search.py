@@ -21,6 +21,7 @@ the winner's score was the best one's every time; ranking the candidates on the 
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 
 import numpy as np
@@ -35,6 +36,8 @@ SCREEN_PATHS = 100  # futures used to screen the whole menu
 SCREEN_KEEP = 150  # strategies that go on to be scored on every future
 SCREEN_MIN_STRATEGIES = 400  # smaller menus are scored exhaustively
 REFINE_DIRECT_INDEXING = 8  # direct-indexing strategies scored on every future with the stock-level book
+DI_PER_GROUP_POOL = 6  # with groups: direct-indexing strategies of each group the screen passes on, ranked on every future with the aggregate rule
+DI_PER_GROUP = 2  # and the best of them that go on to be scored with the stock-level book
 DI_POOL = 36  # direct-indexing strategies the screen passes on, to be ranked on every future with the aggregate rule
 
 
@@ -140,10 +143,13 @@ def search(
     risk_aversion: float = RISK_AVERSION,
     refine: int = REFINE_DIRECT_INDEXING,
     valuation: str = "liquidated",
+    group_of: Callable[[Strategy], int] | None = None,
 ) -> SearchResult:
     """Evaluate `strategies` (default: the full menu) on the futures in `inputs`. In a staged search at most `refine` of
     the strategies that direct-index survive the screen (see the module's note). `valuation` is the wealth the score is of:
-    "liquidated" (everything sold at the horizon, the app's) or "heirs" (passed to heirs: a step-up, the heirs' tax rate)."""
+    "liquidated" (everything sold at the horizon, the app's) or "heirs" (passed to heirs: a step-up, the heirs' tax rate). With
+    `group_of` (a strategy's group, such as its reserve length) a staged search keeps the best of every group, so that a group the
+    screen ranks low as a whole (a long reserve) is still scored on every future when a constraint rules the others out."""
     if valuation not in ("liquidated", "heirs"):
         raise ValueError(f"unknown valuation {valuation!r}; expected 'liquidated' or 'heirs'")
 
@@ -156,13 +162,25 @@ def search(
     if not exhaustive and considered > SCREEN_MIN_STRATEGIES and inputs.n_paths > 2 * SCREEN_PATHS:
         screen = wealth_of(run_batch(subset_inputs(inputs, SCREEN_PATHS), [_aggregate(s.policy()) for s in strategies]))
         order = np.argsort(-certainty_equivalent(screen, risk_aversion), kind="stable").tolist()
-        pool = [i for i in order if _by_stock(strategies[i])][: max(DI_POOL, refine)]
-        if len(pool) > refine:
-            # the screen's 100 futures are too few to tell near-identical strategies apart: rank the pool on every future (still with
-            # the aggregate rule, which costs what a fund does) and take the best of it
-            on_all = wealth_of(run_batch(inputs, [_aggregate(strategies[i].policy()) for i in pool]))
-            pool = [pool[j] for j in np.argsort(-certainty_equivalent(on_all, risk_aversion), kind="stable")[:refine]]
-        rest = [i for i in order if not _by_stock(strategies[i])][: SCREEN_KEEP - len(pool)]
+        if group_of is None:
+            pool = [i for i in order if _by_stock(strategies[i])][: max(DI_POOL, refine)]
+            if len(pool) > refine:
+                # the screen's 100 futures are too few to tell near-identical strategies apart: rank the pool on every future (still with
+                # the aggregate rule, which costs what a fund does) and take the best of it
+                on_all = wealth_of(run_batch(inputs, [_aggregate(strategies[i].policy()) for i in pool]))
+                pool = [pool[j] for j in np.argsort(-certainty_equivalent(on_all, risk_aversion), kind="stable")[:refine]]
+            rest = [i for i in order if not _by_stock(strategies[i])][: SCREEN_KEEP - len(pool)]
+        else:
+            groups = sorted({group_of(s) for s in strategies})
+            by_group = {g: [i for i in order if group_of(strategies[i]) == g] for g in groups}
+            wide = [i for g in groups for i in [j for j in by_group[g] if _by_stock(strategies[j])][:DI_PER_GROUP_POOL]]
+            on_all = certainty_equivalent(wealth_of(run_batch(inputs, [_aggregate(strategies[i].policy()) for i in wide])), risk_aversion)
+            pool = []
+            for g in groups:
+                members = sorted((j for j, i in enumerate(wide) if group_of(strategies[i]) == g), key=lambda j: -on_all[j])
+                pool += [wide[j] for j in members[:DI_PER_GROUP]]
+            quota = max(1, (SCREEN_KEEP - len(pool)) // len(groups))
+            rest = [i for g in groups for i in [j for j in by_group[g] if not _by_stock(strategies[j])][:quota]]
         strategies = [strategies[i] for i in sorted(pool + rest)]  # menu order breaks ties
     policies = [s.policy() for s in strategies] + list(extra_policies or [])
     batch = run_batch(inputs, policies, record_paths=record_paths)
@@ -176,3 +194,35 @@ def search(
         elapsed_seconds=time.perf_counter() - started,
         n_considered=considered,
     )
+
+
+FORCED_SALE_LIMIT = 0.02  # the liability-matched plan sells stocks in a falling year to pay for goals or spending in at most this share of futures
+
+
+@dataclass(frozen=True)
+class MatchedChoice:
+    """What the liability-matched search found: the strategy it picked and how it stands against its two limits."""
+
+    strategy: Strategy
+    forced_sale_chance: float
+    ruin_chance: float
+    advisor_ruin_chance: float
+    feasible: bool  # False: nothing in the menu met both limits, and this is the one that came closest
+
+
+def matched_choice(result: SearchResult, advisor_unfunded: np.ndarray, limit: float = FORCED_SALE_LIMIT) -> MatchedChoice:
+    """Among the strategies scored on every future, the best (by certainty equivalent) whose chance of a forced sale in a falling year
+    is at most `limit` and whose chance of running out of money is no higher than the advisor's (`advisor_unfunded`, one value per
+    future). With none feasible, the strategy with the least excess over the two limits."""
+    n = len(result.strategies)
+    forced = np.mean(result.batch.forced_years[:n] > 0, axis=1)
+    ruin = np.mean(result.batch.unfunded[:n] > 0, axis=1)
+    advisor = float(np.mean(advisor_unfunded > 0))
+    ok = (forced <= limit + 1e-12) & (ruin <= advisor + 1e-12)
+    for ranked in result.ranked:
+        i = result.index_of(ranked.strategy)
+        if ok[i]:
+            return MatchedChoice(ranked.strategy, float(forced[i]), float(ruin[i]), advisor, True)
+    excess = np.maximum(0.0, forced - limit) + np.maximum(0.0, ruin - advisor)
+    i = int(np.argmin(excess))
+    return MatchedChoice(result.strategies[i], float(forced[i]), float(ruin[i]), advisor, False)

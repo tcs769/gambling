@@ -18,7 +18,9 @@ S_CF, S_DGAIN, S_DDIST, S_UNFUNDED, S_LOAN = 11, 12, 13, 14, 15
 # S_BEST remembers which live lot has the highest cost per unit (-1: not known), so a sale need not look for it. (A path with the
 # direct-indexing book below keeps the year's harvest threshold there instead, or -1 when the year harvests nothing.)
 S_LOTS, S_STCG, S_YEAR, S_STACC, S_DGAIN_ST, S_PRICE, S_UNITS, S_BEST = 16, 17, 18, 19, 20, 21, 22, 23
-N_SCALARS = 24
+# How many years so far the household sold stock to pay for goals or spending in a year stocks fell (a forced sale in a down year).
+S_FSALE = 24
+N_SCALARS = 25
 MAX_LOTS = 64  # a household can be as young as 18, so the horizon is at most 62 years: lots 0 to 63
 S_LOTU = N_SCALARS
 S_LOTC = S_LOTU + MAX_LOTS

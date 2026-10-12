@@ -89,6 +89,35 @@ TYPICAL_ADVISOR = Policy(
     cash_share=markets.TYPICAL_CASH_SHARE,
 )
 
+# A do-it-yourself investor (Update 4, 12.8): the same glide path, in index funds, with no advisory fee and no advice (no loss harvesting,
+# no conversions, accounts managed separately, oldest lots sold first), and a behavior gap: Morningstar's "Mind the Gap" study finds
+# that the average dollar invested in US stock funds earns about half a percentage point a year less than the funds themselves
+# (the dollar-weighted return of the last ten years against their time-weighted return; the study's all-fund gap is 1.2 points, and
+# 0.1 to 1.2 is the range of the figures read; reports/final_report.md, Update 4). The gap is the DIY investor's alone: it is not
+# applied to the advisors or to Donabach, whose plans are rules. It is taken out of the stock return (index funds' 0.05% expense ratio
+# too, ICI's average for index equity funds, and the same on the bond funds).
+DIY_BEHAVIOR_GAP = 0.005
+DIY_INDEX_EXPENSE = 0.0005
+
+DIY_INVESTOR = Policy(
+    stock_share=GLIDE_START_SHARE,
+    glide_start_age=None,
+    glide_drop=GLIDE_START_SHARE - GLIDE_END_SHARE,
+    private_credit=0.0,
+    direct_indexing=False,
+    tax_loss_harvesting=False,
+    goal_bonds=False,
+    donabach_location=False,
+    conversion_top=0.0,
+    bracket_withdrawals=False,
+    breakpoint_fees=False,
+    flat_fee=0.0,
+    lot_method=BASELINE_LOT_METHOD,
+    short_term_ordinary=True,
+    fund_expense_equity=DIY_INDEX_EXPENSE + DIY_BEHAVIOR_GAP,
+    fund_expense_bond=DIY_INDEX_EXPENSE,
+)
+
 # (up to, fee rate) rows, for display next to results.
 FEE_SCHEDULE = tuple(zip(FEE_TOPS.tolist(), FEE_RATES.tolist(), strict=True))
 
@@ -114,6 +143,13 @@ class Baseline:
     policy: Policy
 
 
+DIY_SENTENCE = (
+    "Doing it yourself: the same age-based glide path in index funds with no advisory fee, no loss harvesting, no conversions, withdrawals "
+    "taken proportionally and the oldest tax lots sold first, and the behavior gap the average investor shows (about half a point a year "
+    "less than the funds earn)."
+)
 GOOD_RIA = Baseline("good_ria", "Good RIA", GOOD_RIA_SENTENCE, RIA_BASELINE)
 TYPICAL = Baseline("typical_advisor", "Typical advisor", TYPICAL_ADVISOR_SENTENCE, TYPICAL_ADVISOR)
 BASELINES = (GOOD_RIA, TYPICAL)
+DIY = Baseline("diy", "Do it yourself", DIY_SENTENCE, DIY_INVESTOR)
+STUDY_BASELINES = (GOOD_RIA, TYPICAL, DIY)  # the studies compare with all three; the app shows the first two

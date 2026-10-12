@@ -94,6 +94,7 @@ from app.sim.diag import (
     T_CHARITY,
     T_CONVERSIONS,
     T_DIVIDENDS,
+    T_INTEREST,
     T_LONG_TERM,
     T_OTHER,
     T_REQUIRED,
@@ -273,9 +274,10 @@ HC_HARVEST_MODEL = 2  # the aggregate direct-indexing harvest rule: 0 the specif
 HC_DI_FEE_PREMIUM = 3  # extra yearly fee on direct-indexed equity (0 in the specification)
 HC_HARVEST_THRESHOLD = 4  # stock by stock: a lot is harvested when its cost is this far above the price (a fraction)
 HC_HEIRS_RATE = 5  # the flat tax rate the heirs pay on the pre-tax balance they inherit (the "passed to heirs" valuation)
+HC_HARVEST_KEEP = 8  # the share of a harvested loss the wash-sale rule leaves (1 in the model; below 1 in the overstatement check)
 HC_REPORT_AGE = 7  # the age at which a path that runs on past it also reports its wealth (80)
 HC_VALUATION = 6  # 0 the tax engine values what is owed on liquidation (`liquidation_taxes`), 1 the flat rates used before Update 4
-NHC = 8
+NHC = 9
 
 # Kernel result columns.
 R_WEALTH, R_TAXES, R_PRETAX_OWED, R_UNFUNDED, R_WEALTH_HEIRS, R_FORCED, R_WEALTH80, R_PRETAX = range(8)
@@ -1080,6 +1082,8 @@ def _year_begin(st, ys, tv, t, hhc, act, r_e, r_b, r_c, g):
             st, t, 1.0 + r_e - markets.DIVIDEND_YIELD, g, markets.DIVIDEND_YIELD, hhc[HC_HARVEST_THRESHOLD], act[A_HARVEST] > 1.5
         )
         st[S_BBASIS] += dividends
+        book_loss *= hhc[HC_HARVEST_KEEP]
+        book_loss_short *= hhc[HC_HARVEST_KEEP]
     elif st[S_LOTS] > 0.5:
         # The price earns the price return; the dividends are paid out of the total return and bought back at the new
         # price, which makes them this year's lot (a fresh lot: nothing was bought in it earlier this year).
@@ -1212,6 +1216,7 @@ def _diag_tax_year(diag, wages_taxable, interest, dividends, dist_st, realized, 
     proportion to their gains (loss harvesting, a negative gain, gets the tax its losses saved)."""
     none = 0.0
     optional = ret_dist - rmd
+    c00 = tax_core(wages_taxable, none, none, none, none, none, none, ss, none, kids, deps, none, aged, none, none, none, single).total_tax
     c0 = tax_core(wages_taxable, interest, none, none, none, none, none, ss, none, kids, deps, none, aged, none, none, none, single).total_tax
     c1 = tax_core(wages_taxable, interest, none, none, none, optional, none, ss, early_base, kids, deps, none, aged, none, none, none, single).total_tax
     c2 = tax_core(wages_taxable, interest, none, none, none, ret_dist, none, ss, early_base, kids, deps, none, aged, none, none, none, single).total_tax
@@ -1220,7 +1225,8 @@ def _diag_tax_year(diag, wages_taxable, interest, dividends, dist_st, realized, 
     c4 = tax_core(wages_taxable, interest, none, none, short, ret_dist, conv, ss, early_base, kids, deps, none, aged, short, none, none, single).total_tax
     c5 = tax_core(wages_taxable, interest, dividends, dividends + dist_st, short, ret_dist, conv, ss, early_base, kids, deps, none, aged, short, none, none, single).total_tax
     c6 = tax_core(wages_taxable, interest, dividends, dividends + dist_st, realized, ret_dist, conv, ss, early_base, kids, deps, cf_in, aged, realized_st, none, none, single).total_tax
-    diag[D_TYPE + T_OTHER] += c0
+    diag[D_TYPE + T_OTHER] += c00
+    diag[D_TYPE + T_INTEREST] += c0 - c00
     diag[D_TYPE + T_WITHDRAWALS] += c1 - c0
     diag[D_TYPE + T_REQUIRED] += c2 - c1
     diag[D_TYPE + T_CONVERSIONS] += c3 - c2
@@ -2126,7 +2132,8 @@ class ModelOptions:
     harvest_threshold: float = HARVEST_THRESHOLD  # the direct-indexing book harvests a lot whose cost is this far above its price
     heirs_rate: float = HEIRS_TAX_RATE  # the flat rate heirs pay on the pre-tax balance (the "passed to heirs" valuation)
     valuation: str = "engine"  # how "liquidated at 80" taxes unrealized gains and pre-tax balances: "engine" or the old "flat" 15%
-    survivor: bool = False  # the first spouse's death comes at the age the SSA table says; the survivor files single (see `SURVIVOR_*`)
+    harvest_haircut: float = 0.0  # share of the stock-level book's harvested losses the wash-sale rule disallows (a section 12.9 check)
+    survivor: bool = True  # the first spouse's death comes at the age the SSA table says; the survivor files single (see `SURVIVOR_*`)
     horizon_age: int | None = None  # simulate to this age instead of 80 (the batch then also reports its wealth at 80)
 
 
@@ -2276,6 +2283,7 @@ def build_inputs(
     hhc[HC_HEIRS_RATE] = options.heirs_rate
     hhc[HC_VALUATION] = {"engine": 0.0, "flat": 1.0}[options.valuation]
     hhc[HC_REPORT_AGE] = float(HORIZON_AGE)
+    hhc[HC_HARVEST_KEEP] = 1.0 - options.harvest_haircut
     n_draw = wages.shape[0]
     stock_z = np.random.default_rng(np.random.SeedSequence(seed).spawn(4)[3]).standard_normal(
         (n_draw, n_years, N_STOCKS), dtype=np.float32

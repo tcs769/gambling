@@ -11,8 +11,8 @@ Purposes. A sale of brokerage stock is for one of: the goals (home, college), re
 spending reserve (with the goal bond bucket, which the reserve includes), the advisory fee, or something else (a forced sale
 to keep a loan within its limit, repaying it, and the loan's interest). Fund distributions are gains with no sale.
 
-Income types. The year's income tax is split by stacking the income in the order the tax is computed: wages, interest and
-Social Security first, then pre-tax withdrawals (the penalty with them), required distributions, Roth conversions, short-term
+Income types. The year's income tax is split by stacking the income in the order the tax is computed: wages and Social Security
+first, then interest, then pre-tax withdrawals (the penalty with them), required distributions, Roth conversions, short-term
 gains (ordinary income), dividends, long-term gains; each type's share is what it added to the tax. The charitable
 deduction's saving comes last, as a negative amount. The shares add up to the year's tax exactly.
 """
@@ -39,10 +39,11 @@ PURPOSES = (
 )
 
 # --- income types of the tax --------------------------------------------------------------------------------------
-(T_OTHER, T_WITHDRAWALS, T_REQUIRED, T_CONVERSIONS, T_SHORT_TERM, T_DIVIDENDS, T_LONG_TERM, T_CHARITY) = range(8)
-N_TYPES = 8
+(T_OTHER, T_INTEREST, T_WITHDRAWALS, T_REQUIRED, T_CONVERSIONS, T_SHORT_TERM, T_DIVIDENDS, T_LONG_TERM, T_CHARITY) = range(9)
+N_TYPES = 9
 TAX_TYPES = (
-    "wages, interest and Social Security",
+    "wages and Social Security",
+    "interest",
     "pre-tax withdrawals (and the early-withdrawal penalty)",
     "required minimum distributions",
     "Roth conversions",

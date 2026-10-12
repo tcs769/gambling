@@ -560,6 +560,12 @@ export interface components {
              */
             retirement_spending: number;
             /**
+             * Charitable Giving
+             * @description Gifts to charity a year
+             * @default 0
+             */
+            charitable_giving: number;
+            /**
              * Roth Balance
              * @default 30000
              */
@@ -609,11 +615,13 @@ export interface components {
             /** Definition */
             definition: string;
             outcome: components["schemas"]["OutcomeView"];
+            outcome_heirs: components["schemas"]["OutcomeView"];
             /** Lifetime Taxes */
             lifetime_taxes: number;
             /** Shortfall Chance */
             shortfall_chance: number;
             advantage: components["schemas"]["AdvantageView"];
+            advantage_heirs: components["schemas"]["AdvantageView"];
             fan: components["schemas"]["FanSeries"];
         };
         /** Body_upload_documents_documents_upload_post */
@@ -851,6 +859,12 @@ export interface components {
              * @default 110000
              */
             retirement_spending: number;
+            /**
+             * Charitable Giving
+             * @description Gifts to charity a year (real dollars), paid in cash unless the plan gives appreciated stock instead
+             * @default 0
+             */
+            charitable_giving: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -902,6 +916,8 @@ export interface components {
             retirement_age?: number | null;
             /** Retirement Spending */
             retirement_spending?: number | null;
+            /** Charitable Giving */
+            charitable_giving?: number | null;
             /** Home Purchase In Years */
             home_purchase_in_years?: number | null;
             /** Home Down Payment */
@@ -1011,6 +1027,37 @@ export interface components {
              * @default 0
              */
             net_capital_gain: number;
+        };
+        /**
+         * LiabilityView
+         * @description The liability-matched plan against its two limits, measured on the futures it was chosen on (`chosen_on`) and on fresh ones.
+         */
+        LiabilityView: {
+            /** Reserve Years */
+            reserve_years: number;
+            /** Forced Sale Limit */
+            forced_sale_limit: number;
+            /** Forced Sale Chance */
+            forced_sale_chance: number;
+            /** Advisor Forced Sale Chance */
+            advisor_forced_sale_chance: number;
+            /** Ruin Chance */
+            ruin_chance: number;
+            /** Advisor Ruin Chance */
+            advisor_ruin_chance: number;
+            /** Chosen On Forced Sale Chance */
+            chosen_on_forced_sale_chance: number;
+            /** Chosen On Ruin Chance */
+            chosen_on_ruin_chance: number;
+            /** Chosen On Advisor Ruin Chance */
+            chosen_on_advisor_ruin_chance: number;
+            /** Feasible */
+            feasible: boolean;
+            /** Stock Share By Age */
+            stock_share_by_age: [
+                number,
+                number
+            ][];
         };
         /**
          * MarketShock
@@ -1186,7 +1233,7 @@ export interface components {
              * @default equity_first
              * @enum {string}
              */
-            planning_style: "balanced" | "equity_first";
+            planning_style: "balanced" | "equity_first" | "liability_matched";
             /**
              * Adaptive
              * @description Also compute the year-by-year adaptive plan (in the background)
@@ -1216,6 +1263,7 @@ export interface components {
             ria_fan: components["schemas"]["FanSeries"];
             /** Baselines */
             baselines: components["schemas"]["BaselineView"][];
+            liability?: components["schemas"]["LiabilityView"] | null;
             /** Advantage */
             advantage: components["schemas"]["AdvantageStep"][];
             /** Searched */
@@ -1321,7 +1369,27 @@ export interface components {
              * @default equity_first
              * @enum {string}
              */
-            planning_style: "balanced" | "equity_first";
+            planning_style: "balanced" | "equity_first" | "liability_matched";
+            /**
+             * Heirs Rate
+             * @default 0.24
+             */
+            heirs_rate: number;
+            /**
+             * Liquidated Label
+             * @default Liquidated at 80
+             */
+            liquidated_label: string;
+            /**
+             * Heirs Label
+             * @default Passed to heirs at 80
+             */
+            heirs_label: string;
+            /**
+             * Heirs Note
+             * @default
+             */
+            heirs_note: string;
         };
         /** RankedRow */
         RankedRow: {
@@ -1422,6 +1490,27 @@ export interface components {
             cumulative_dollars: number;
         };
         /**
+         * ShowcaseHeirs
+         * @description The same plan and advisor with the estate passed to heirs at the horizon (step-up on the taxable account, the pre-tax
+         *     accounts taxed at the heirs' rate), on the same futures. The median only: the risk-adjusted advantage is shown once.
+         */
+        ShowcaseHeirs: {
+            /** Label */
+            label: string;
+            /** Note */
+            note: string;
+            /** Rate */
+            rate: number;
+            /** Median Rate */
+            median_rate: number;
+            /** Median Dollars */
+            median_dollars: number;
+            /** Plan Median At Horizon */
+            plan_median_at_horizon: number;
+            /** Advisor Median At Horizon */
+            advisor_median_at_horizon: number;
+        };
+        /**
          * ShowcaseMedian
          * @description The waterfall's headline: the median advantage and nothing else.
          */
@@ -1493,7 +1582,10 @@ export interface components {
          *     Worked out once. Switching strategies off on the waterfall does not change it.
          */
         ShowcaseWealth: {
+            /** Liquidated Label */
+            liquidated_label: string;
             advantage: components["schemas"]["ShowcaseAdvantage"];
+            heirs: components["schemas"]["ShowcaseHeirs"];
             wealth: components["schemas"]["WealthLines"];
             /** Risk Adjusted Label */
             risk_adjusted_label: string;
@@ -1528,6 +1620,8 @@ export interface components {
         StatCards: {
             typical_outcome: components["schemas"]["OutcomeView"];
             ria_typical_outcome: components["schemas"]["OutcomeView"];
+            typical_outcome_heirs: components["schemas"]["OutcomeView"];
+            ria_typical_outcome_heirs: components["schemas"]["OutcomeView"];
             /** Advantage Per Year */
             advantage_per_year: number;
             /** Advantage Total */
@@ -1541,6 +1635,17 @@ export interface components {
             /** Shortfall Chance */
             shortfall_chance: number;
             advantage: components["schemas"]["AdvantageView"];
+            advantage_heirs: components["schemas"]["AdvantageView"];
+            /**
+             * Forced Sale Chance
+             * @default 0
+             */
+            forced_sale_chance: number;
+            /**
+             * Ria Forced Sale Chance
+             * @default 0
+             */
+            ria_forced_sale_chance: number;
         };
         /**
          * StrategyOutcome
@@ -1624,6 +1729,21 @@ export interface components {
             agi: number;
             /** Standard Deduction */
             standard_deduction: number;
+            /**
+             * Deduction Used
+             * @default 0
+             */
+            deduction_used: number;
+            /**
+             * Charitable Deduction
+             * @default 0
+             */
+            charitable_deduction: number;
+            /**
+             * Itemized
+             * @default false
+             */
+            itemized: boolean;
             /** Taxable Income */
             taxable_income: number;
             /** Preferential Income */
@@ -1726,7 +1846,7 @@ export interface components {
              * @default equity_first
              * @enum {string}
              */
-            planning_style: "balanced" | "equity_first";
+            planning_style: "balanced" | "equity_first" | "liability_matched";
             /**
              * Adaptive
              * @default true

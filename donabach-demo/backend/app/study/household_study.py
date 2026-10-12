@@ -23,11 +23,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from app.planner.baseline import BASELINES, TYPICAL_ADVISOR
-from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, search
+from app.planner.baseline import STUDY_BASELINES as BASELINES
+from app.planner.baseline import TYPICAL_ADVISOR
+from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, search, search_matched
 from app.planner.strategies import menu
 from app.sim import adaptive as ad
-from app.sim.simulate import build_inputs, run_batch, run_detail
+from app.sim.simulate import ModelOptions, build_inputs, run_batch, run_detail
 from app.study import households as hh
 from app.study.adaptive_evaluation import LABELS, four_way
 from app.study.metrics import annualized, compare
@@ -90,6 +91,7 @@ def household_row(
     style: str = "balanced",
     valuation: str = "liquidated",
     giving_share: float = 0.0,
+    options: ModelOptions | None = None,
 ) -> dict:
     """`style` is the planning style whose menu the planner searches ("balanced" is the original menu, "equity_first" the
     spending-reserve family). `valuation` is what the planner maximizes: "liquidated" (the app's) or "heirs" (passed to heirs).
@@ -104,10 +106,15 @@ def household_row(
         goals = household.goals.model_copy(update={"charitable_giving": giving_share * household.total_wages})
         household = household.model_copy(update={"goals": goals})
     seed = 5_000 + position
-    years = household.horizon_years
-    futures = build_inputs(household, n_paths=n_search, seed=seed)
-    chosen = search(futures, strategies=menu(style=style), risk_aversion=risk_aversion, valuation=valuation).best.strategy
-    held = build_inputs(household, n_paths=n_eval, seed=seed + EVAL_SEED_OFFSET)
+    years = household.horizon_years if options is None or options.horizon_age is None else options.horizon_age - household.primary_age
+    futures = build_inputs(household, n_paths=n_search, seed=seed, options=options)
+    if style == "liability_matched":
+        # the planner under its two limits, checked on futures it did not search (see `app.planner.search.search_matched`)
+        validation = build_inputs(household, n_paths=1_200, seed=seed + 2_000_003, options=options)
+        chosen = search_matched(futures, validation, menu(style=style))[1].strategy
+    else:
+        chosen = search(futures, strategies=menu(style=style), risk_aversion=risk_aversion, valuation=valuation).best.strategy
+    held = build_inputs(household, n_paths=n_eval, seed=seed + EVAL_SEED_OFFSET, options=options)
     policies = [chosen.policy(), *(b.policy for b in BASELINES)]
     extra: dict[str, int] = {}
 
@@ -144,6 +151,7 @@ def household_row(
         "plan_p10": float(np.percentile(batch.wealth[0], 10)),
         "plan_taxes": float(np.median(batch.taxes_paid[0] + batch.pretax_owed[0])),
         "plan_shortfall": float(np.mean(batch.unfunded[0] > 0)),
+        "plan_forced_sale": float(np.mean(batch.forced_years[0] > 0)),
         **plan_exposure(household, chosen),
     }
     for i, baseline in enumerate(BASELINES, start=1):
@@ -153,6 +161,7 @@ def household_row(
         row[f"{key}_p10"] = float(np.percentile(batch.wealth[i], 10))
         row[f"{key}_taxes"] = float(np.median(batch.taxes_paid[i] + batch.pretax_owed[i]))
         row[f"{key}_shortfall"] = float(np.mean(batch.unfunded[i] > 0))
+        row[f"{key}_forced_sale"] = float(np.mean(batch.forced_years[i] > 0))
         row[f"adv_median_vs_{key}"] = adv.median
         row[f"adv_risk_adjusted_vs_{key}"] = adv.risk_adjusted
         # the same futures with the estate passed to heirs at the horizon (a step-up, the heirs' rate on the pre-tax accounts)
@@ -160,6 +169,13 @@ def household_row(
         row[f"passed_{key}_median"] = heirs.baseline_median
         row[f"passed_adv_median_vs_{key}"] = heirs.median
         row[f"passed_adv_risk_adjusted_vs_{key}"] = heirs.risk_adjusted
+    if options is not None and options.horizon_age is not None:
+        # a run to a later age also reports its results at 80 (the app's age), beside the end of the horizon
+        for i, baseline in enumerate(BASELINES, start=1):
+            at80 = compare(batch.wealth_at_80[0], batch.wealth_at_80[i], household.horizon_years, measure_risk_aversion)
+            row[f"at80_adv_median_vs_{baseline.key}"] = at80.median
+            row[f"at80_adv_risk_adjusted_vs_{baseline.key}"] = at80.risk_adjusted
+        row["at80_plan_median"] = float(np.median(batch.wealth_at_80[0]))
     row["passed_plan_median"] = float(np.median(batch.wealth_heirs[0]))
     row["passed_plan_p10"] = float(np.percentile(batch.wealth_heirs[0], 10))
     j = extra["typical_advisor_no_dist"]
@@ -214,6 +230,7 @@ def run(
     style: str = "balanced",
     valuation: str = "liquidated",
     giving_share: float = 0.0,
+    options: ModelOptions | None = None,
 ) -> pd.DataFrame:
     """The study. With a `checkpoint` path the rows so far are saved every 25 households and a rerun resumes from them."""
     items = hh.generate(seed=seed, per_type=per_type)
@@ -231,7 +248,7 @@ def run(
         rows.append(
             household_row(
                 items[position], position, n_search, n_eval, risk_aversion, adaptive_paths, measure_risk_aversion, heirs_rates, skill, style,
-                valuation, giving_share,
+                valuation, giving_share, options,
             )
         )
         if progress and (position + 1) % 25 == 0:
@@ -240,6 +257,12 @@ def run(
         if checkpoint is not None and (position + 1) % 25 == 0:
             pd.DataFrame(rows).to_csv(checkpoint, index=False)
     return pd.DataFrame(rows)
+
+
+STYLE_NOTES = {
+    "equity_first": "; planning style: equity first, a spending reserve with everything else in stocks",
+    "liability_matched": "; planning style: liability matched, the reserve chosen to keep forced sales in falling years to 2% of futures and ruin no likelier than the advisor's",
+}
 
 
 def _pct(x: float) -> str:
@@ -422,7 +445,7 @@ def summarize(
         "",
         f"{len(frame)} synthetic households ({frame.groupby('type').size().iloc[0]} of each of six types), all fictional. For each, the planner searched",
         f"its strategy menu on 400 simulated futures and the winner was scored against both advisors on {n_eval:,} fresh",
-        f"futures it never saw ({setting}{'; planning style: equity first, a spending reserve with everything else in stocks' if style == 'equity_first' else ''}). Nothing was tuned; the households were drawn from fixed ranges",
+        f"futures it never saw ({setting}{STYLE_NOTES.get(style, '')}). Nothing was tuned; the households were drawn from fixed ranges",
         "that make each a clear example of its type (see `backend/app/study/households.py`).",
         "",
         "* **Median advantage**: difference in median after-tax wealth at the horizon, annualized as a growth-rate difference.",
@@ -533,10 +556,12 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--heirs-rates", type=float, nargs="*", default=[], help="flat tax rates on pre-tax money at the horizon to report as a sensitivity, e.g. 0.24 0.32"
     )
-    parser.add_argument("--style", choices=("balanced", "equity_first"), default="balanced", help="the planning style whose strategy menu the planner searches")
+    parser.add_argument("--style", choices=("balanced", "equity_first", "liability_matched"), default="balanced", help="the planning style whose strategy menu the planner searches")
     parser.add_argument("--skill", action="store_true", help="also run each plan's tools at the good RIA's allocation (the part of the advantage that is not extra equity)")
     parser.add_argument("--valuation", choices=("liquidated", "heirs"), default="liquidated", help="the wealth the planner maximizes at the horizon")
     parser.add_argument("--giving-share", type=float, default=0.0, help="share of wages every household gives to charity a year")
+    parser.add_argument("--horizon-age", type=int, default=None, help="simulate to this age (default 80); the rows then also carry the results at 80")
+    parser.add_argument("--no-survivor", action="store_true", help="keep the couple joint to the end (the engine before the survivor phase)")
     parser.add_argument("--valuations", action="store_true", help="add the table of the two valuations at 80 (liquidated, passed to heirs) to the report")
     args = parser.parse_args(argv)
     frame = run(
@@ -544,6 +569,7 @@ def main(argv: list[str] | None = None) -> None:
         adaptive_paths=args.adaptive_paths, checkpoint=args.checkpoint, risk_aversion=args.risk_aversion,
         measure_risk_aversion=args.measure_risk_aversion, heirs_rates=tuple(args.heirs_rates), skill=args.skill,
         style=args.style, valuation=args.valuation, giving_share=args.giving_share,
+        options=ModelOptions(survivor=not args.no_survivor, horizon_age=args.horizon_age),
     )
     args.out_dir.mkdir(parents=True, exist_ok=True)
     frame.to_csv(args.out_dir / "household_study.csv", index=False)

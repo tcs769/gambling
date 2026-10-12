@@ -4,24 +4,24 @@ Every strategy of every planning style (7,392 after removing duplicates), picked
 
 | Household type | Rule | Median adv. vs RIA | Risk-adj. adv. vs RIA | Ruin chance (RIA) | 10th pct vs RIA's | Forced-sale chance | Households |
 |---|---|---|---|---|---|---|---|
-| showcase | unconstrained | 2.27% | 0.13% | 3.85% (3.90%) | 1.32x | 17.20% | 1 |
-| showcase | risk-matched | 2.27% | 0.13% | 3.85% (3.90%) | 1.32x | 17.20% | 1 |
-| diversified | unconstrained | 2.04% | -0.37% | 2.34% (1.66%) | 1.26x | 77.19% | 4 |
-| diversified | risk-matched | 1.97% | -0.00% | 1.90% (1.66%) | 1.33x | 26.49% | 4 |
-| concentrated | unconstrained | 2.28% | -0.91% | 2.05% (1.50%) | 1.20x | 68.33% | 4 |
-| concentrated | risk-matched | 2.24% | -0.69% | 1.89% (1.50%) | 1.25x | 41.73% | 4 |
-| big_gains | unconstrained | 2.04% | -1.37% | 0.25% (0.04%) | 1.09x | 76.16% | 4 |
-| big_gains | risk-matched | 2.05% | -1.27% | 0.22% (0.04%) | 1.10x | 69.60% | 4 |
-| early_retirement | unconstrained | 1.97% | -0.33% | 4.23% (3.28%) | 0.99x | 69.65% | 4 |
-| early_retirement | risk-matched | 1.95% | -0.06% | 4.15% (3.68%) | 1.02x | 60.02% | 3 |
-| large_purchase | unconstrained | 1.79% | -0.76% | 1.95% (2.56%) | 1.35x | 78.64% | 4 |
-| large_purchase | risk-matched | 1.78% | -0.56% | 1.93% (2.56%) | 1.42x | 49.65% | 4 |
-| high_earner | unconstrained | 1.92% | -0.74% | 7.27% (8.75%) | 1.26x | 76.02% | 4 |
-| high_earner | risk-matched | 2.02% | 0.02% | 9.38% (11.63%) | 2.81x | 73.08% | 3 |
+| showcase | unconstrained | 2.31% | 0.10% | 4.05% (3.90%) | 1.33x | 26.10% | 1 |
+| showcase | risk-matched | 2.31% | 0.10% | 4.05% (3.90%) | 1.33x | 26.10% | 1 |
+| diversified | unconstrained | 2.04% | -0.25% | 2.11% (1.66%) | 1.30x | 46.04% | 4 |
+| diversified | risk-matched | 1.96% | 0.00% | 1.85% (1.66%) | 1.33x | 24.15% | 4 |
+| concentrated | unconstrained | 2.26% | -0.92% | 2.07% (1.50%) | 1.20x | 79.19% | 4 |
+| concentrated | risk-matched | 2.25% | -0.70% | 1.90% (1.50%) | 1.24x | 41.01% | 4 |
+| big_gains | unconstrained | 2.05% | -1.23% | 0.23% (0.04%) | 1.09x | 70.79% | 4 |
+| big_gains | risk-matched | 2.05% | -1.19% | 0.18% (0.04%) | 1.10x | 55.70% | 4 |
+| early_retirement | unconstrained | 1.97% | -0.35% | 4.25% (3.28%) | 0.94x | 70.10% | 4 |
+| early_retirement | risk-matched | 1.96% | -0.06% | 4.13% (3.68%) | 1.02x | 59.97% | 3 |
+| large_purchase | unconstrained | 1.78% | -0.74% | 1.95% (2.56%) | 1.35x | 76.77% | 4 |
+| large_purchase | risk-matched | 1.78% | -0.66% | 1.93% (2.56%) | 1.40x | 67.11% | 4 |
+| high_earner | unconstrained | 1.91% | -0.71% | 6.94% (8.75%) | 1.29x | 69.69% | 4 |
+| high_earner | risk-matched | 1.88% | -0.45% | 6.85% (8.75%) | 1.50x | 54.89% | 4 |
 
-No strategy met the risk-matched limits for 2 household(s): early_retirement-3, high_earner-0.
+No strategy met the risk-matched limits for 1 household(s): early_retirement-3.
 
 ## Showcase household
 
-* **unconstrained**: 3-year spending reserve, the rest in stocks, fill 24% bracket (every year), 10% private credit, borrow for goals: 2.27% a year at the median, 0.13% risk-adjusted; ruin 3.85% (RIA 3.90%).
-* **risk-matched**: 3-year spending reserve, the rest in stocks, fill 24% bracket (every year), 10% private credit, borrow for goals: 2.27% a year at the median, 0.13% risk-adjusted; ruin 3.85% (RIA 3.90%).
+* **unconstrained**: 2-year spending reserve, the rest in stocks, fill 24% bracket (every year), 10% private credit, direct indexing: 2.31% a year at the median, 0.10% risk-adjusted; ruin 4.05% (RIA 3.90%).
+* **risk-matched**: 2-year spending reserve, the rest in stocks, fill 24% bracket (every year), 10% private credit, direct indexing: 2.31% a year at the median, 0.10% risk-adjusted; ruin 4.05% (RIA 3.90%).

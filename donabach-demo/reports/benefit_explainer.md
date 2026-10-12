@@ -6,14 +6,14 @@ Household: The Tanaka family. Plan: 6-year spending reserve, the rest in stocks,
 
 | Strategy | Waterfall bar (a year) | Shapley share (a year) | In dollars of median wealth (Shapley) |
 |---|---|---|---|
-| Lower, flat fee | +0.760% | +0.835% | +434,966 |
-| Asset location | +0.256% | +0.135% | +75,139 |
-| Highest-cost lots first | +0.095% | +0.079% | +38,523 |
-| Loss harvesting stock by stock | -0.026% | +0.060% | +31,257 |
-| 6-year spending reserve, the rest in stocks | +0.542% | +0.686% | +362,069 |
-| 15% private credit | +0.206% | +0.130% | +80,893 |
-| Roth conversions up to the 24% bracket | +0.246% | +0.226% | +121,363 |
-| Tax-aware withdrawal order | +0.031% | -0.040% | -14,514 |
+| Lower, flat fee | +0.760% | +0.834% | +434,487 |
+| Asset location | +0.256% | +0.138% | +76,833 |
+| Highest-cost lots first | +0.095% | +0.079% | +38,719 |
+| Loss harvesting stock by stock | -0.026% | +0.060% | +31,521 |
+| 6-year spending reserve, the rest in stocks | +0.543% | +0.681% | +359,355 |
+| 15% private credit | +0.206% | +0.131% | +81,359 |
+| Roth conversions up to the 24% bracket | +0.246% | +0.227% | +121,849 |
+| Tax-aware withdrawal order | +0.031% | -0.040% | -14,426 |
 
 A strategy with a negative bar and a positive share (or the reverse) is one whose worth depends on what it is combined with.
 
@@ -25,7 +25,7 @@ A strategy with a negative bar and a positive share (or the reverse) is one whos
 
 **Key assumptions.** Donabach 0.35% flat; good RIA 1.0% to $1M, 0.8% to $3M, 0.6% to $5M, 0.5% above; typical advisor 1.15% to $500k, 1.00% to $1,000k, 0.90% to $2,000k, 0.75% to $5,000k, 0.60% above.
 
-**The Tanaka family's numbers.** Waterfall bar +0.760% a year (+330,459 of median wealth at 80); Shapley share +0.835% a year (+434,966).
+**The Tanaka family's numbers.** Waterfall bar +0.760% a year (+330,459 of median wealth at 80); Shapley share +0.834% a year (+434,487).
 
 ## Asset location
 
@@ -35,7 +35,7 @@ A strategy with a negative bar and a positive share (or the reverse) is one whos
 
 **Key assumptions.** Bond interest yield 3.5%; dividend yield 1.8%; tax brackets, deductions and the 0/15/20% gain rates of 2026 held constant in real dollars.
 
-**The Tanaka family's numbers.** Waterfall bar +0.256% a year (+128,677 of median wealth at 80); Shapley share +0.135% a year (+75,139).
+**The Tanaka family's numbers.** Waterfall bar +0.256% a year (+128,677 of median wealth at 80); Shapley share +0.138% a year (+76,833).
 
 ## Highest-cost lots first (and gain harvesting, and gifts of lots)
 
@@ -45,7 +45,7 @@ A strategy with a negative bar and a positive share (or the reverse) is one whos
 
 **Key assumptions.** Short-term share of a lot's gain by its age: 1, 0.5, 0. The 0% bracket tops out at $98,900 of taxable income (married filing jointly, 2026). A gift of long-term stock is deducted at market value; a household that does not itemize may deduct $2,000 of cash gifts on top of the standard deduction.
 
-**The Tanaka family's numbers.** Waterfall bar +0.095% a year (+50,358 of median wealth at 80); Shapley share +0.079% a year (+38,523).
+**The Tanaka family's numbers.** Waterfall bar +0.095% a year (+50,358 of median wealth at 80); Shapley share +0.079% a year (+38,719).
 
 ## Loss harvesting stock by stock (direct indexing)
 
@@ -55,7 +55,7 @@ A strategy with a negative bar and a positive share (or the reverse) is one whos
 
 **Key assumptions.** Idiosyncratic volatility 25% (an assumption read from published figures for single US stocks); harvest threshold 1%; no wash-sale rule is modelled (a section 12.9 check); no trading costs.
 
-**The Tanaka family's numbers.** Waterfall bar -0.026% a year (-14,031 of median wealth at 80); Shapley share +0.060% a year (+31,257).
+**The Tanaka family's numbers.** Waterfall bar -0.026% a year (-14,031 of median wealth at 80); Shapley share +0.060% a year (+31,521).
 
 ## Spending reserve, the rest in stocks
 
@@ -65,7 +65,7 @@ A strategy with a negative bar and a positive share (or the reverse) is one whos
 
 **Key assumptions.** Equity return 5.5% after inflation, volatility 16%; bonds 1.5% and 5%; correlations 0.1 (stocks-bonds), 0.5 (stocks-private credit). The liability-matched style chooses N under a limit of 2% of futures with a forced sale in a falling year.
 
-**The Tanaka family's numbers.** Waterfall bar +0.542% a year (+312,063 of median wealth at 80); Shapley share +0.686% a year (+362,069).
+**The Tanaka family's numbers.** Waterfall bar +0.543% a year (+312,206 of median wealth at 80); Shapley share +0.681% a year (+359,355).
 
 ## Private credit sleeve
 
@@ -75,7 +75,7 @@ A strategy with a negative bar and a positive share (or the reverse) is one whos
 
 **Key assumptions.** Return 3.5% after inflation, volatility 8% (the assumption review's figures; sensitivity 2% to 5%).
 
-**The Tanaka family's numbers.** Waterfall bar +0.206% a year (+131,975 of median wealth at 80); Shapley share +0.130% a year (+80,893).
+**The Tanaka family's numbers.** Waterfall bar +0.206% a year (+131,833 of median wealth at 80); Shapley share +0.131% a year (+81,359).
 
 ## Roth conversions
 
@@ -85,7 +85,7 @@ A strategy with a negative bar and a positive share (or the reverse) is one whos
 
 **Key assumptions.** Brackets are held constant in real dollars; the survivor, after the first death, files single (narrower brackets).
 
-**The Tanaka family's numbers.** Waterfall bar +0.246% a year (+167,947 of median wealth at 80); Shapley share +0.226% a year (+121,363).
+**The Tanaka family's numbers.** Waterfall bar +0.246% a year (+167,947 of median wealth at 80); Shapley share +0.227% a year (+121,849).
 
 ## Tax-aware withdrawal order
 
@@ -95,7 +95,7 @@ A strategy with a negative bar and a positive share (or the reverse) is one whos
 
 **Key assumptions.** Retirement spending net of Social Security is taken to be what the household states; Social Security is taxed by the provisional-income formula.
 
-**The Tanaka family's numbers.** Waterfall bar +0.031% a year (+22,247 of median wealth at 80); Shapley share -0.040% a year (-14,514).
+**The Tanaka family's numbers.** Waterfall bar +0.031% a year (+22,247 of median wealth at 80); Shapley share -0.040% a year (-14,426).
 
 ## Gain harvesting in the 0% bracket (part of the lots step above)
 

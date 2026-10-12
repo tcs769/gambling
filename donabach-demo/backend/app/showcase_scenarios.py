@@ -70,6 +70,8 @@ FIELDS = [
     ("stock_share", "Stock share", False),
 ]
 
+ROW_FIELD = {"gains_harvested_tax_free": "gains_realized_tax_free"}  # the plan row's name for it
+
 _lock = threading.RLock()
 _scenarios: dict[str, ShowcaseScenario] = {}
 _base_rows: dict[str, list] = {}
@@ -129,7 +131,8 @@ def compare_rows(before: list, after: list) -> tuple[list[ScenarioYear], list[Sc
     for b, a in zip(before, after, strict=True):
         changed: list[str] = []
         for key, label, _ in FIELDS:
-            was, now = float(getattr(b, key)), float(getattr(a, key))
+            attr = ROW_FIELD.get(key, key)
+            was, now = float(getattr(b, attr)), float(getattr(a, attr))
             if _differs(key, was, now):
                 changed.append(key)
                 changes.append(ScenarioChange(age=a.age, key=key, label=label, before=was, after=now, text=_sentence(a.age, key, was, now)))

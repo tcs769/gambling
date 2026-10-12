@@ -8,6 +8,12 @@ taxable income, tax before credits, child tax credit, NIIT, federal income tax a
 including filers 65 and over (the additional standard deduction of $1,650 per spouse and Illinois'
 additional $1,000 exemption per spouse).
 
+Two other differences were found while adding the single-filer cases and are not in the comparison, because the engine does not model them:
+the alternative minimum tax (a single filer with $900,000 of income, $720,000 of it long-term gains and dividends, owes $15,438 of it in
+PolicyEngine) and itemized deductions (PolicyEngine itemizes the Illinois income tax as a state and local deduction once income reaches about
+$500,000: $6,653 more deducted at an income of $504,000, none above $600,000 where the cap falls to $10,000). The final report, Update 4, says
+which households this could touch.
+
 One deliberate difference: PolicyEngine also applies the 2025-2028 "senior deduction" of $6,000 per
 spouse (One Big Beautiful Bill Act), which expires long before the households this app plans for
 reach 65. The project spec leaves it out, so every comparison here switches it off in PolicyEngine

@@ -134,6 +134,11 @@ The measurements behind the numbers are scripts, not hand-typed tables (run from
 | What would have to change to reach 2 to 3% a year (`path_to_2_3_percent.md`) | `python -m app.study.reach --out ../reports/path_to_2_3_percent.md` |
 | The 300 households when the planner searches at risk aversion 3, 2 and 1, with each plan's tools alone at the advisor's allocation and a heirs'-tax sensitivity (`household_study_risk_aversion_N/`) | `python -m app.study.household_study --per-type 50 --risk-aversion 1 --measure-risk-aversion 3 --skill --heirs-rates 0.24 0.32 --out-dir ../reports/household_study_risk_aversion_1` |
 | The same studies for the equity-first planning style, the app's default (`household_study_equity_first/`, `adaptive_evaluation_equity_first.md`) | `python -m app.study.household_study --per-type 50 --n-eval 1000 --style equity_first --skill --heirs-rates 0.24 0.32 --adaptive-paths 200 --checkpoint /tmp/study_ef.csv --out-dir ../reports/household_study_equity_first`; `python -m app.study.adaptive_evaluation --paths 2000 --style equity_first --out ../reports/adaptive_evaluation_equity_first.md` |
+| Update 4: the 300 households against the good RIA, the typical advisor and a do-it-yourself investor, both valuations, for the equity-first and the liability-matched styles (`household_study_equity_first/`, `household_study_liability_matched/`) | `python -m app.study.household_study --style equity_first --valuations --out-dir ../reports/household_study_equity_first --checkpoint /tmp/ef.csv` and the same with `--style liability_matched`; `--horizon-age 90` runs to 90 and also reports at 80 |
+| Update 4: the biggest gap two ways, over every strategy of every style (`max_gap/`) | `python -m app.study.max_gap --per-type 4 --out ../reports/max_gap` |
+| Update 4: what flatters Donabach, one assumption changed at a time (`overstatement.md`) | `python -m app.study.overstatement --out ../reports/overstatement.md` |
+| Update 4: what each strategy does, and the showcase household's waterfall bars beside their order-free Shapley shares (`benefit_explainer.md`) | `python -m app.study.explainer --out ../reports/benefit_explainer.md` |
+| Update 4: Social Security claiming age, and what a change of the engine did to the answer | `python -m app.study.tools claiming`; `python -m app.study.steps survivor` (or `flat_valuation`) |
 
 The studies are written so that their committed reports regenerate as committed: `--style` defaults to `balanced` (the
 strategy menu the reports from the first rows down to the risk-aversion ones were produced with), while the app itself
@@ -187,8 +192,9 @@ sessions in demo mode. It writes screenshots to `.screenshots/`. Install a brows
 * Tax engine: bracket math, Illinois, Roth conversions, capital-gain stacking, NIIT, child-credit phase-out and
   capital-loss carryforward, in both compiled and plain-Python modes.
 * Optional cross-check against PolicyEngine-US (`pip install policyengine-us`, then
-  `pytest tests/test_policyengine_compare.py`): twelve households match to the cent, including four filers 65
-  and over (additional standard deduction and Illinois exemption). PolicyEngine's 2025-2028 senior deduction is
+  `pytest tests/test_policyengine_compare.py`): fifteen households match to the cent, including four filers 65
+  and over (additional standard deduction and Illinois exemption), three single filers (survivors) and the sale of a million dollars
+  of stock (a hand calculation of the added tax is in `tests/test_tax_audit.py`). PolicyEngine's 2025-2028 senior deduction is
   switched off in the comparison (see above); a test documents what it would add.
 * Simulator: each mechanism against hand calculations, a zero-return conservation identity (every dollar of
   change is a contribution, goal, spending, tax or fee), and a per-year recomputation of the simulator's taxes
@@ -213,15 +219,20 @@ sessions in demo mode. It writes screenshots to `.screenshots/`. Install a brows
 
 ## Modeling choices and known simplifications
 
-Stated in the app footer: income tax only (no payroll taxes), standard deduction only, no AMT, no state tax
-credits. Beyond that, choices made where the spec was silent, so they are not a surprise:
+Stated in the app footer: income tax only (no payroll taxes), the standard deduction (itemizing only for charitable gifts), no
+AMT, no state tax credits. Beyond that, choices made where the spec was silent, so they are not a surprise:
 
 * **Age basis.** The household's age is the primary earner's; both spouses retire in the same year; the spouse's
   age only drives their wage growth. The 10% early-withdrawal penalty applies before age 59 1/2 on that basis.
-* **Horizon.** Plans run to age 80 (42 years for the demo household) and are scored on after-tax wealth at 80
-  with the same valuation as before: pre-tax balances taxed as if withdrawn evenly over 20 years beside Social
-  Security, unrealized gains at 15%. A 20-year spread is long for an 80-year-old, so pre-tax balances are, if
-  anything, valued a little too generously.
+* **Horizon and the two valuations.** Plans run to age 80 (42 years for the demo household) and the app reports after-tax wealth at 80
+  two ways, always labeled. **"Liquidated at 80"**: everything is sold and the tax engine (`tax_core`: brackets, the 0/15/20% gain
+  rates, the 3.8% investment income tax, Illinois) charges what that costs, as if the pre-tax balance were withdrawn evenly over 20
+  years and the unrealized gain realized evenly over 5, in the same years, beside Social Security, interest and dividends; the
+  capital-loss carryforward offsets the gains; gains realized and pre-tax money withdrawn to pay the last year's tax and fee land in
+  the first of those years (`tax.engine.liquidation_taxes`; the flat 15% it replaced is still there as `ModelOptions(valuation="flat")`).
+  **"Passed to heirs at 80"**: a step-up in basis (no tax on the unrealized gain), the Roth as it stands, the pre-tax accounts after a
+  flat 24% (the 24% bracket of a couple spreads the inheritance over ten years), loans still owed. A study can run on to 90
+  (`ModelOptions(horizon_age=90)`), and then also reports wealth at 80.
 * **Required minimum distributions** start at 75 for anyone born in 1960 or later (73 for 1951 to 1959),
   computed on the household's combined pre-tax balance from the prior year-end with the IRS Uniform Lifetime
   Table (`tax/params_2026.py`, source in the comment) and the primary earner's age. An RMD is spent first on
@@ -229,9 +240,28 @@ credits. Beyond that, choices made where the spec was silent, so they are not a 
 * **65 and over.** Each spouse aged 65+ adds the $1,650 additional standard deduction (IRS Rev. Proc. 2025-32)
   and Illinois' additional $1,000 exemption. The separate $6,000 senior deduction of the 2025 budget law is left
   out on purpose: it expires after 2028, long before this household reaches 65.
-* **Not modeled: survivor years and heirs' taxes.** After the first spouse dies the survivor files as a single
-  taxpayer with narrower brackets, and heirs pay tax on inherited pre-tax accounts. Both generally favor Roth
-  conversions, so conversion strategies are, if anything, understated. The app footer says so too.
+* **The survivor phase.** The two spouses' lifetimes are drawn from the Social Security Administration's 2023 period life table
+  (`sim/mortality.py`; the households do not record sex, so the average of the two). From the year after the first death the
+  survivor files as a single taxpayer (single brackets, deduction, gain and net-investment-income thresholds, the Illinois exemption
+  for one), spends 75% of what the couple did and draws 60% of the household's Social Security benefit (both are assumptions: the
+  documents give neither). A first death before the primary earner retires is moved to the retirement year, and the survivor lives to the
+  end of the horizon. A household with one person on file is left joint: the spouse's age is unknown. Heirs' taxes are the second
+  valuation above.
+* **Social Security** is taxed by the provisional-income formula (0% to 85% of the benefit; $32,000 and $44,000 married, $25,000 and
+  $34,000 single, none indexed), not at a flat 85%.
+* **The advisors' own costs** (the typical advisor only): a fee schedule of 1.15% on the first $500,000 falling to 0.6% above $5M, funds that
+  charge 0.60% on stocks and 0.45% on bonds, 3% of the portfolio in cash (0.5% real), and capital-gain distributions of 5.5% a year.
+  The good RIA and Donabach hold index funds, whose 0.03% to 0.10% is left out. A **do-it-yourself** baseline (index funds, no fee, the
+  glide path, no advice, and a behavior gap of half a point a year, Morningstar's "Mind the Gap") is the third baseline of the studies.
+* **Liability matching.** The simulator counts the years in which stocks were sold to pay for goals or spending in a year they fell (a
+  forced sale). With a spending reserve the bonds and private credit of every account are spent first in such a year; goals due within
+  two years are funded in the goal bucket whatever the market did, and so is the first two years of spending of a household still building
+  toward retirement; the part of the reserve that pays for the years before 59 1/2 is held in the taxable account, where it can be
+  spent without the 10% penalty. The `liability_matched` planning style picks the reserve (2 to 12 years) with the most median wealth
+  among those that keep the chance of a forced sale at 2% or less and ruin no likelier than the good advisor's, checked on 1,600 futures
+  (the search's 400 and 1,200 it never saw).
+* **New tools of the plan:** gains realized up to the top of the 0% capital-gain bracket each year (sell and buy back; only the basis
+  steps up), and gifts of the lots with the most gain instead of cash for a household that gives to charity (`goals.charitable_giving`).
 * **Private credit.** The sleeve is 0, 5, 10 or 15% of long-term money; the stock share is applied to the
   rest (with a spending reserve the sleeve counts toward the reserve). It goes in the pre-tax account first, overflows to the Roth, then to the taxable account, where its
   income is taxed each year as ordinary interest (5.5%: its 3.5% real return plus the 2% of inflation the bond

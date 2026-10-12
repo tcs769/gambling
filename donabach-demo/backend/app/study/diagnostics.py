@@ -310,7 +310,7 @@ def render(result: dict) -> str:
     out.append("| Tax still owed on the pre-tax balance at 80 (valuation) | " + " | ".join(_k(s["tax_owed_on_pretax_at_horizon"]["mean"]) for s in subs) + " |")
     out.append("")
     out.append(
-        "The income is stacked in the order the tax is worked out (wages, interest and Social Security; pre-tax withdrawals; required "
+        "The income is stacked in the order the tax is worked out (wages and Social Security; interest; pre-tax withdrawals; required "
         "distributions; conversions; short-term gains; dividends; long-term gains) and each kind's share is what it added to the tax, so "
         "the rows add up to the total exactly. The charitable deduction's saving comes last and is negative."
     )

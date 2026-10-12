@@ -133,7 +133,7 @@ Headline table above; the 300-household study in `reports/household_study_equity
 
 ### Sources and what was not done
 
-Research for the typical advisor's costs, fund distributions, charitable rules, heirs' tax and mortality used web-search digests only; I read no primary document, so treat the cited rates as approximate. **Not done:** 7.3, 9.2–9.6, 12.4–12.7, adaptive in the maximum-gap menu, survivors for one-person households. The timing tests (plan under 2 s, concurrency) fail when the machine is loaded; see the verification note at the end of this section for the idle-machine rerun.
+Research for the typical advisor's costs, fund distributions, charitable rules, heirs' tax and mortality used web-search digests only; I read no primary document, so treat the cited rates as approximate. **Not done:** 7.3, 9.2–9.6, 12.4–12.7, adaptive in the maximum-gap menu, survivors for one-person households. The timing tests (plan under 2 s, concurrency) fail when the machine is loaded; **Verification, honestly:** the full backend suite on the final code passes 698 tests, skips 1 and fails 1: `test_plan_under_two_seconds` (2.7 to 2.9 s inside pytest on this machine, 1.8 s timed directly; this host also runs a plain Python loop about 30% slower than the one earlier measurements were taken on). I did not loosen the bound. The frontend end-to-end suite (464 checks) was last run before the final backend changes and was not rerun.
 
 
 ## Update 3: tax lots, the showcase household and the three screens

@@ -15,7 +15,8 @@
 
 **Typical advisor** (spec A9): the same glide path and mechanics, but
 
-* a flat 1.0% fee at every balance (no breakpoints)
+* a fee of 1.15% on the first $500,000 falling to 0.6% above $5M (a surveyed schedule), instead of the good RIA's
+* actively managed funds that charge their expense ratios (0.60% on stocks, 0.45% on bonds), and 3% of the portfolio in cash
 * no tax-loss harvesting at all
 * every account managed separately with the same mix
 * no Roth conversions; withdrawals taken proportionally
@@ -29,6 +30,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.sim import markets
 from app.sim.simulate import FEE_RATES, FEE_TOPS, Policy
 
 GLIDE_START_SHARE = 0.80
@@ -81,6 +83,10 @@ TYPICAL_ADVISOR = Policy(
     short_term_ordinary=True,
     fund_distribution=ACTIVE_FUND_DISTRIBUTION,
     fund_distribution_short_term=ACTIVE_FUND_SHORT_TERM_SHARE,
+    typical_fee_schedule=True,
+    fund_expense_equity=markets.ACTIVE_EXPENSE_EQUITY,
+    fund_expense_bond=markets.ACTIVE_EXPENSE_BOND,
+    cash_share=markets.TYPICAL_CASH_SHARE,
 )
 
 # (up to, fee rate) rows, for display next to results.
@@ -93,7 +99,7 @@ GOOD_RIA_SENTENCE = (
     "tax lots sold first."
 )
 TYPICAL_ADVISOR_SENTENCE = (
-    "A typical advisor: a flat 1.0% fee at every balance, no tax-loss harvesting, every account managed "
+    "A typical advisor: a fee of 1.15% on the first $500,000 falling to 0.6% above $5 million, funds that charge 0.60% (stocks) and 0.45% (bonds) a year, 3% in cash, no tax-loss harvesting, every account managed "
     "separately with the same mix, an age-based glide path from 80% to 50% stocks, no Roth conversions, "
     "withdrawals taken proportionally and the oldest tax lots sold first. Its taxable funds are actively managed, so they "
     "pay out capital gains every year."

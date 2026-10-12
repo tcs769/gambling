@@ -201,8 +201,11 @@ NTV = 13
     SP_DONATE,
     SP_DIST,
     SP_DISTST,
-) = range(24)
-NSP = 24
+    SP_ER_E,
+    SP_ER_B,
+    SP_CASH,
+) = range(27)
+NSP = 27
 
 # 401(k) contribution type (SP_K401).
 K401_PRETAX, K401_ROTH, K401_ROTH_LOW = 0.0, 1.0, 2.0
@@ -229,8 +232,11 @@ GATE_NAMES = ("conversion", "harvest", "bucket", "location", "withdraw", "k401",
     A_REFILL,  # 1.0 = do not sell stocks to refill the reserve in a year stocks fell
     A_DIST,  # capital gains the funds in the brokerage account distribute each year, as a share of its equity
     A_DISTST,  # the short-term share of those distributions
-) = range(14)
-NACT = 14
+    A_ER_E,  # expense ratio of the equity funds held (taken from their return)
+    A_ER_B,  # expense ratio of the bond funds held
+    A_CASH,  # share of the portfolio held in cash (taken from the bonds)
+) = range(17)
+NACT = 17
 
 # Scratch carried from the start of a year to its end (what the household saw, then did).
 (
@@ -419,6 +425,12 @@ GLIDE_END_AGE = 70.0  # glide paths end here, as before the horizon moved from 7
 # Breakpoint advisory fee schedule used by the RIA baseline: (upper bound, marginal fee rate).
 FEE_TOPS = np.array([1_000_000.0, 3_000_000.0, 5_000_000.0, np.inf])
 FEE_RATES = np.array([0.010, 0.008, 0.006, 0.005])
+# The typical advisor's schedule, marginal rates by balance (SP_FEE_BREAKPOINTS 2). Veres' survey through Kitces (2023) has median
+# advisory fees of almost 1.25% under $250,000, 1.00% to $1M and 0.75% over $2M, and Kitces Research (2024) a typical schedule of
+# 1.00% to $1M, 0.90% at $2M and 0.75% at $5M. Envestnet's 2026 survey has an average of 0.96%. Averages under $500,000 run
+# 1.1% to 1.25%: 1.15% is used for the first $500,000 (reports/final_report.md, Update 4, for what was read).
+TYPICAL_FEE_TOPS = np.array([500_000.0, 1_000_000.0, 2_000_000.0, 5_000_000.0, np.inf])
+TYPICAL_FEE_RATES = np.array([0.0115, 0.010, 0.009, 0.0075, 0.006])
 DONABACH_FLAT_FEE = 0.0035
 
 _EARLY_AGE = P.EARLY_WITHDRAWAL_AGE
@@ -859,6 +871,15 @@ def _stock_share(age, stock, glide_start, glide_drop):
 def _advisory_fee(total, breakpoints, flat):
     if breakpoints < 0.5:
         return flat * total
+    if breakpoints > 1.5:
+        fee = 0.0
+        lower = 0.0
+        for i in range(TYPICAL_FEE_TOPS.shape[0]):
+            top = TYPICAL_FEE_TOPS[i]
+            if total > lower:
+                fee += (min(total, top) - lower) * TYPICAL_FEE_RATES[i]
+            lower = top
+        return fee
     fee = 0.0
     lower = 0.0
     for i in range(FEE_TOPS.shape[0]):
@@ -975,6 +996,9 @@ def _policy_action(row, gates_row, tv, t, w, act):
     act[A_REFILL] = row[SP_REFILL]
     act[A_DIST] = row[SP_DIST]
     act[A_DISTST] = row[SP_DISTST]
+    act[A_ER_E] = row[SP_ER_E]
+    act[A_ER_B] = row[SP_ER_B]
+    act[A_CASH] = row[SP_CASH]
 
 
 @jit(inline="always")
@@ -986,6 +1010,12 @@ def _year_begin(st, ys, tv, t, hhc, act, r_e, r_b, r_c, g):
     equity_open = st[S_BE]
     basis_open = st[S_BBASIS]
     st[S_YEAR] = t
+    # Fund costs and cash (the typical advisor): equity funds lose their expense ratio, and the bond sleeve is partly cash, which
+    # earns the cash return and yield and loses the bond funds' expense ratio.
+    cash_of_bonds = min(1.0, act[A_CASH] / max(1e-9, 1.0 - act[A_STOCK] - act[A_PC]))
+    r_e = r_e - act[A_ER_E]
+    r_b = r_b - act[A_ER_B] - cash_of_bonds * (r_b - markets.CASH_REAL_RETURN)
+    bond_yield = markets.BOND_INTEREST_YIELD - cash_of_bonds * (markets.BOND_INTEREST_YIELD - markets.CASH_INTEREST_YIELD)
 
     # Gains and withdrawals deferred from paying last year's tax and fees land in this year.
     realized = st[S_DGAIN]
@@ -1000,7 +1030,7 @@ def _year_begin(st, ys, tv, t, hhc, act, r_e, r_b, r_c, g):
 
     # Opening balances drive this year's dividends and interest.
     dividends = markets.DIVIDEND_YIELD * st[S_BE]
-    interest = markets.BOND_INTEREST_YIELD * (st[S_BB] + st[S_GB]) + markets.PRIVATE_CREDIT_INCOME_YIELD * st[S_BP]
+    interest = bond_yield * (st[S_BB] + st[S_GB]) + markets.PRIVATE_CREDIT_INCOME_YIELD * st[S_BP]
 
     # 1. Returns.
     st[S_PE] *= 1.0 + r_e
@@ -1960,6 +1990,10 @@ class Policy:
     donate_lots: bool = False  # charitable gifts: give the lots with the most gain per dollar (held over a year) instead of cash
     fund_distribution: float = 0.0  # capital gains the funds in the brokerage account distribute each year, as a share of their value
     fund_distribution_short_term: float = 0.0  # the share of those distributions that is short-term (paid as ordinary dividends)
+    typical_fee_schedule: bool = False  # the typical advisor's marginal fee schedule (higher under $500,000) instead of `breakpoint_fees`
+    fund_expense_equity: float = 0.0  # expense ratio of the equity funds, taken from their return
+    fund_expense_bond: float = 0.0  # expense ratio of the bond funds
+    cash_share: float = 0.0  # share of the portfolio held in cash instead of bonds
 
     def row(self, current_age: float) -> np.ndarray:
         r = np.zeros(NSP)
@@ -1974,7 +2008,7 @@ class Policy:
         r[SP_CONV_EVERY] = float(self.conversion_every_year)
         r[SP_WD_BRACKET] = float(self.bracket_withdrawals)
         r[SP_WD_TOP] = self.withdrawal_top
-        r[SP_FEE_BREAKPOINTS] = float(self.breakpoint_fees)
+        r[SP_FEE_BREAKPOINTS] = 2.0 if self.typical_fee_schedule else float(self.breakpoint_fees)
         r[SP_FEE_FLAT] = self.flat_fee
         r[SP_K401] = {"pretax": K401_PRETAX, "roth": K401_ROTH, "roth_low": K401_ROTH_LOW}[self.k401]
         r[SP_BORROW] = {"sell": 0.0, "borrow": 1.0}[self.goal_funding]
@@ -1987,6 +2021,9 @@ class Policy:
         r[SP_DONATE] = float(self.donate_lots)
         r[SP_DIST] = self.fund_distribution
         r[SP_DISTST] = self.fund_distribution_short_term
+        r[SP_ER_E] = self.fund_expense_equity
+        r[SP_ER_B] = self.fund_expense_bond
+        r[SP_CASH] = self.cash_share
         return r
 
     def replace(self, **changes) -> Policy:

@@ -29,6 +29,18 @@ CORRELATION = np.array(
 
 DIVIDEND_YIELD = 0.018  # equity dividends: qualified, taxed each year in the brokerage account
 BOND_INTEREST_YIELD = 0.035  # taxable bond interest, ordinary income, on brokerage bond balances
+# The typical advisor's costs (Update 4, 12.1). Sources and what was read of them: reports/final_report.md, "Update 4".
+# * Fund expense ratios: Morningstar's US Fund Fee Study puts the asset-weighted average of active US equity funds at 0.60%
+#   (data year 2024; 0.58% for 2025) and ICI's at 0.64%; active bond funds 0.45% (ICI: 0.44%; Morningstar's figure was not
+#   found, so this one rests on ICI alone). The good RIA and Donabach hold index funds at 0.03% to 0.10%, which the model leaves out.
+# * Cash: the typical advisor keeps 3% of the portfolio in cash (an assumption: the ICI liquidity ratio of equity funds is 1.7%).
+#   Cash earns the long-run real return on Treasury bills, 0.5% (UBS/Dimson-Marsh-Staunton, USA 1900-2025), or 2.5% a year
+#   in interest at the model's 2% inflation, taxed as ordinary income.
+ACTIVE_EXPENSE_EQUITY = 0.0060
+ACTIVE_EXPENSE_BOND = 0.0045
+TYPICAL_CASH_SHARE = 0.03
+CASH_REAL_RETURN = 0.005
+CASH_INTEREST_YIELD = 0.025
 # Taxable income yield of private credit held in the brokerage account, taxed as ordinary interest.
 # The model is in real dollars but taxes nominal income. Bonds show the convention: their taxable
 # yield (3.5%) exceeds their real return (1.5%) by the 2.0% of inflation that is implied

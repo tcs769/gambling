@@ -427,7 +427,8 @@ def test_the_typical_advisor_is_defined_as_the_spec_says():
     from app.planner.baseline import BASELINES, GOOD_RIA, TYPICAL, TYPICAL_ADVISOR
 
     p = TYPICAL_ADVISOR
-    assert p.flat_fee == 0.010 and not p.breakpoint_fees  # a flat 1.0% fee at every balance
+    assert p.typical_fee_schedule and not p.breakpoint_fees  # the surveyed schedule: 1.15% on the first $500,000, then falling
+    assert (p.fund_expense_equity, p.fund_expense_bond, p.cash_share) == (0.0060, 0.0045, 0.03)  # active funds and 3% cash
     assert not p.tax_loss_harvesting  # no tax-loss harvesting
     assert not p.donabach_location  # the same mix in every account
     assert (p.stock_share, p.glide_start_age, p.glide_drop) == (0.80, None, pytest.approx(0.30))  # 80% to 50%
@@ -436,7 +437,7 @@ def test_the_typical_advisor_is_defined_as_the_spec_says():
     assert [b.key for b in BASELINES] == ["good_ria", "typical_advisor"] and BASELINES[0] is GOOD_RIA
     for baseline in BASELINES:
         assert baseline.definition.endswith(".") and baseline.label in ("Good RIA", "Typical advisor")
-    assert "1.0%" in TYPICAL.definition and "no tax-loss harvesting" in TYPICAL.definition
+    assert "1.15%" in TYPICAL.definition and "no tax-loss harvesting" in TYPICAL.definition
 
 
 def test_the_typical_advisor_never_harvests_but_the_good_ria_does_after_a_crash():
@@ -459,7 +460,9 @@ def test_the_typical_advisor_pays_a_flat_one_percent_and_the_good_ria_less():
 
     inp = build_inputs(make_demo_household(), deterministic=True)
     # (without its funds' capital-gain distributions: their tax lowers the assets the fee is charged on, which is not what is checked)
-    quiet_funds = TYPICAL_ADVISOR.replace(fund_distribution=0.0, fund_distribution_short_term=0.0)
+    quiet_funds = TYPICAL_ADVISOR.replace(
+        fund_distribution=0.0, fund_distribution_short_term=0.0, typical_fee_schedule=False, fund_expense_equity=0.0, fund_expense_bond=0.0, cash_share=0.0
+    )  # (and the surveyed schedule, which is the next test: this one is about the flat 1.0% fee the typical advisor used to pay)
     typical = run_detail(inp, quiet_funds).log
     ria = run_detail(inp, RIA_BASELINE).log
     # The fee comes off the assets before the year's contributions go in, so compare it with the

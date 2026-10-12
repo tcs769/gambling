@@ -18,7 +18,8 @@
 Every strategy also uses Donabach asset location (private credit, then bonds, in pre-tax first;
 Roth holds stocks), withdraws pre-tax up to the bracket target then brokerage then Roth, sells the
 highest-cost tax lots first when it sells stock in the taxable account (the advisors sell the oldest first),
-and pays a flat 0.35% fee.
+and pays a flat 0.35% fee. It also realizes gains up to the top of the 0% capital-gain bracket each year the household's income leaves room
+(sell and rebuy, so only the cost basis steps up), a tool the good RIA does not use.
 """
 
 from __future__ import annotations
@@ -153,6 +154,7 @@ class Strategy:
             lot_method=DONABACH_LOT_METHOD,
             short_term_ordinary=True,
             donate_lots=True,
+            gain_harvesting=True,
         )
 
     def short_label(self) -> str:

@@ -47,7 +47,7 @@ def advantage_policies(strategy: Strategy) -> list[tuple[str, Policy]]:
     p0 = RIA_BASELINE
     p1 = p0.replace(breakpoint_fees=False, flat_fee=DONABACH_FLAT_FEE)
     p2 = p1.replace(donabach_location=True)
-    p2b = p2.replace(lot_method=chosen.lot_method, short_term_ordinary=chosen.short_term_ordinary, donate_lots=chosen.donate_lots)
+    p2b = p2.replace(lot_method=chosen.lot_method, short_term_ordinary=chosen.short_term_ordinary, donate_lots=chosen.donate_lots, gain_harvesting=chosen.gain_harvesting)
     p3 = p2b.replace(direct_indexing=chosen.direct_indexing)
     p4 = p3.replace(
         goal_bonds=chosen.goal_bonds,

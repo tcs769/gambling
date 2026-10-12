@@ -121,6 +121,24 @@ HOUSEHOLDS = {
         dict(employment_income=150_000, qualified_dividend_income=5_000),
         dict(wages=150_000, qualified_dividends=5_000, ordinary_dividends=5_000),
     ),
+    "survivor, single and 70: Social Security, IRA withdrawals and a long-term gain (single brackets and 0% gain bracket)": (
+        [70],
+        [],
+        dict(taxable_ira_distributions=45_000, social_security=36_000, long_term_capital_gains=30_000, qualified_dividend_income=4_000, taxable_interest_income=2_000),
+        dict(retirement_distributions=45_000, social_security=36_000, net_capital_gain=30_000, qualified_dividends=4_000, ordinary_dividends=4_000, interest=2_000, aged_spouses=1, single=True),
+    ),
+    "survivor, single and 66: a Roth conversion and gains (22% bracket, 15% gains, Social Security tiers)": (
+        [66],
+        [],
+        dict(taxable_ira_distributions=20_000, taxable_roth_conversions=60_000, social_security=28_000, long_term_capital_gains=90_000),
+        dict(retirement_distributions=20_000, roth_conversions=60_000, social_security=28_000, net_capital_gain=90_000, aged_spouses=1, single=True),
+    ),
+    "survivor, single and 72: income over $200,000 (net investment income tax, single threshold)": (
+        [72],
+        [],
+        dict(taxable_ira_distributions=60_000, social_security=40_000, long_term_capital_gains=120_000, qualified_dividend_income=20_000),
+        dict(retirement_distributions=60_000, social_security=40_000, net_capital_gain=120_000, qualified_dividends=20_000, ordinary_dividends=20_000, aged_spouses=1, single=True),
+    ),
     "Roth conversion year (Illinois subtracts it)": (
         [62, 61],
         [],

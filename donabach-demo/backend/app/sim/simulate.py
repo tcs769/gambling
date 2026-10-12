@@ -47,8 +47,8 @@ from dataclasses import dataclass, replace
 import numpy as np
 
 from app.jit import jit, prange
-from app.schemas import Household, MarketShock
-from app.sim import income, markets
+from app.schemas import HORIZON_AGE, Household, MarketShock
+from app.sim import income, markets, mortality
 from app.sim.diag import (
     D_CARRY_FEE,
     D_CARRY_TAX,
@@ -161,16 +161,18 @@ from app.sim.state import (  # noqa: E402, F401
     S_RB,
     S_RE,
     S_RP,
+    S_SINGLE,
     S_STACC,
     S_STCG,
     S_UNFUNDED,
     S_UNITS,
+    S_W80,
     S_YEAR,
 )
 from app.sim.stocks import di_buy, di_donate, di_realize, di_sell, di_start, di_year_begin
 from app.sim.stocks import lot_short_share as _lot_short_share
 from app.tax import params_2026 as P
-from app.tax.engine import liquidation_taxes, marginal_rate, pretax_withdrawal_rate, tax_core
+from app.tax.engine import bracket_top, liquidation_taxes, marginal_rate, pretax_withdrawal_rate, standard_deduction, tax_core
 
 # Time-varying inputs, one row per simulated year.
 (TV_AGE, TV_RETIRED, TV_SS, TV_NEED, TV_GOAL, TV_BUCKET, TV_EXPWAGE, TV_KIDS, TV_DEPS, TV_NEARN, TV_AGED, TV_SPEND, TV_GIFT) = range(13)
@@ -205,8 +207,9 @@ NTV = 13
     SP_ER_E,
     SP_ER_B,
     SP_CASH,
-) = range(27)
-NSP = 27
+    SP_REALIZE,
+) = range(28)
+NSP = 28
 
 # 401(k) contribution type (SP_K401).
 K401_PRETAX, K401_ROTH, K401_ROTH_LOW = 0.0, 1.0, 2.0
@@ -268,12 +271,13 @@ HC_HARVEST_MODEL = 2  # the aggregate direct-indexing harvest rule: 0 the specif
 HC_DI_FEE_PREMIUM = 3  # extra yearly fee on direct-indexed equity (0 in the specification)
 HC_HARVEST_THRESHOLD = 4  # stock by stock: a lot is harvested when its cost is this far above the price (a fraction)
 HC_HEIRS_RATE = 5  # the flat tax rate the heirs pay on the pre-tax balance they inherit (the "passed to heirs" valuation)
+HC_REPORT_AGE = 7  # the age at which a path that runs on past it also reports its wealth (80)
 HC_VALUATION = 6  # 0 the tax engine values what is owed on liquidation (`liquidation_taxes`), 1 the flat rates used before Update 4
-NHC = 7
+NHC = 8
 
 # Kernel result columns.
-R_WEALTH, R_TAXES, R_PRETAX_OWED, R_UNFUNDED, R_WEALTH_HEIRS, R_FORCED = range(6)
-NRESULT = 6
+R_WEALTH, R_TAXES, R_PRETAX_OWED, R_UNFUNDED, R_WEALTH_HEIRS, R_FORCED, R_WEALTH80 = range(7)
+NRESULT = 7
 
 # Detailed year-log columns (deterministic path).
 LOG_COLUMNS = (
@@ -420,6 +424,11 @@ HARVEST_CAL_DISPERSION = 0.03
 HARVEST_CAL_POWER = 1.0
 HARVEST_THRESHOLD = 0.01  # the stock-level book harvests a lot whose cost is more than 1% above its stock's price
 HEIRS_TAX_RATE = 0.24  # see `heirs_wealth`
+# The survivor phase (12.2). After the first spouse dies the survivor files as a single taxpayer, spends this share of what the couple
+# did and draws this share of the household's Social Security benefit (the larger of the two benefits, taken to be 60% of their sum).
+# Both are assumptions: the documents give neither (see reports/final_report.md, Update 4, for the sensitivity).
+SURVIVOR_SPENDING_SHARE = 0.75
+SURVIVOR_SS_SHARE = 0.60
 FUND_HARVEST_TRIGGER = -0.10  # fund-level harvesting only when equities fall more than 10%
 GLIDE_END_AGE = 70.0  # glide paths end here, as before the horizon moved from 70 to 80
 
@@ -820,12 +829,12 @@ def _borrow_for_goal(st, due):
 
 
 @jit
-def _zero_gain_room(wages_taxable, interest, dividends, taxable_ss, ret_dist, conv, realized, realized_st, cf, std):
+def _zero_gain_room(wages_taxable, interest, dividends, taxable_ss, ret_dist, conv, realized, realized_st, cf, std, single):
     """Dollars of further long-term gain that would still be taxed at 0% this year (income so far
     stacked under them: ordinary income, qualified dividends, gains already realized)."""
     ordinary = _ordinary_income(wages_taxable, interest, taxable_ss, ret_dist, conv, realized, realized_st, cf)
     taxable = max(0.0, ordinary + max(0.0, realized - cf) - _short_in_net(realized, realized_st, cf) + dividends - std)
-    return max(0.0, P.CG_ZERO_TOP - taxable)
+    return max(0.0, (P.CG_ZERO_TOP_SINGLE if single > 0.5 else P.CG_ZERO_TOP) - taxable)
 
 
 @jit
@@ -1004,7 +1013,7 @@ def _policy_action(row, gates_row, tv, t, w, act):
             roth = 1.0
     act[A_K401_ROTH] = roth
     act[A_BORROW] = 1.0 if (row[SP_BORROW] > 0.5 and gates_row[G_BORROW] > 0.5) else 0.0
-    act[A_REALIZE] = 0.0
+    act[A_REALIZE] = row[SP_REALIZE]
     harvest = 0.0
     if gates_row[G_HARVEST] > 0.5 and row[SP_TLH] > 0.5:
         harvest = 2.0 if row[SP_DI] > 0.5 else 1.0
@@ -1169,34 +1178,46 @@ def _year_begin(st, ys, tv, t, hhc, act, r_e, r_b, r_c, g):
 
 
 @jit(inline="always")
+def _need_of(tv, t, single):
+    """Retirement spending net of Social Security in year t: the couple's (`TV_NEED`), or the survivor's, who spends
+    `SURVIVOR_SPENDING_SHARE` of what the couple did and draws `SURVIVOR_SS_SHARE` of the household's benefit."""
+    need = tv[t, TV_NEED]
+    if single > 0.5 and need > 0.0:
+        ss = tv[t, TV_SS]
+        return max(0.0, SURVIVOR_SPENDING_SHARE * (need + ss) - SURVIVOR_SS_SHARE * ss)
+    return need
+
+
+@jit(inline="always")
 def valuation_taxes(st, hhc, interest, dividends, aged, kids, deps):
     """What liquidating everything would cost in tax, as (tax on the pre-tax balance, tax on the gains): the tax engine's own
     figure over the years it takes (`liquidation_taxes`), or with `HC_VALUATION` 1 the flat rates used before Update 4."""
     pretax = st[S_PE] + st[S_PB] + st[S_PP]
     unrealized = max(0.0, st[S_BE] - st[S_BBASIS])
+    ss = hhc[HC_SS] * (SURVIVOR_SS_SHARE if st[S_SINGLE] > 0.5 else 1.0)
     if hhc[HC_VALUATION] > 0.5:
-        rate = pretax_withdrawal_rate(pretax, hhc[HC_SS], aged)
+        rate = pretax_withdrawal_rate(pretax, ss, aged)
         return pretax * rate, _LTCG_RATE * (unrealized + max(0.0, st[S_DGAIN]) - st[S_CF])
     return liquidation_taxes(
-        unrealized, st[S_DGAIN], st[S_DGAIN_ST], st[S_DDIST], pretax, st[S_CF], hhc[HC_SS], interest, dividends, aged, kids, deps
+        unrealized, st[S_DGAIN], st[S_DGAIN_ST], st[S_DDIST], pretax, st[S_CF], ss, interest, dividends, aged, kids, deps, st[S_SINGLE]
     )
 
 
 @jit
-def _diag_tax_year(diag, wages_taxable, interest, dividends, dist_st, realized, realized_st, ret_dist, rmd, conv, ss, early_base, kids, deps, cf_in, aged, harvest, harvest_st, total_tax):
+def _diag_tax_year(diag, wages_taxable, interest, dividends, dist_st, realized, realized_st, ret_dist, rmd, conv, ss, early_base, kids, deps, cf_in, aged, harvest, harvest_st, total_tax, single):
     """Split the year's income tax by the kind of income (`app.sim.diag`): the income is stacked in the order the tax is worked
     out and each kind's share is what it added. Then share the tax on capital gains out among the purposes of the year's sales in
     proportion to their gains (loss harvesting, a negative gain, gets the tax its losses saved)."""
     none = 0.0
     optional = ret_dist - rmd
-    c0 = tax_core(wages_taxable, interest, none, none, none, none, none, ss, none, kids, deps, none, aged).total_tax
-    c1 = tax_core(wages_taxable, interest, none, none, none, optional, none, ss, early_base, kids, deps, none, aged).total_tax
-    c2 = tax_core(wages_taxable, interest, none, none, none, ret_dist, none, ss, early_base, kids, deps, none, aged).total_tax
-    c3 = tax_core(wages_taxable, interest, none, none, none, ret_dist, conv, ss, early_base, kids, deps, none, aged).total_tax
+    c0 = tax_core(wages_taxable, interest, none, none, none, none, none, ss, none, kids, deps, none, aged, none, none, none, single).total_tax
+    c1 = tax_core(wages_taxable, interest, none, none, none, optional, none, ss, early_base, kids, deps, none, aged, none, none, none, single).total_tax
+    c2 = tax_core(wages_taxable, interest, none, none, none, ret_dist, none, ss, early_base, kids, deps, none, aged, none, none, none, single).total_tax
+    c3 = tax_core(wages_taxable, interest, none, none, none, ret_dist, conv, ss, early_base, kids, deps, none, aged, none, none, none, single).total_tax
     short = _short_in_net(realized, realized_st, cf_in)
-    c4 = tax_core(wages_taxable, interest, none, none, short, ret_dist, conv, ss, early_base, kids, deps, none, aged, short).total_tax
-    c5 = tax_core(wages_taxable, interest, dividends, dividends + dist_st, short, ret_dist, conv, ss, early_base, kids, deps, none, aged, short).total_tax
-    c6 = tax_core(wages_taxable, interest, dividends, dividends + dist_st, realized, ret_dist, conv, ss, early_base, kids, deps, cf_in, aged, realized_st).total_tax
+    c4 = tax_core(wages_taxable, interest, none, none, short, ret_dist, conv, ss, early_base, kids, deps, none, aged, short, none, none, single).total_tax
+    c5 = tax_core(wages_taxable, interest, dividends, dividends + dist_st, short, ret_dist, conv, ss, early_base, kids, deps, none, aged, short, none, none, single).total_tax
+    c6 = tax_core(wages_taxable, interest, dividends, dividends + dist_st, realized, ret_dist, conv, ss, early_base, kids, deps, cf_in, aged, realized_st, none, none, single).total_tax
     diag[D_TYPE + T_OTHER] += c0
     diag[D_TYPE + T_WITHDRAWALS] += c1 - c0
     diag[D_TYPE + T_REQUIRED] += c2 - c1
@@ -1206,7 +1227,7 @@ def _diag_tax_year(diag, wages_taxable, interest, dividends, dist_st, realized, 
     diag[D_TYPE + T_LONG_TERM] += c6 - c5
     diag[D_TYPE + T_CHARITY] += total_tax - c6
     # what the year's harvested losses saved: the tax with them minus the tax without them
-    without = tax_core(wages_taxable, interest, dividends, dividends + dist_st, realized + harvest, ret_dist, conv, ss, early_base, kids, deps, cf_in, aged, realized_st + harvest_st).total_tax
+    without = tax_core(wages_taxable, interest, dividends, dividends + dist_st, realized + harvest, ret_dist, conv, ss, early_base, kids, deps, cf_in, aged, realized_st + harvest_st, none, none, single).total_tax
     saved = c6 - without
     diag[D_TAX + P_HARVEST] += saved
     # The rest of the tax on gains is the tax on the year's sales and distributions as they stand: shared out in proportion to
@@ -1244,11 +1265,13 @@ def _diag_step(diag, t, purpose, tape_slot, sold, gain, change):
 
 
 @jit(inline="always")
-def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth, do_log, log, diag, do_diag):
+def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, single, want_wealth, do_log, log, diag, do_diag):
     """Steps 3-11 for the action `act`. Returns (after-tax wealth if `want_wealth`, total income tax). With `do_diag` the
     step also fills the path's diagnostic row `diag` (see `app.sim.diag`; without it `diag` is never touched)."""
     age = tv[t, TV_AGE]
-    ss = tv[t, TV_SS]
+    # A surviving spouse (single = 1) files as a single taxpayer, spends less and draws the larger of the two benefits (the constants above).
+    st[S_SINGLE] = single
+    ss = tv[t, TV_SS] * (SURVIVOR_SS_SHARE if single > 0.5 else 1.0)
     taxable_ss = P.SS_TAXABLE_SHARE * ss
     ne = 1.0 if act[A_RESERVE] > 0.5 else 0.0  # spending reserve: expenses come from bonds and private credit first
     kids = tv[t, TV_KIDS]
@@ -1270,7 +1293,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     roth_gap = max(0.0, uncovered - spare)  # extra tax even spare wages cannot cover: paid from the portfolio
     early = age < _EARLY_AGE
     aged = tv[t, TV_AGED]
-    std = P.STANDARD_DEDUCTION_MFJ + P.STANDARD_DEDUCTION_AGED_PER_SPOUSE * aged
+    std = standard_deduction(aged, single)
 
     realized = ys[Y_REALIZED]
     ret_dist = ys[Y_RETDIST]
@@ -1280,8 +1303,8 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     interest = ys[Y_INTEREST]
     harvest = ys[Y_HARVEST]
     wd_bracket = act[A_WDBRACKET] > 0.5
-    wd_top = row[SP_WD_TOP]
-    conv_top = act[A_CONV_TOP]
+    wd_top = bracket_top(row[SP_WD_TOP], single)
+    conv_top = bracket_top(act[A_CONV_TOP], single)
     dist_st = ys[Y_DISTST]  # the short-term part of fund distributions is paid as ordinary dividends
     interest_o = interest + dist_st  # ordinary income other than wages, for the bracket rooms below
 
@@ -1389,7 +1412,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         be_mark = st[S_BE]
 
     # 4. Withdraw retirement spending (net of Social Security) and the part of the gift that spare wages did not pay.
-    need_spend = tv[t, TV_NEED]
+    need_spend = _need_of(tv, t, single)
     need = need_spend + gift_portfolio
     spend_share = need_spend / need if need > 0.0 else 1.0
     if need > 0.0:
@@ -1479,7 +1502,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         room = max(0.0, conv_top + std - ordinary)
         pre = st[S_PE] + st[S_PB] + st[S_PP]
         funds = st[S_BE] + st[S_BB] + st[S_BP] + free_cash
-        affordable = funds / marginal_rate(conv_top - 1.0)
+        affordable = funds / marginal_rate(conv_top - 1.0, single)
         conv = min(room, pre, affordable)
         if conv > 0.0:
             _convert_to_roth(st, conv / pre)
@@ -1490,7 +1513,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     if act[A_REALIZE] > 0.5:
         unrealized = st[S_BE] - st[S_BBASIS]
         if unrealized > 0.0:
-            room = _zero_gain_room(wages_taxable, interest_o, dividends, taxable_ss, ret_dist, conv, realized, ys[Y_REALIZED_ST] + st[S_STACC], cf_in, std)
+            room = _zero_gain_room(wages_taxable, interest_o, dividends, taxable_ss, ret_dist, conv, realized, ys[Y_REALIZED_ST] + st[S_STACC], cf_in, std, single)
             if st[S_LOTS] > 0.5:
                 gain_harvest = _lots_realize(st, min(room, unrealized))
             else:
@@ -1531,7 +1554,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     # the top of the 0% capital-gain bracket (nothing to realize means the sale is tax-free anyway).
     repaid_gain = 0.0
     if st[S_LOAN] > 0.0 and borrowed <= 0.0:  # not in the year it was borrowed
-        room = _zero_gain_room(wages_taxable, interest_o, dividends, taxable_ss, ret_dist, conv, realized, ys[Y_REALIZED_ST] + st[S_STACC], cf_in, std)
+        room = _zero_gain_room(wages_taxable, interest_o, dividends, taxable_ss, ret_dist, conv, realized, ys[Y_REALIZED_ST] + st[S_STACC], cf_in, std, single)
         if room > 0.0:
             value = st[S_BE] + st[S_BB] + st[S_BP]
             embedded = (st[S_BE] - st[S_BBASIS]) / value if value > 0.0 else 0.0
@@ -1557,7 +1580,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         needed = 0.0
         for j in range(1, int(act[A_RESERVE] + 0.5) + 1):
             if t + j < tv.shape[0]:
-                needed += tv[t + j, TV_NEED]
+                needed += _need_of(tv, t + j, single)
         safe_share = 0.0
         pc_held = pc_share if act[A_LOCATION] > 0.5 else 0.0  # private credit is only held with asset location
         if total > 0.0:
@@ -1587,14 +1610,14 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     # part of fund distributions is ordinary dividends, and a gift is a deduction (`tax_core`).
     realized_st = ys[Y_REALIZED_ST] + st[S_STACC]
     st[S_STACC] = 0.0
-    r = tax_core(wages_taxable, interest, dividends, dividends + dist_st, realized, ret_dist, conv, ss, early_base, kids, deps, cf_in, aged, realized_st, gift_cash, gift_stock)
+    r = tax_core(wages_taxable, interest, dividends, dividends + dist_st, realized, ret_dist, conv, ss, early_base, kids, deps, cf_in, aged, realized_st, gift_cash, gift_stock, single)
     total_tax = r.total_tax
     if track:
         diag[D_PENALTY] += r.early_withdrawal_penalty
         diag[D_EARLY] += early_base
         _diag_tax_year(
             diag, wages_taxable, interest, dividends, dist_st, realized, realized_st, ret_dist, rmd, conv, ss, early_base, kids,
-            deps, cf_in, aged, ys[Y_HARVEST], ys[Y_HARVESTST], total_tax,
+            deps, cf_in, aged, ys[Y_HARVEST], ys[Y_HARVESTST], total_tax, single,
         )
     portfolio_tax = total_tax - wage_tax_t
     st[S_CF] = r.cap_loss_carryforward_out
@@ -1605,7 +1628,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     conv_cash = 0.0
     if conv > 0.0 and due > 0.0 and free_cash > 0.0:
         # The part of the bill caused by the conversion comes out of this year's spare wages first.
-        no_conversion = tax_core(wages_taxable, interest, dividends, dividends + dist_st, realized, ret_dist, 0.0, ss, early_base, kids, deps, cf_in, aged, realized_st, gift_cash, gift_stock)
+        no_conversion = tax_core(wages_taxable, interest, dividends, dividends + dist_st, realized, ret_dist, 0.0, ss, early_base, kids, deps, cf_in, aged, realized_st, gift_cash, gift_stock, single)
         conv_cash = min(max(0.0, total_tax - no_conversion.total_tax), free_cash, due)
         due -= conv_cash
     dgain_mark = st[S_DGAIN]
@@ -1719,7 +1742,8 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     # After-tax wealth at the end of the year.
     wealth = 0.0
     pretax = 0.0
-    if want_wealth or do_log:
+    report = age + 1.0 == hhc[HC_REPORT_AGE]  # the year in which the reporting age's birthday comes at its end
+    if want_wealth or do_log or report:
         pretax = st[S_PE] + st[S_PB] + st[S_PP]
         val_pretax, val_gains = valuation_taxes(st, hhc, interest, dividends, aged, kids, deps)
         owed = val_pretax
@@ -1737,6 +1761,8 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
             - val_gains
             - st[S_UNFUNDED]
         )
+        if report:
+            st[S_W80] = wealth
 
     if do_log:
         equity_total = st[S_PE] + st[S_RE] + st[S_BE]
@@ -1836,7 +1862,7 @@ def _run_years(st, ys, act, tv, hhc, row, gates, rets, wages, k401, wt, zg, t0, 
             if mode == RUN_BEGIN:
                 return 0.0, 0.0
         want = record or do_log or (want_last and t == t1 - 1)
-        res = _year_rest(st, ys, tv, t, hhc, row, act, w, k401[t], wt[t, 0], wt[t, 1], want, do_log, log, diag, do_diag)
+        res = _year_rest(st, ys, tv, t, hhc, row, act, w, k401[t], wt[t, 0], wt[t, 1], wt[t, 2], want, do_log, log, diag, do_diag)
         taxes_paid += res[1]
         if want:
             wealth = res[0]
@@ -1858,8 +1884,9 @@ def heirs_wealth(st, hhc, interest, dividends, aged, kids, deps):
     if hhc[HC_VALUATION] > 0.5:
         last_return = _LTCG_RATE * max(0.0, st[S_DGAIN])
     else:
+        ss = hhc[HC_SS] * (SURVIVOR_SS_SHARE if st[S_SINGLE] > 0.5 else 1.0)
         paid = liquidation_taxes(
-            0.0, st[S_DGAIN], st[S_DGAIN_ST], st[S_DDIST], 0.0, 0.0, hhc[HC_SS], interest, dividends, aged, kids, deps
+            0.0, st[S_DGAIN], st[S_DGAIN_ST], st[S_DDIST], 0.0, 0.0, ss, interest, dividends, aged, kids, deps, st[S_SINGLE]
         )
         last_return = paid[0] + paid[1]
     return (
@@ -1906,7 +1933,7 @@ def _simulate_path(s, p, strat, gates, tv, init, hhc, rets, wages, k401, wage_ta
     if do_diag:
         diag[D_END_BE] = st[S_BE]
         diag[D_END_BASIS] = st[S_BBASIS]
-    return wealth, taxes_paid, owed, st[S_UNFUNDED], heirs, st[S_FSALE]
+    return wealth, taxes_paid, owed, st[S_UNFUNDED], heirs, st[S_FSALE], st[S_W80]
 
 
 @jit(parallel=True, nogil=True)
@@ -1927,20 +1954,23 @@ def _simulate_batch(strat, gates, tv, init, hhc, rets, wages, k401, wage_tax, zs
         out[s, p, R_UNFUNDED] = res[3]
         out[s, p, R_WEALTH_HEIRS] = res[4]
         out[s, p, R_FORCED] = res[5]
+        out[s, p, R_WEALTH80] = res[6]
 
 
 @jit(parallel=True, nogil=True)
-def _wage_tax_table(wages, k401, tv, out):
+def _wage_tax_table(wages, k401, tv, single, out):
     n_paths = wages.shape[0]
     n_years = wages.shape[1]
     for p in prange(n_paths):
         for t in range(n_years):
+            sg = single[p, t]
             # [..., 0]: the 401(k) contribution is pre-tax (taxable wages are reduced by it);
-            # [..., 1]: it is Roth (taxable wages are the full wages).
-            pre = tax_core(wages[p, t] - k401[p, t], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, tv[t, TV_KIDS], tv[t, TV_DEPS], 0.0, tv[t, TV_AGED])
-            roth = tax_core(wages[p, t], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, tv[t, TV_KIDS], tv[t, TV_DEPS], 0.0, tv[t, TV_AGED])
+            # [..., 1]: it is Roth (taxable wages are the full wages); [..., 2]: the household files as a single taxpayer this year.
+            pre = tax_core(wages[p, t] - k401[p, t], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, tv[t, TV_KIDS], tv[t, TV_DEPS], 0.0, tv[t, TV_AGED], 0.0, 0.0, 0.0, sg)
+            roth = tax_core(wages[p, t], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, tv[t, TV_KIDS], tv[t, TV_DEPS], 0.0, tv[t, TV_AGED], 0.0, 0.0, 0.0, sg)
             out[p, t, 0] = pre.total_tax
             out[p, t, 1] = roth.total_tax
+            out[p, t, 2] = sg
 
 
 # --------------------------------------------------------------------------------------------
@@ -2038,6 +2068,7 @@ class Policy:
     fund_expense_equity: float = 0.0  # expense ratio of the equity funds, taken from their return
     fund_expense_bond: float = 0.0  # expense ratio of the bond funds
     cash_share: float = 0.0  # share of the portfolio held in cash instead of bonds
+    gain_harvesting: bool = False  # each year realize gains up to the top of the 0% capital-gain bracket (sell and rebuy: only the basis steps up)
 
     def row(self, current_age: float) -> np.ndarray:
         r = np.zeros(NSP)
@@ -2068,6 +2099,7 @@ class Policy:
         r[SP_ER_E] = self.fund_expense_equity
         r[SP_ER_B] = self.fund_expense_bond
         r[SP_CASH] = self.cash_share
+        r[SP_REALIZE] = float(self.gain_harvesting)
         return r
 
     def replace(self, **changes) -> Policy:
@@ -2086,6 +2118,8 @@ class ModelOptions:
     harvest_threshold: float = HARVEST_THRESHOLD  # the direct-indexing book harvests a lot whose cost is this far above its price
     heirs_rate: float = HEIRS_TAX_RATE  # the flat rate heirs pay on the pre-tax balance (the "passed to heirs" valuation)
     valuation: str = "engine"  # how "liquidated at 80" taxes unrealized gains and pre-tax balances: "engine" or the old "flat" 15%
+    survivor: bool = False  # the first spouse's death comes at the age the SSA table says; the survivor files single (see `SURVIVOR_*`)
+    horizon_age: int | None = None  # simulate to this age instead of 80 (the batch then also reports its wealth at 80)
 
 
 @dataclass
@@ -2172,6 +2206,19 @@ def _initial_state(household: Household) -> np.ndarray:
     return st
 
 
+def survivor_flags(household: Household, n_draws: int, n_years: int, seed: int) -> np.ndarray:
+    """(draws, years): 1.0 in the years the household files as a single taxpayer. The two spouses' lifetimes are drawn from the SSA
+    table (`app.sim.mortality`); the first death makes the other a survivor from the following year. A death before the primary earner
+    retires is moved to the retirement year (the model does not follow a household whose earner dies while working), and the survivor
+    is taken to live to the end of the horizon, so the results are those of a survivor who lives that long."""
+    rng = np.random.default_rng(np.random.SeedSequence(seed).spawn(5)[4])
+    deaths = mortality.death_years([p.age for p in household.people], n_years, rng.random((n_draws, 2)))
+    retire_year = max(0, household.goals.retirement_age - household.primary_age)
+    first = np.maximum(deaths.min(axis=1), retire_year)
+    years = np.arange(n_years)[None, :]
+    return (years > first[:, None]).astype(np.float64)
+
+
 def build_inputs(
     household: Household,
     n_paths: int = 400,
@@ -2182,7 +2229,7 @@ def build_inputs(
 ) -> SimInputs:
     """Draw the futures (or build the one deterministic path) and precompute what is shared."""
     options = options or ModelOptions()
-    n_years = household.horizon_years
+    n_years = household.horizon_years if options.horizon_age is None else options.horizon_age - household.primary_age
     if n_years + 1 > MAX_LOTS:
         raise ValueError(f"a horizon of {n_years} years needs more than the {MAX_LOTS} tax lots the simulator keeps")
     base = [p.wages for p in household.people]
@@ -2205,9 +2252,12 @@ def build_inputs(
 
     tv = _time_table(household, n_years, expected)
     k401 = np.minimum(P.LIMIT_401K_EMPLOYEE * tv[:, TV_NEARN][None, :], KEEP_401K_SHARE_OF_WAGES * wages)
-    wage_tax = np.zeros((*wages.shape, 2))
+    single = np.zeros(wages.shape)
+    if options.survivor and not deterministic and len(household.people) == 2:
+        single = survivor_flags(household, wages.shape[0], n_years, seed)
+    wage_tax = np.zeros((*wages.shape, 3))
     with _KERNEL_LOCK:
-        _wage_tax_table(np.ascontiguousarray(wages), np.ascontiguousarray(k401), tv, wage_tax)
+        _wage_tax_table(np.ascontiguousarray(wages), np.ascontiguousarray(k401), tv, np.ascontiguousarray(single), wage_tax)
 
     hhc = np.zeros(NHC)
     hhc[HC_SS] = household.social_security.annual_benefit
@@ -2217,6 +2267,7 @@ def build_inputs(
     hhc[HC_HARVEST_THRESHOLD] = options.harvest_threshold
     hhc[HC_HEIRS_RATE] = options.heirs_rate
     hhc[HC_VALUATION] = {"engine": 0.0, "flat": 1.0}[options.valuation]
+    hhc[HC_REPORT_AGE] = float(HORIZON_AGE)
     n_draw = wages.shape[0]
     stock_z = np.random.default_rng(np.random.SeedSequence(seed).spawn(4)[3]).standard_normal(
         (n_draw, n_years, N_STOCKS), dtype=np.float32
@@ -2256,6 +2307,7 @@ class BatchResult:
     log: dict[str, np.ndarray] | None = None  # year log of the requested (policy, path)
     wealth_heirs: np.ndarray | None = None  # (policies, paths) the second valuation at the horizon: passed to heirs (`heirs_wealth`)
     diag: np.ndarray | None = None  # (policies, paths, DG_SIZE) diagnostics, when asked for (`app.sim.diag`)
+    wealth_at_80: np.ndarray | None = None  # (policies, paths) after-tax wealth at age 80 (the same as `wealth` when the horizon is 80)
     forced_years: np.ndarray | None = None  # (policies, paths) years the household sold stock for goals or spending in a year stocks fell
 
 
@@ -2299,6 +2351,7 @@ def run_batch(
         log={name: log[:, i].copy() for i, name in enumerate(LOG_COLUMNS)} if log_for else None,
         wealth_heirs=out[:, :, R_WEALTH_HEIRS],
         forced_years=out[:, :, R_FORCED],
+        wealth_at_80=out[:, :, R_WEALTH80],
         diag=diag if diagnostics else None,
     )
 

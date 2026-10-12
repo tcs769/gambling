@@ -908,13 +908,16 @@ def test_the_aged_deduction_is_used_in_the_tax_and_in_the_pretax_valuation():
     balance = st0[sim.S_PE] + st0[sim.S_PB] + st0[sim.S_PP]
     aged = 1  # one person, 68
     deduction = P.STANDARD_DEDUCTION_MFJ + aged * P.STANDARD_DEDUCTION_AGED_PER_SPOUSE
-    withdrawal, taxable_ss = balance / 20, 0.85 * 40_000
+    withdrawal = balance / 20
+    # provisional income: the withdrawal plus half of the 40,000 benefit (the 85% tier has been reached: 0.85 x (that - 34,000... see below))
+    provisional = withdrawal + 0.5 * 40_000
+    taxable_ss = min(0.85 * (provisional - 44_000) + 6_000, 0.85 * 40_000) if provisional > 44_000 else min(0.5 * max(0.0, provisional - 32_000), 20_000)
     from app.tax.engine import ordinary_tax
-    rate = (ordinary_tax(withdrawal + taxable_ss - deduction) - ordinary_tax(taxable_ss - deduction)) / withdrawal
+    rate = ordinary_tax(withdrawal + taxable_ss - deduction) / withdrawal  # on its own the benefit is not taxed (provisional income 20,000)
     expected = (
         st0[sim.S_BE] + st0[sim.S_BB] - 0.15 * (st0[sim.S_BE] - st0[sim.S_BBASIS]) + balance * (1 - rate)
     )
-    assert sim.initial_after_tax_wealth(hh) == pytest.approx(expected)
+    assert sim.initial_after_tax_wealth(hh, sim.ModelOptions(valuation="flat")) == pytest.approx(expected)
 
 
 def test_tax_in_every_year_matches_the_engine():
@@ -986,11 +989,11 @@ def test_policy_rows_round_trip_the_parameters():
 
 
 def test_initial_after_tax_wealth_matches_hand_calculation():
-    # brokerage 150,000 less 15% of 40,000 gain, cash 40,000, Roth 30,000, and a 400,000 pre-tax
-    # balance withdrawn 20,000 a year beside 42,500 of taxable Social Security.
-    rate = ((2_480 + 0.12 * (30_300 - 24_800)) - 0.10 * 10_300) / 20_000
-    expected = 150_000 - 0.15 * 40_000 + 40_000 + 30_000 + 400_000 * (1 - rate)
-    assert sim.initial_after_tax_wealth(make_demo_household()) == pytest.approx(expected, abs=1e-6)
+    # (the flat 15% valuation) brokerage 150,000 less 15% of 40,000 gain, cash 40,000, Roth 30,000, and a 400,000 pre-tax balance
+    # withdrawn 20,000 a year beside 50,000 of benefits: provisional income 45,000 makes 0.85 x 1,000 + 6,000 = 6,850 of them taxable,
+    # which the 32,200 standard deduction covers, so the pre-tax balance is not taxed at all
+    expected = 150_000 - 0.15 * 40_000 + 40_000 + 30_000 + 400_000
+    assert sim.initial_after_tax_wealth(make_demo_household(), sim.ModelOptions(valuation="flat")) == pytest.approx(expected, abs=1e-6)
 
 
 def test_gates_remove_a_decision_for_one_year_only():

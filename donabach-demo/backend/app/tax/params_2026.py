@@ -33,6 +33,31 @@ FED_BRACKETS_MFJ: tuple[tuple[float, float], ...] = (
 BRACKET_TOPS = np.array([top for top, _ in FED_BRACKETS_MFJ])
 BRACKET_RATES = np.array([rate for _, rate in FED_BRACKETS_MFJ])
 
+# Single filers (a surviving spouse files as single from the year after the first death; the year of the death is still joint).
+# Source: IRS Rev. Proc. 2025-32 (tax year 2026 rate table, single), checked against PolicyEngine-US in
+# tests/test_policyengine_compare.py.
+FED_BRACKETS_SINGLE: tuple[tuple[float, float], ...] = (
+    (12_400.0, 0.10),
+    (50_400.0, 0.12),
+    (105_700.0, 0.22),
+    (201_775.0, 0.24),
+    (256_225.0, 0.32),
+    (640_600.0, 0.35),
+    (math.inf, 0.37),
+)
+BRACKET_TOPS_SINGLE = np.array([top for top, _ in FED_BRACKETS_SINGLE])
+BRACKET_RATES_SINGLE = np.array([rate for _, rate in FED_BRACKETS_SINGLE])
+STANDARD_DEDUCTION_SINGLE = 16_100.0
+STANDARD_DEDUCTION_AGED_SINGLE = 2_050.0  # additional for an unmarried filer 65 or older
+CG_ZERO_TOP_SINGLE = 49_450.0
+CG_FIFTEEN_TOP_SINGLE = 545_500.0
+NIIT_THRESHOLD_SINGLE = 200_000.0  # statutory, not indexed
+CTC_PHASEOUT_START_SINGLE = 200_000.0
+SS_BASE_SINGLE = 25_000.0
+SS_ADDITIONAL_SINGLE = 34_000.0
+CHARITY_NON_ITEMIZER_SINGLE = 1_000.0
+IL_EXEMPTION_AGI_LIMIT_SINGLE = 250_000.0
+
 # Top of the 12%, 22% and 24% brackets: the targets of the "fill the bracket" Roth strategies.
 TOP_OF_12 = 100_800.0
 TOP_OF_22 = 211_400.0

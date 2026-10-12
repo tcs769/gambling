@@ -68,14 +68,20 @@ def test_heirs_wealth_steps_up_the_brokerage_account_and_taxes_the_pretax_balanc
     st[sim.S_RE], st[sim.S_RB] = 50_000.0, 10_000.0
     st[sim.S_BE], st[sim.S_BBASIS], st[sim.S_BB], st[sim.S_GB] = 200_000.0, 80_000.0, 5_000.0, 7_000.0
     st[sim.S_LOAN], st[sim.S_DGAIN], st[sim.S_UNFUNDED], st[sim.S_CF] = 3_000.0, 10_000.0, 1_000.0, 50_000.0
+    hhc = np.zeros(sim.NHC)
+    hhc[sim.HC_HEIRS_RATE], hhc[sim.HC_VALUATION] = 0.24, 1.0  # the flat valuation: the gains already realized cost 15%
     expected = 200_000 + 5_000 + 7_000 + 60_000 + 400_000 * (1 - 0.24) - 3_000 - 0.15 * 10_000 - 1_000
     # no tax on the 120,000 of unrealized gain, and the 50,000 of loss carryforward is worth nothing to them
-    assert sim.heirs_wealth(st, 0.24) == pytest.approx(expected)
+    assert sim.heirs_wealth(st, hhc, 0.0, 0.0, 0.0, 0.0, 0.0) == pytest.approx(expected)
+    # the engine's valuation taxes those realized gains on the owner's last return instead
+    hhc[sim.HC_VALUATION] = 0.0
+    engine = sim.heirs_wealth(st, hhc, 0.0, 0.0, 0.0, 0.0, 0.0)
+    assert engine == pytest.approx(expected + 0.15 * 10_000 - compute_return(TaxInputs(net_capital_gain=10_000.0)).grand_total)
 
 
 @pytest.mark.parametrize("policy", [RIA_BASELINE, TYPICAL_ADVISOR, FUND_PLAN, DI_PLAN], ids=["ria", "typical", "plan", "di plan"])
 def test_the_two_valuations_differ_by_the_step_up_the_heirs_rate_and_the_carryforward(policy):
-    inputs = deterministic()
+    inputs = build_inputs(make_demo_household(), deterministic=True, options=ModelOptions(valuation="flat"))  # the identity is the flat valuation's
     batch = run_batch(inputs, [policy], log_for=(0, 0))
     log = batch.log
     rate = float(inputs.hhc[sim.HC_HEIRS_RATE])

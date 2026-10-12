@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from app.planner.baseline import RIA_BASELINE
-from app.schemas import Accounts, Household
+from app.schemas import Accounts
 from app.sim import markets
 from app.sim import simulate as sim
 from app.sim.simulate import ModelOptions, Policy, build_inputs, run_detail

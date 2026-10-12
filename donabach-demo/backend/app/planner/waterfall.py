@@ -56,7 +56,7 @@ def waterfall_strategies(strategy: Strategy, baseline: Policy = RIA_BASELINE) ->
             "When stock is sold in the taxable account, sell the shares that cost the most first, so the least gain is realized (the advisor sells the oldest shares first). "
             "Gifts to charity are made with the shares that have gained the most, not with cash.",
             lambda p: p.replace(
-                lot_method=chosen.lot_method, short_term_ordinary=chosen.short_term_ordinary, donate_lots=chosen.donate_lots
+                lot_method=chosen.lot_method, short_term_ordinary=chosen.short_term_ordinary, donate_lots=chosen.donate_lots, gain_harvesting=chosen.gain_harvesting
             ),
         ),
         WaterfallStrategy(

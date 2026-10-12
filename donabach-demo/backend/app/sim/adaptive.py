@@ -207,6 +207,7 @@ def _make_futures(
         fut_k[k, t] = k401_p[t]
         fut_wt[k, t, 0] = wt_p[t, 0]
         fut_wt[k, t, 1] = wt_p[t, 1]
+        fut_wt[k, t, 2] = wt_p[t, 2]  # whether the household files as a single taxpayer is not imagined: it is the path's own
     lp_a = np.zeros(2)
     lp_b = np.zeros(2)
     z = np.zeros(8)
@@ -258,11 +259,12 @@ def _make_futures(
                 fut_wages[k, s] = w
                 fut_k[k, s] = contribution
                 if w > 0.0:
-                    fut_wt[k, s, 0] = tax_core(w - contribution, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, tv[s, TV_KIDS], tv[s, TV_DEPS], 0.0, tv[s, TV_AGED]).total_tax
-                    fut_wt[k, s, 1] = tax_core(w, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, tv[s, TV_KIDS], tv[s, TV_DEPS], 0.0, tv[s, TV_AGED]).total_tax
+                    fut_wt[k, s, 0] = tax_core(w - contribution, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, tv[s, TV_KIDS], tv[s, TV_DEPS], 0.0, tv[s, TV_AGED], 0.0, 0.0, 0.0, wt_p[s, 2]).total_tax
+                    fut_wt[k, s, 1] = tax_core(w, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, tv[s, TV_KIDS], tv[s, TV_DEPS], 0.0, tv[s, TV_AGED], 0.0, 0.0, 0.0, wt_p[s, 2]).total_tax
                 else:
                     fut_wt[k, s, 0] = 0.0
                     fut_wt[k, s, 1] = 0.0
+                fut_wt[k, s, 2] = wt_p[s, 2]
         if tilt > 0.0:
             n_future = n_years - t - 1
             fut_w[a] = _mixture_weight(sum_a, n_future, tilt)
@@ -530,13 +532,13 @@ def _adaptive_path(
     fut_rets = np.zeros((k_roll, n_years, 3))
     fut_wages = np.zeros((k_roll, n_years))
     fut_k = np.zeros((k_roll, n_years))
-    fut_wt = np.zeros((k_roll, n_years, 2))
+    fut_wt = np.zeros((k_roll, n_years, 3))
     fut_w = np.ones(k_roll)
     fut2_w = np.ones(cap2)
     fut2_rets = np.zeros((cap2, n_years, 3))
     fut2_wages = np.zeros((cap2, n_years))
     fut2_k = np.zeros((cap2, n_years))
-    fut2_wt = np.zeros((cap2, n_years, 2))
+    fut2_wt = np.zeros((cap2, n_years, 3))
     st_r = np.zeros(NSTATE)
     ys_r = np.zeros(NY)
     act_r = np.zeros(NACT)
@@ -684,7 +686,7 @@ def _probe_path(
     fut_rets = np.zeros((ref_k, n_years, 3))
     fut_wages = np.zeros((ref_k, n_years))
     fut_k = np.zeros((ref_k, n_years))
-    fut_wt = np.zeros((ref_k, n_years, 2))
+    fut_wt = np.zeros((ref_k, n_years, 3))
     fut_w = np.ones(ref_k)
     st_r = np.zeros(NSTATE)
     ys_r = np.zeros(NY)

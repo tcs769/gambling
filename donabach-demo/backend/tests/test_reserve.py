@@ -35,12 +35,14 @@ def test_strategies_without_a_reserve_give_exactly_the_results_they_gave_before_
     # distributions existed: the average-cost lot method, the specification's aggregate harvest rule, funds that distribute nothing
     # and the flat 15% end valuation.
     inputs = build_inputs(make_demo_household(), n_paths=150, seed=77, options=ModelOptions(harvest_model="spec", valuation="flat"))
-    typical = TYPICAL_ADVISOR.replace(fund_distribution=0.0, fund_distribution_short_term=0.0)
+    typical = TYPICAL_ADVISOR.replace(
+        fund_distribution=0.0, fund_distribution_short_term=0.0, typical_fee_schedule=False, fund_expense_equity=0.0, fund_expense_bond=0.0, cash_share=0.0
+    )
     policies = [RIA_BASELINE, typical] + [s.policy() for s in menu()[::250][:6]]
-    policies = [p.replace(lot_method="average", short_term_ordinary=False, di_model="aggregate") for p in policies]
+    policies = [p.replace(lot_method="average", short_term_ordinary=False, di_model="aggregate", gain_harvesting=False) for p in policies]
     batch = run_batch(inputs, policies)
-    assert [round(float(np.median(w))) for w in batch.wealth] == [2836952, 2667300, 2799253, 2824798, 2442731, 3307733, 3100390, 2957486]
-    assert [round(float(np.median(t))) for t in batch.taxes_paid] == [1504864, 1497800, 1629627, 1648298, 1673934, 1616932, 1843802, 1663421]
+    assert [round(float(np.median(w))) for w in batch.wealth] == [2823645, 2653300, 2786306, 2829344, 2453891, 3293733, 3119423, 2967334]  # re-pinned when Social Security came to be taxed by the provisional-income formula
+    assert [round(float(np.median(t))) for t in batch.taxes_paid] == [1498995, 1491742, 1629627, 1648298, 1664834, 1616932, 1829848, 1654321]
     assert float(batch.unfunded.sum()) == 0.0
 
 
@@ -181,15 +183,15 @@ def test_a_strategy_with_a_reserve_has_everything_outside_it_in_stocks_and_no_go
     with pytest.raises(ValueError):
         Strategy(1.0, "none", 0.0, False, True, reserve_years=4)  # the reserve already covers goals
     with pytest.raises(ValueError):
-        Strategy(1.0, "none", 0.0, False, False, reserve_years=3)
-    assert CHOICES[-1] == "reserve" and CHOICE_OPTIONS["reserve"] == ("off", "2", "4", "6") and RESERVE_YEARS == (0, 2, 4, 6)
+        Strategy(1.0, "none", 0.0, False, False, reserve_years=9)  # not one of the lengths on the menu
+    assert CHOICES[-1] == "reserve" and CHOICE_OPTIONS["reserve"] == ("off", "1", "2", "3", "4", "5", "6", "7", "8", "10") and RESERVE_YEARS == (0, 2, 4, 6)
     assert "6-year spending reserve, the rest in stocks" in Strategy(1.0, "none", 0.0, False, False, reserve_years=6).short_label()
     text = st.describe()
     assert "next 4 years" in text and "bonds and private credit" in text and "everything else in stocks" in text and "counts toward the reserve" in text
 
 
 def test_the_two_planning_styles_have_their_own_menus():
-    assert STYLES == ("balanced", "equity_first")
+    assert STYLES == ("balanced", "equity_first", "liability_matched")
     balanced, equity_first = menu(), menu(style="equity_first")
     assert len(balanced) == 4032 and all(s.reserve_years == 0 for s in balanced)  # the original menu, untouched
     assert len(equity_first) == 3 * 7 * 4 * 2 * 3 * 2 and all(s.reserve_years > 0 and s.stock_share == 1.0 and not s.goal_bonds for s in equity_first)

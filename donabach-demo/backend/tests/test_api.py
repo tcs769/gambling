@@ -532,7 +532,7 @@ def test_the_plan_is_measured_against_both_advisors_with_their_definitions(plan)
     assert [b["key"] for b in baselines] == ["good_ria", "typical_advisor"]
     assert [b["label"] for b in baselines] == ["Good RIA", "Typical advisor"]
     assert "breakpoint fees" in baselines[0]["definition"]
-    assert "flat 1.0% fee" in baselines[1]["definition"] and "no tax-loss harvesting" in baselines[1]["definition"]
+    assert "1.15% on the first $500,000" in baselines[1]["definition"] and "no tax-loss harvesting" in baselines[1]["definition"]
     for b in baselines:
         assert b["fan"]["ages"][0] == 38 and b["fan"]["ages"][-1] == HORIZON_AGE
         assert b["fan"]["p50"][-1] == pytest.approx(b["outcome"]["median"])

@@ -20,7 +20,10 @@ S_CF, S_DGAIN, S_DDIST, S_UNFUNDED, S_LOAN = 11, 12, 13, 14, 15
 S_LOTS, S_STCG, S_YEAR, S_STACC, S_DGAIN_ST, S_PRICE, S_UNITS, S_BEST = 16, 17, 18, 19, 20, 21, 22, 23
 # How many years so far the household sold stock to pay for goals or spending in a year stocks fell (a forced sale in a down year).
 S_FSALE = 24
-N_SCALARS = 25
+# Whether the household files as a single taxpayer this year (a surviving spouse; set by `_year_rest`), and its after-tax wealth in the
+# year of the reporting age (80), which a path that runs on to age 90 reports beside its wealth at the horizon.
+S_SINGLE, S_W80 = 25, 26
+N_SCALARS = 27
 MAX_LOTS = 64  # a household can be as young as 18, so the horizon is at most 62 years: lots 0 to 63
 S_LOTU = N_SCALARS
 S_LOTC = S_LOTU + MAX_LOTS

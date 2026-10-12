@@ -68,31 +68,49 @@ CoreReturn = namedtuple(
 
 
 @jit
-def ordinary_tax(taxable: float) -> float:
-    """Tax on ordinary taxable income from the MFJ bracket table."""
+def ordinary_tax(taxable: float, single: float = 0.0) -> float:
+    """Tax on ordinary taxable income from the married-filing-jointly bracket table (the single table when `single`)."""
+    tops = P.BRACKET_TOPS_SINGLE if single > 0.5 else P.BRACKET_TOPS
+    rates = P.BRACKET_RATES_SINGLE if single > 0.5 else P.BRACKET_RATES
     tax = 0.0
     lower = 0.0
-    for i in range(P.BRACKET_TOPS.shape[0]):
-        top = P.BRACKET_TOPS[i]
+    for i in range(tops.shape[0]):
+        top = tops[i]
         if taxable > lower:
-            tax += (min(taxable, top) - lower) * P.BRACKET_RATES[i]
+            tax += (min(taxable, top) - lower) * rates[i]
         lower = top
     return tax
 
 
 @jit
-def marginal_rate(ordinary_taxable: float) -> float:
+def marginal_rate(ordinary_taxable: float, single: float = 0.0) -> float:
     """Statutory rate on the next dollar of ordinary income (a filled bracket moves up)."""
-    n = P.BRACKET_TOPS.shape[0]
+    tops = P.BRACKET_TOPS_SINGLE if single > 0.5 else P.BRACKET_TOPS
+    rates = P.BRACKET_RATES_SINGLE if single > 0.5 else P.BRACKET_RATES
+    n = tops.shape[0]
     for i in range(n):
-        if ordinary_taxable < P.BRACKET_TOPS[i]:
-            return P.BRACKET_RATES[i]
-    return P.BRACKET_RATES[n - 1]
+        if ordinary_taxable < tops[i]:
+            return rates[i]
+    return rates[n - 1]
 
 
 @jit
-def standard_deduction(aged_spouses: float = 0.0) -> float:
-    """Standard deduction, married filing jointly, including the extra for each spouse 65 or older."""
+def bracket_top(mfj_top: float, single: float = 0.0) -> float:
+    """The top of the same bracket for a single filer, given the top of a married-filing-jointly bracket (the targets of the
+    Roth conversion and withdrawal strategies are named by the joint table)."""
+    if single < 0.5 or mfj_top <= 0.0:
+        return mfj_top
+    for i in range(P.BRACKET_TOPS.shape[0]):
+        if abs(P.BRACKET_TOPS[i] - mfj_top) < 1.0:
+            return P.BRACKET_TOPS_SINGLE[i]
+    return mfj_top
+
+
+@jit
+def standard_deduction(aged_spouses: float = 0.0, single: float = 0.0) -> float:
+    """Standard deduction, married filing jointly, including the extra for each spouse 65 or older (single: the single filer's)."""
+    if single > 0.5:
+        return P.STANDARD_DEDUCTION_SINGLE + P.STANDARD_DEDUCTION_AGED_SINGLE * min(1.0, aged_spouses)
     return P.STANDARD_DEDUCTION_MFJ + P.STANDARD_DEDUCTION_AGED_PER_SPOUSE * aged_spouses
 
 
@@ -113,19 +131,21 @@ def pretax_withdrawal_rate(balance: float, social_security: float, aged_spouses:
 
 
 @jit
-def taxable_social_security(social_security: float, other_income: float) -> float:
+def taxable_social_security(social_security: float, other_income: float, single: float = 0.0) -> float:
     """Taxable part of the benefits by the provisional-income formula (IRC section 86), married filing jointly. `other_income` is
     adjusted gross income without the benefits (wages, interest, dividends, the capital gain line, retirement withdrawals, conversions)."""
     if social_security <= 0.0:
         return 0.0
+    base = P.SS_BASE_SINGLE if single > 0.5 else P.SS_BASE_MFJ
+    additional = P.SS_ADDITIONAL_SINGLE if single > 0.5 else P.SS_ADDITIONAL_MFJ
     provisional = other_income + 0.5 * social_security
-    if provisional <= P.SS_BASE_MFJ:
+    if provisional <= base:
         return 0.0
     half = 0.5 * social_security
-    if provisional <= P.SS_ADDITIONAL_MFJ:
-        return min(0.5 * (provisional - P.SS_BASE_MFJ), half)
-    first_tier = min(half, 0.5 * (P.SS_ADDITIONAL_MFJ - P.SS_BASE_MFJ))
-    return min(P.SS_TAXABLE_SHARE * (provisional - P.SS_ADDITIONAL_MFJ) + first_tier, P.SS_TAXABLE_SHARE * social_security)
+    if provisional <= additional:
+        return min(0.5 * (provisional - base), half)
+    first_tier = min(half, 0.5 * (additional - base))
+    return min(P.SS_TAXABLE_SHARE * (provisional - additional) + first_tier, P.SS_TAXABLE_SHARE * social_security)
 
 
 @jit
@@ -146,7 +166,9 @@ def tax_core(
     short_term_gain: float = 0.0,
     cash_gift: float = 0.0,
     stock_gift: float = 0.0,
+    single: float = 0.0,
 ):
+    sg = single > 0.5
     qualified = min(qualified_dividends, ordinary_dividends)
 
     # Capital gains and losses: net against the carryforward; a net loss deducts up to $3,000.
@@ -161,13 +183,13 @@ def tax_core(
         carry_out = -net - cap_loss_deducted
 
     other_income = wages + interest + ordinary_dividends + cap_gain_line + retirement_distributions + roth_conversions
-    taxable_ss = taxable_social_security(social_security, other_income)
+    taxable_ss = taxable_social_security(social_security, other_income, single)
     total_income = other_income + taxable_ss
     agi = total_income  # no above-the-line adjustments are modelled
 
     # The deduction: the standard one, plus the cash-gift allowance for a household that does not itemize, or its charitable
     # gifts alone when they come to more (no other itemized deductions are modelled).
-    std = standard_deduction(aged_spouses)
+    std = standard_deduction(aged_spouses, single)
     deduction = std
     charitable = 0.0
     itemized = 0.0
@@ -176,7 +198,7 @@ def tax_core(
         cash_allowed = min(cash_gift, P.CHARITY_CASH_LIMIT * base)
         stock_allowed = min(stock_gift, P.CHARITY_STOCK_LIMIT * base, max(0.0, P.CHARITY_CASH_LIMIT * base - cash_allowed))
         gifts = max(0.0, cash_allowed + stock_allowed - P.CHARITY_ITEMIZER_FLOOR * base)
-        allowance = min(cash_gift, P.CHARITY_NON_ITEMIZER_MFJ)
+        allowance = min(cash_gift, P.CHARITY_NON_ITEMIZER_SINGLE if sg else P.CHARITY_NON_ITEMIZER_MFJ)
         if gifts > std + allowance:
             deduction = gifts
             charitable = gifts
@@ -197,21 +219,23 @@ def tax_core(
     # of ordinary taxable income.
     preferential = min(taxable_income, qualified + max(0.0, cap_gain_line) - short_term_ordinary)
     ordinary_taxable = taxable_income - preferential
-    ord_tax = ordinary_tax(ordinary_taxable)
+    ord_tax = ordinary_tax(ordinary_taxable, single)
 
     bottom = ordinary_taxable
     top = ordinary_taxable + preferential
-    at_fifteen = max(0.0, min(top, P.CG_FIFTEEN_TOP) - max(bottom, P.CG_ZERO_TOP))
-    at_twenty = max(0.0, top - max(bottom, P.CG_FIFTEEN_TOP))
+    zero_top = P.CG_ZERO_TOP_SINGLE if sg else P.CG_ZERO_TOP
+    fifteen_top = P.CG_FIFTEEN_TOP_SINGLE if sg else P.CG_FIFTEEN_TOP
+    at_fifteen = max(0.0, min(top, fifteen_top) - max(bottom, zero_top))
+    at_twenty = max(0.0, top - max(bottom, fifteen_top))
     cg_tax = P.CG_RATE_FIFTEEN * at_fifteen + P.CG_RATE_TWENTY * at_twenty
 
     # Net investment income tax on the lesser of NII or MAGI over the threshold.
     nii = max(0.0, interest + ordinary_dividends + cap_gain_line)
-    niit = P.NIIT_RATE * min(nii, max(0.0, agi - P.NIIT_THRESHOLD_MFJ))
+    niit = P.NIIT_RATE * min(nii, max(0.0, agi - (P.NIIT_THRESHOLD_SINGLE if sg else P.NIIT_THRESHOLD_MFJ)))
 
     # Child tax credit: $50 off per $1,000 (or fraction) of MAGI over the threshold; nonrefundable.
     ctc_available = P.CTC_PER_CHILD * children_under_17
-    excess = max(0.0, agi - P.CTC_PHASEOUT_START_MFJ)
+    excess = max(0.0, agi - (P.CTC_PHASEOUT_START_SINGLE if sg else P.CTC_PHASEOUT_START_MFJ))
     steps = math.ceil(excess / P.CTC_PHASEOUT_STEP - 1e-9)
     ctc_available = max(0.0, ctc_available - P.CTC_PHASEOUT_REDUCTION * steps)
     ctc_used = min(ctc_available, ord_tax + cg_tax)
@@ -221,10 +245,10 @@ def tax_core(
 
     # Illinois: flat rate on AGI less federally taxed retirement income, less exemptions.
     il_base = max(0.0, agi - retirement_distributions - roth_conversions - taxable_ss)
-    if agi > P.IL_EXEMPTION_AGI_LIMIT_MFJ:
+    if agi > (P.IL_EXEMPTION_AGI_LIMIT_SINGLE if sg else P.IL_EXEMPTION_AGI_LIMIT_MFJ):
         il_exemptions = 0.0
     else:
-        il_exemptions = P.IL_EXEMPTION_PER_PERSON * (2.0 + dependents) + P.IL_EXEMPTION_AGED_PER_PERSON * aged_spouses
+        il_exemptions = P.IL_EXEMPTION_PER_PERSON * ((1.0 if sg else 2.0) + dependents) + P.IL_EXEMPTION_AGED_PER_PERSON * (min(1.0, aged_spouses) if sg else aged_spouses)
     il_taxable = max(0.0, il_base - il_exemptions)
     il_tax = P.IL_RATE * il_taxable
 
@@ -250,7 +274,7 @@ def tax_core(
         il_taxable,
         il_tax,
         federal_total + il_tax,
-        marginal_rate(ordinary_taxable),
+        marginal_rate(ordinary_taxable, single),
         short_term_ordinary,
         deduction,
         charitable,
@@ -272,6 +296,7 @@ def liquidation_taxes(
     aged_spouses: float,
     kids: float,
     deps: float,
+    single: float = 0.0,
 ):
     """What the tax engine charges to liquidate a household's holdings: (tax on the pre-tax balance, tax on the gains).
 
@@ -285,11 +310,11 @@ def liquidation_taxes(
     the first year, and so do pre-tax withdrawals already made to pay tax (`deferred_withdrawals`)."""
     zero = 0.0
     withdrawal = pretax / P.PRETAX_WITHDRAWAL_YEARS
-    other = tax_core(zero, interest, dividends, dividends, zero, zero, zero, social_security, zero, kids, deps, zero, aged_spouses).total_tax
-    with_withdrawal = tax_core(zero, interest, dividends, dividends, zero, withdrawal, zero, social_security, zero, kids, deps, zero, aged_spouses).total_tax
+    other = tax_core(zero, interest, dividends, dividends, zero, zero, zero, social_security, zero, kids, deps, zero, aged_spouses, zero, zero, zero, single).total_tax
+    with_withdrawal = tax_core(zero, interest, dividends, dividends, zero, withdrawal, zero, social_security, zero, kids, deps, zero, aged_spouses, zero, zero, zero, single).total_tax
     tax_pretax = P.PRETAX_WITHDRAWAL_YEARS * (with_withdrawal - other)
     if deferred_withdrawals > 0.0:
-        extra = tax_core(zero, interest, dividends, dividends, zero, withdrawal + deferred_withdrawals, zero, social_security, zero, kids, deps, zero, aged_spouses).total_tax
+        extra = tax_core(zero, interest, dividends, dividends, zero, withdrawal + deferred_withdrawals, zero, social_security, zero, kids, deps, zero, aged_spouses, zero, zero, zero, single).total_tax
         tax_pretax += extra - with_withdrawal
     tax_gains = 0.0
     carry = carryforward
@@ -302,7 +327,7 @@ def liquidation_taxes(
             short = deferred_gain_short
         if gain == 0.0 and carry <= 0.0:
             continue
-        with_gain = tax_core(zero, interest, dividends, dividends, gain, withdrawal, zero, social_security, zero, kids, deps, carry, aged_spouses, short)
+        with_gain = tax_core(zero, interest, dividends, dividends, gain, withdrawal, zero, social_security, zero, kids, deps, carry, aged_spouses, short, zero, zero, single)
         tax_gains += with_gain.total_tax - with_withdrawal
         carry = with_gain.cap_loss_carryforward_out
     return tax_pretax, tax_gains
@@ -340,6 +365,7 @@ class TaxInputs(BaseModel):
     )
     cash_gifts: float = Field(0.0, ge=0, description="Charitable gifts of cash this year")
     stock_gifts: float = Field(0.0, ge=0, description="Charitable gifts of stock held over a year, at market value")
+    single: bool = Field(False, description="File as a single taxpayer (a surviving spouse) instead of married filing jointly")
 
 
 class TaxLine(BaseModel):
@@ -460,6 +486,7 @@ def compute_return(inputs: TaxInputs) -> TaxReturn:
         float(inputs.short_term_gain),
         float(inputs.cash_gifts),
         float(inputs.stock_gifts),
+        1.0 if inputs.single else 0.0,
     )
     agi = r.agi
     return TaxReturn(
@@ -476,7 +503,7 @@ def compute_return(inputs: TaxInputs) -> TaxReturn:
         taxable_social_security=r.taxable_social_security,
         total_income=r.total_income,
         agi=agi,
-        standard_deduction=float(standard_deduction(float(inputs.aged_spouses))),
+        standard_deduction=float(standard_deduction(float(inputs.aged_spouses), 1.0 if inputs.single else 0.0)),
         deduction_used=r.deduction,
         charitable_deduction=r.charitable_deduction,
         itemized=bool(r.itemized),

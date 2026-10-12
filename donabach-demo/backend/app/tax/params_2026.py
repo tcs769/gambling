@@ -86,9 +86,13 @@ EARLY_WITHDRAWAL_PENALTY_RATE = 0.10
 EARLY_WITHDRAWAL_AGE = 59.5
 
 # --- Social Security ----------------------------------------------------------------------
-# Simplification: 85% of benefits are treated as federally taxable (the statutory maximum
-# inclusion, IRC section 86). Illinois does not tax Social Security benefits.
-SS_TAXABLE_SHARE = 0.85
+# The share of benefits that is federally taxable follows the provisional-income formula of IRC section 86 (IRS Publication 915):
+# provisional income is adjusted gross income without the benefits, plus half of them. Married filing jointly, 50% of the
+# amount above $32,000 is taxable up to half the benefits, and 85% of the amount above $44,000 (plus the smaller of half the
+# benefits and $6,000) up to 85% of the benefits. The thresholds are statutory and not indexed. Illinois does not tax Social Security.
+SS_BASE_MFJ = 32_000.0
+SS_ADDITIONAL_MFJ = 44_000.0
+SS_TAXABLE_SHARE = 0.85  # the most that is ever taxable; the planner's bracket-room estimates assume it (see `app.sim.simulate`)
 
 # --- Charitable gifts ---------------------------------------------------------------------
 # Rules for tax year 2026 as the One Big Beautiful Bill Act (Pub. L. 119-21, sections 70424-70425) left them, read from IRS

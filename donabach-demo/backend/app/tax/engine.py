@@ -106,11 +106,26 @@ def pretax_withdrawal_rate(balance: float, social_security: float, aged_spouses:
     if balance <= 0.0:
         return 0.0
     withdrawal = balance / P.PRETAX_WITHDRAWAL_YEARS
-    taxable_ss = P.SS_TAXABLE_SHARE * social_security
     deduction = standard_deduction(aged_spouses)
-    base = ordinary_tax(max(0.0, taxable_ss - deduction))
-    full = ordinary_tax(max(0.0, withdrawal + taxable_ss - deduction))
+    base = ordinary_tax(max(0.0, taxable_social_security(social_security, 0.0) - deduction))
+    full = ordinary_tax(max(0.0, withdrawal + taxable_social_security(social_security, withdrawal) - deduction))
     return (full - base) / withdrawal
+
+
+@jit
+def taxable_social_security(social_security: float, other_income: float) -> float:
+    """Taxable part of the benefits by the provisional-income formula (IRC section 86), married filing jointly. `other_income` is
+    adjusted gross income without the benefits (wages, interest, dividends, the capital gain line, retirement withdrawals, conversions)."""
+    if social_security <= 0.0:
+        return 0.0
+    provisional = other_income + 0.5 * social_security
+    if provisional <= P.SS_BASE_MFJ:
+        return 0.0
+    half = 0.5 * social_security
+    if provisional <= P.SS_ADDITIONAL_MFJ:
+        return min(0.5 * (provisional - P.SS_BASE_MFJ), half)
+    first_tier = min(half, 0.5 * (P.SS_ADDITIONAL_MFJ - P.SS_BASE_MFJ))
+    return min(P.SS_TAXABLE_SHARE * (provisional - P.SS_ADDITIONAL_MFJ) + first_tier, P.SS_TAXABLE_SHARE * social_security)
 
 
 @jit
@@ -133,7 +148,6 @@ def tax_core(
     stock_gift: float = 0.0,
 ):
     qualified = min(qualified_dividends, ordinary_dividends)
-    taxable_ss = P.SS_TAXABLE_SHARE * social_security
 
     # Capital gains and losses: net against the carryforward; a net loss deducts up to $3,000.
     net = net_capital_gain - capital_loss_carryforward
@@ -146,15 +160,9 @@ def tax_core(
         cap_gain_line = -cap_loss_deducted
         carry_out = -net - cap_loss_deducted
 
-    total_income = (
-        wages
-        + interest
-        + ordinary_dividends
-        + cap_gain_line
-        + retirement_distributions
-        + roth_conversions
-        + taxable_ss
-    )
+    other_income = wages + interest + ordinary_dividends + cap_gain_line + retirement_distributions + roth_conversions
+    taxable_ss = taxable_social_security(social_security, other_income)
+    total_income = other_income + taxable_ss
     agi = total_income  # no above-the-line adjustments are modelled
 
     # The deduction: the standard one, plus the cash-gift allowance for a household that does not itemize, or its charitable
@@ -410,7 +418,7 @@ class TaxReturn(BaseModel):
             ),
             TaxLine(label="Retirement account withdrawals", amount=self.retirement_distributions),
             TaxLine(label="Roth conversions", amount=self.roth_conversions),
-            TaxLine(label="Taxable Social Security (85%)", amount=self.taxable_social_security),
+            TaxLine(label="Taxable Social Security", amount=self.taxable_social_security),
             TaxLine(label="Adjusted gross income", amount=self.agi, kind="subtotal"),
             *self._deduction_lines(),
             TaxLine(label="Taxable income", amount=self.taxable_income, kind="subtotal"),

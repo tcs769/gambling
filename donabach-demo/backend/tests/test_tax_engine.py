@@ -362,11 +362,36 @@ def test_early_withdrawal_penalty_is_ten_percent_of_base():
     assert r.federal_total == pytest.approx(r.ordinary_tax + 4_000.0, **APPROX)
 
 
-def test_social_security_85_percent_taxable_federally_and_not_by_illinois():
+def test_social_security_is_taxed_by_the_provisional_income_formula_federally_and_not_by_illinois():
+    # provisional income 40,000 + 25,000 = 65,000: 85% of the 21,000 over 44,000, plus the first tier (6,000)
     r = ret(wages=40_000, social_security=50_000)
-    assert r.taxable_social_security == pytest.approx(42_500.0)
-    assert r.agi == pytest.approx(82_500.0)
+    assert r.taxable_social_security == pytest.approx(0.85 * 21_000 + 6_000)
+    assert r.agi == pytest.approx(40_000 + 23_850)
     assert r.il_base_income == pytest.approx(40_000.0)
+
+
+@pytest.mark.parametrize(
+    ("wages", "benefits", "taxable"),
+    [
+        (10_000, 30_000, 0.0),  # provisional 25,000, under the 32,000 base
+        (25_000, 30_000, 4_000.0),  # provisional 40,000: half of the 8,000 over the base
+        (29_000, 24_000, 4_500.0),  # provisional 41,000: half of 9,000, under half the benefits (12,000)
+        (36_000, 20_000, 10_000.0),  # provisional 46,000: 0.85 x 2,000 + min(half the benefits = 10,000, 6,000) = 7,700 ... capped below
+        (100_000, 50_000, 42_500.0),  # the 85% cap
+    ],
+)
+def test_social_security_taxable_share_hand_cases(wages, benefits, taxable):
+    r = ret(wages=wages, social_security=benefits)
+    provisional = wages + 0.5 * benefits
+    if provisional <= 32_000:
+        expected = 0.0
+    elif provisional <= 44_000:
+        expected = min(0.5 * (provisional - 32_000), 0.5 * benefits)
+    else:
+        expected = min(0.85 * (provisional - 44_000) + min(0.5 * benefits, 6_000), 0.85 * benefits)
+    assert r.taxable_social_security == pytest.approx(expected)
+    if (wages, benefits) != (36_000, 20_000):
+        assert r.taxable_social_security == pytest.approx(taxable)
 
 
 def test_qualified_dividends_cannot_exceed_ordinary_dividends():
@@ -425,11 +450,11 @@ def test_pretax_withdrawal_rate_rises_with_the_balance():
 
 
 def test_pretax_withdrawal_rate_matches_hand_calculation():
-    # 1,000,000 / 20 = 50,000 a year on top of 42,500 taxable Social Security.
-    withdrawal, taxable_ss = 50_000.0, 42_500.0
+    # 1,000,000 / 20 = 50,000 a year beside 50,000 of benefits: provisional income 75,000 makes 0.85 x 31,000 + 6,000 = 32,350 of them
+    # taxable (none are on their own: provisional income 25,000)
+    withdrawal, taxable_ss = 50_000.0, 0.85 * 31_000 + 6_000
     with_w = ordinary_tax(withdrawal + taxable_ss - P.STANDARD_DEDUCTION_MFJ)
-    alone = ordinary_tax(taxable_ss - P.STANDARD_DEDUCTION_MFJ)
-    assert pretax_withdrawal_rate(1_000_000.0, 50_000.0) == pytest.approx((with_w - alone) / withdrawal)
+    assert pretax_withdrawal_rate(1_000_000.0, 50_000.0) == pytest.approx(with_w / withdrawal)
 
 
 # --- Filers 65 and over, and required minimum distributions -------------------------------
@@ -464,9 +489,9 @@ def test_aged_deduction_lowers_the_rate_used_to_value_pre_tax_balances():
     plain = pretax_withdrawal_rate(2_000_000.0, 50_000.0)
     aged = pretax_withdrawal_rate(2_000_000.0, 50_000.0, 2.0)
     assert 0.0 < aged < plain
-    # hand calculation: 100,000 withdrawn a year beside 42,500 of taxable Social Security
+    # hand calculation: 100,000 withdrawn a year beside the Social Security it makes taxable (provisional income 125,000: the 85% cap, 42,500)
     deduction = 32_200 + 2 * 1_650
-    expected = (ordinary_tax(100_000 + 42_500 - deduction) - ordinary_tax(42_500 - deduction)) / 100_000
+    expected = ordinary_tax(100_000 + 42_500 - deduction) / 100_000
     assert aged == pytest.approx(expected)
 
 

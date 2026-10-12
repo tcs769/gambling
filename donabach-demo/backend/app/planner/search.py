@@ -95,11 +95,16 @@ class SearchResult:
         return Outcome.of(self.batch.wealth[self.index_of(strategy)], risk_aversion)
 
 
+def median_wealth(wealth: np.ndarray) -> np.ndarray:
+    """The median over the last axis (paths): the criterion of the maximum-gap study, which asks for the biggest median advantage."""
+    return np.median(wealth, axis=-1)
+
+
 def rank_strategies(
-    strategies: list[Strategy], wealth: np.ndarray, risk_aversion: float = RISK_AVERSION
+    strategies: list[Strategy], wealth: np.ndarray, risk_aversion: float = RISK_AVERSION, criterion: Callable[[np.ndarray], np.ndarray] | None = None
 ) -> list[RankedStrategy]:
-    """Order strategies by certainty-equivalent wealth, best first (ties keep menu order)."""
-    scores = certainty_equivalent(wealth, risk_aversion)
+    """Order strategies by certainty-equivalent wealth (or by `criterion`), best first (ties keep menu order)."""
+    scores = certainty_equivalent(wealth, risk_aversion) if criterion is None else criterion(wealth)
     order = np.argsort(-scores, kind="stable")
     seen: dict[bytes, int] = {}
     ranked: list[RankedStrategy] = []
@@ -144,37 +149,48 @@ def search(
     refine: int = REFINE_DIRECT_INDEXING,
     valuation: str = "liquidated",
     group_of: Callable[[Strategy], int] | None = None,
+    criterion: Callable[[np.ndarray], np.ndarray] | None = None,
+    screen_mask: Callable[[BatchResult], np.ndarray] | None = None,
 ) -> SearchResult:
     """Evaluate `strategies` (default: the full menu) on the futures in `inputs`. In a staged search at most `refine` of
     the strategies that direct-index survive the screen (see the module's note). `valuation` is the wealth the score is of:
     "liquidated" (everything sold at the horizon, the app's) or "heirs" (passed to heirs: a step-up, the heirs' tax rate). With
     `group_of` (a strategy's group, such as its reserve length) a staged search keeps the best of every group, so that a group the
-    screen ranks low as a whole (a long reserve) is still scored on every future when a constraint rules the others out."""
+    screen ranks low as a whole (a long reserve) is still scored on every future when a constraint rules the others out.
+    `criterion` replaces the certainty equivalent as the score (rows are strategies, columns futures), and `screen_mask`, given the screen's
+    results, says which strategies may pass the screen (a constraint checked on the screen's futures)."""
     if valuation not in ("liquidated", "heirs"):
         raise ValueError(f"unknown valuation {valuation!r}; expected 'liquidated' or 'heirs'")
 
     def wealth_of(batch: BatchResult) -> np.ndarray:
         return batch.wealth if valuation == "liquidated" else batch.wealth_heirs
 
+    def score_of(wealth: np.ndarray) -> np.ndarray:
+        return certainty_equivalent(wealth, risk_aversion) if criterion is None else criterion(wealth)
+
     strategies = strategies if strategies is not None else menu()
     started = time.perf_counter()
     considered = len(strategies)
     if not exhaustive and considered > SCREEN_MIN_STRATEGIES and inputs.n_paths > 2 * SCREEN_PATHS:
-        screen = wealth_of(run_batch(subset_inputs(inputs, SCREEN_PATHS), [_aggregate(s.policy()) for s in strategies]))
-        order = np.argsort(-certainty_equivalent(screen, risk_aversion), kind="stable").tolist()
+        screen_batch = run_batch(subset_inputs(inputs, SCREEN_PATHS), [_aggregate(s.policy()) for s in strategies])
+        screen = wealth_of(screen_batch)
+        screen_scores = score_of(screen)
+        if screen_mask is not None:
+            screen_scores = np.where(screen_mask(screen_batch), screen_scores, -np.inf)
+        order = np.argsort(-screen_scores, kind="stable").tolist()
         if group_of is None:
             pool = [i for i in order if _by_stock(strategies[i])][: max(DI_POOL, refine)]
             if len(pool) > refine:
                 # the screen's 100 futures are too few to tell near-identical strategies apart: rank the pool on every future (still with
                 # the aggregate rule, which costs what a fund does) and take the best of it
                 on_all = wealth_of(run_batch(inputs, [_aggregate(strategies[i].policy()) for i in pool]))
-                pool = [pool[j] for j in np.argsort(-certainty_equivalent(on_all, risk_aversion), kind="stable")[:refine]]
+                pool = [pool[j] for j in np.argsort(-score_of(on_all), kind="stable")[:refine]]
             rest = [i for i in order if not _by_stock(strategies[i])][: SCREEN_KEEP - len(pool)]
         else:
             groups = sorted({group_of(s) for s in strategies})
             by_group = {g: [i for i in order if group_of(strategies[i]) == g] for g in groups}
             wide = [i for g in groups for i in [j for j in by_group[g] if _by_stock(strategies[j])][:DI_PER_GROUP_POOL]]
-            on_all = certainty_equivalent(wealth_of(run_batch(inputs, [_aggregate(strategies[i].policy()) for i in wide])), risk_aversion)
+            on_all = score_of(wealth_of(run_batch(inputs, [_aggregate(strategies[i].policy()) for i in wide])))
             pool = []
             for g in groups:
                 members = sorted((j for j, i in enumerate(wide) if group_of(strategies[i]) == g), key=lambda j: -on_all[j])
@@ -185,7 +201,7 @@ def search(
     policies = [s.policy() for s in strategies] + list(extra_policies or [])
     batch = run_batch(inputs, policies, record_paths=record_paths)
     n = len(strategies)
-    ranked = rank_strategies(strategies, wealth_of(batch)[:n], risk_aversion)
+    ranked = rank_strategies(strategies, wealth_of(batch)[:n], risk_aversion, criterion)
     return SearchResult(
         ranked=ranked,
         batch=batch,

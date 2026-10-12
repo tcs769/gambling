@@ -1,7 +1,8 @@
 """The showcase household: a summary card, the strategy waterfall and wealth over time against the advisor.
 
-One household (`fixtures/showcase.json`) is the demo's subject. Its plan is searched once (the app's default planning style, 400
-futures, seed 2026) and everything else is measured on 2,000 other futures the search never saw, the same for the advisor, every
+One household (`fixtures/showcase.json`) is the demo's subject. Its plan is searched once (the liability-matched style: the most median
+wealth among the plans that keep stock sales in falling years to 2% of futures and ruin no likelier than the advisor's; 400 futures
+and 1,200 more to check the limits on, seed 2026) and everything else is measured on 2,000 other futures the search never saw, the same for the advisor, every
 bar of the waterfall and the wealth lines, so the bars add up to the headline and the lines end where the bars end.
 """
 
@@ -33,7 +34,7 @@ from app.api_models import (
     WealthLines,
 )
 from app.planner import plan as planner
-from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, search
+from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, search_matched
 from app.planner.strategies import Strategy, menu
 from app.planner.waterfall import run_waterfall, waterfall_strategies
 from app.schemas import HORIZON_AGE, Household
@@ -43,7 +44,8 @@ from app.study import metrics
 
 FIXTURE = Path(__file__).resolve().parents[2] / "fixtures" / "showcase.json"
 FIXTURE_ENV = "DONABACH_SHOWCASE"
-STUDY_CSV = Path(__file__).resolve().parents[2] / "reports" / "household_study_equity_first" / "household_study.csv"
+STUDY_CSV = Path(__file__).resolve().parents[2] / "reports" / "household_study_liability_matched" / "household_study.csv"
+SHOWCASE_STYLE = "liability_matched"
 SEARCH_PATHS = 400
 EVAL_PATHS = 2000
 SEED = 2026
@@ -201,7 +203,8 @@ def prepare(fixture: Fixture | None = None) -> Prepared:
         if cached is not None:
             return cached
         futures = build_inputs(fixture.household, n_paths=SEARCH_PATHS, seed=SEED)
-        strategy = search(futures, strategies=menu(style=planner.DEFAULT_STYLE), risk_aversion=RISK_AVERSION).best.strategy
+        validation = build_inputs(fixture.household, n_paths=planner.VALIDATION_PATHS, seed=SEED + planner.VALIDATION_SEED_OFFSET)
+        strategy = search_matched(futures, validation, menu(style=SHOWCASE_STYLE))[1].strategy
         inputs = build_inputs(fixture.household, n_paths=EVAL_PATHS, seed=SEED + planner.EVAL_SEED_OFFSET)
         prepared = Prepared(fixture, strategy, inputs)
         _prepared[fixture.id] = prepared

@@ -32,8 +32,9 @@ def test_strategies_without_a_reserve_give_exactly_the_results_they_gave_before_
     from app.planner.baseline import RIA_BASELINE, TYPICAL_ADVISOR
 
     # Pinned to what every result was computed with before tax lots, stock-level direct indexing and the typical advisor's fund
-    # distributions existed: the average-cost lot method, the specification's aggregate harvest rule, and funds that distribute nothing.
-    inputs = build_inputs(make_demo_household(), n_paths=150, seed=77, options=ModelOptions(harvest_model="spec"))
+    # distributions existed: the average-cost lot method, the specification's aggregate harvest rule, funds that distribute nothing
+    # and the flat 15% end valuation.
+    inputs = build_inputs(make_demo_household(), n_paths=150, seed=77, options=ModelOptions(harvest_model="spec", valuation="flat"))
     typical = TYPICAL_ADVISOR.replace(fund_distribution=0.0, fund_distribution_short_term=0.0)
     policies = [RIA_BASELINE, typical] + [s.policy() for s in menu()[::250][:6]]
     policies = [p.replace(lot_method="average", short_term_ordinary=False, di_model="aggregate") for p in policies]

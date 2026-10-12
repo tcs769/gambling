@@ -1,0 +1,805 @@
+{
+  "household": "The Tanaka family (the showcase household)",
+  "strategy": "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, direct indexing",
+  "choices": {
+    "stock_share": "100",
+    "conversion": "fill24_every",
+    "private_credit": "15",
+    "direct_indexing": "on",
+    "goal_bonds": "off",
+    "k401": "pretax",
+    "goal_funding": "sell",
+    "reserve": "6"
+  },
+  "n_paths": 2000,
+  "years": 30,
+  "retirement_age": 60,
+  "age": 50,
+  "giving": 0.0,
+  "subjects": [
+    {
+      "key": "plan",
+      "label": "Donabach plan",
+      "wealth_liquidated": {
+        "mean": 3312499.9797356646,
+        "median": 2423388.559608858
+      },
+      "wealth_heirs": {
+        "mean": 3494841.158236684,
+        "median": 2428359.1545678945
+      },
+      "lifetime_taxes_paid": {
+        "mean": 557204.485139837,
+        "median": 553303.4126862644
+      },
+      "tax_owed_on_pretax_at_horizon": {
+        "mean": 0.0,
+        "median": 0.0
+      },
+      "sales": {
+        "by_purpose": [
+          {
+            "purpose": "goals",
+            "sold": 53.096272246392935,
+            "share_of_sold": 5.014138342866001e-05,
+            "gain": 0.0,
+            "tax": 0.0
+          },
+          {
+            "purpose": "retirement spending",
+            "sold": 335203.40078060253,
+            "share_of_sold": 0.3165488184770409,
+            "gain": 3673.0476662847022,
+            "tax": 139.86837002775738
+          },
+          {
+            "purpose": "charitable gifts (cash part)",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 0.0,
+            "tax": 0.0
+          },
+          {
+            "purpose": "income taxes",
+            "sold": 97298.59293113631,
+            "share_of_sold": 0.0918837773128347,
+            "gain": 3584.8270710981246,
+            "tax": 762.5901926304549
+          },
+          {
+            "purpose": "rebalancing",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 0.0,
+            "tax": 0.0
+          },
+          {
+            "purpose": "refilling the reserve",
+            "sold": 530949.8035248298,
+            "share_of_sold": 0.5014016343062346,
+            "gain": 65327.30378198727,
+            "tax": 10794.047069675973
+          },
+          {
+            "purpose": "advisory fees",
+            "sold": 95426.24511716791,
+            "share_of_sold": 0.09011562852046104,
+            "gain": 4164.236311680639,
+            "tax": 754.2793473423739
+          },
+          {
+            "purpose": "other (loan)",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 0.0,
+            "tax": 0.0
+          },
+          {
+            "purpose": "fund distributions",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 0.0,
+            "tax": 0.0
+          },
+          {
+            "purpose": "loss harvesting",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": -393824.6617966304,
+            "tax": -24542.285387346208
+          },
+          {
+            "purpose": "gain harvesting (sold and bought back)",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 919743.831313917,
+            "tax": 53773.70738916199
+          }
+        ],
+        "total_sold": {
+          "mean": 1058931.138625983,
+          "median": 1081959.6241828692
+        },
+        "total_gain": {
+          "mean": 602668.5843483373,
+          "median": 596997.7588140916
+        },
+        "gain_from_sales": {
+          "mean": 996493.2461449676,
+          "median": 1129940.229840035
+        },
+        "capital_gains_tax": {
+          "mean": 41682.20698149233,
+          "median": 40988.71068242382
+        },
+        "gifts_in_kind": {
+          "mean": 0.0,
+          "median": 0.0
+        },
+        "gain_given_away": {
+          "mean": 0.0,
+          "median": 0.0
+        },
+        "gifts_in_cash": {
+          "mean": 0.0,
+          "median": 0.0
+        },
+        "fund_distributions": {
+          "mean": 0.0,
+          "median": 0.0
+        }
+      },
+      "lots": {
+        "actual_gain_from_sales": {
+          "mean": 996493.2461449676,
+          "median": 1129940.229840035
+        },
+        "hifo_gain": {
+          "mean": 697593.6910021942,
+          "median": 720148.4271973633
+        },
+        "fifo_gain": {
+          "mean": 1060058.0565830192,
+          "median": 1013450.7564369098
+        },
+        "hifo_short_term_gain": {
+          "mean": -25038.096775117316,
+          "median": -24625.457764307343
+        },
+        "fifo_short_term_gain": {
+          "mean": 465.5843085852997,
+          "median": 0.0
+        },
+        "hifo_unrealized_at_horizon": {
+          "mean": 707313.9412804163,
+          "median": 7.709151477098036e-10
+        },
+        "fifo_unrealized_at_horizon": {
+          "mean": 344849.57569959125,
+          "median": 5.857574527026544e-11
+        },
+        "gain_avoided_by_hifo": {
+          "mean": 362464.3655808251,
+          "median": 109081.34699768692
+        },
+        "unrealized_added_by_hifo": {
+          "mean": 362464.36558082514,
+          "median": 109081.34699768592
+        },
+        "run_used": "hifo with harvesting"
+      },
+      "reserve": {
+        "average_pretax": 0.0,
+        "average_roth": 391595.1898812095,
+        "average_brokerage": 27731.790806448877,
+        "at_retirement_pretax": 0.0,
+        "at_retirement_roth": 323955.02233230206,
+        "at_retirement_brokerage": 212631.78441373946
+      },
+      "pretax_withdrawals": {
+        "for_goals": 0.0,
+        "for_spending": 17993.498990789845,
+        "for_gifts": 0.0,
+        "for_taxes": 0.0,
+        "required": 0.0,
+        "before_59_and_a_half": 0.0,
+        "early_withdrawal_penalty": {
+          "mean": 0.0,
+          "median": 0.0
+        },
+        "futures_with_a_penalty": 0.0,
+        "tax_on_optional_withdrawals_with_penalty": 339.45069868081464
+      },
+      "horizon": {
+        "unrealized_gain": {
+          "mean": 802239.0479342728,
+          "median": 46563.84431156196
+        },
+        "tax_charged_when_liquidated": {
+          "mean": 120335.85719014093,
+          "median": 6984.576646734294
+        },
+        "tax_charged_when_passed_to_heirs": {
+          "mean": 0.0,
+          "median": 0.0
+        },
+        "brokerage_equity": {
+          "mean": 1291846.8440680476,
+          "median": 528327.8436178237
+        },
+        "basis": {
+          "mean": 489607.7961337746,
+          "median": 477912.5220429688
+        }
+      },
+      "taxes_by_type": {
+        "by_type": [
+          {
+            "type": "wages and Social Security",
+            "tax": 298622.4512943987
+          },
+          {
+            "type": "interest",
+            "tax": 10062.076398754209
+          },
+          {
+            "type": "pre-tax withdrawals (and the early-withdrawal penalty)",
+            "tax": 339.45069868081464
+          },
+          {
+            "type": "required minimum distributions",
+            "tax": 0.0
+          },
+          {
+            "type": "Roth conversions",
+            "tax": 159482.13232120147
+          },
+          {
+            "type": "short-term gains",
+            "tax": 1093.9185300334652
+          },
+          {
+            "type": "dividends",
+            "tax": 47016.167445309555
+          },
+          {
+            "type": "long-term gains",
+            "tax": 40588.28845145887
+          },
+          {
+            "type": "charitable deduction",
+            "tax": 0.0
+          }
+        ],
+        "total": {
+          "mean": 557204.485139837,
+          "median": 553303.4126862644
+        },
+        "tax_on_wages_alone": 298622.4512943987
+      }
+    },
+    {
+      "key": "good_ria",
+      "label": "Good RIA",
+      "wealth_liquidated": {
+        "mean": 1579600.6051963305,
+        "median": 1297356.425342118
+      },
+      "wealth_heirs": {
+        "mean": 1563208.0884012547,
+        "median": 1255582.6045414119
+      },
+      "lifetime_taxes_paid": {
+        "mean": 546209.3564204728,
+        "median": 514100.88097218843
+      },
+      "tax_owed_on_pretax_at_horizon": {
+        "mean": 133922.74943523723,
+        "median": 96477.22550976688
+      },
+      "sales": {
+        "by_purpose": [
+          {
+            "purpose": "goals",
+            "sold": 120615.97029395067,
+            "share_of_sold": 0.08761187100679761,
+            "gain": 82863.93833866197,
+            "tax": 11934.573202810501
+          },
+          {
+            "purpose": "retirement spending",
+            "sold": 238232.27903793892,
+            "share_of_sold": 0.17304487664328913,
+            "gain": 124042.23182998806,
+            "tax": 9615.694916048556
+          },
+          {
+            "purpose": "charitable gifts (cash part)",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 0.0,
+            "tax": 0.0
+          },
+          {
+            "purpose": "income taxes",
+            "sold": 155957.0446739576,
+            "share_of_sold": 0.11328258146310688,
+            "gain": 106706.9613460295,
+            "tax": 17098.503453503767
+          },
+          {
+            "purpose": "rebalancing",
+            "sold": 728069.0630921512,
+            "share_of_sold": 0.5288478191089818,
+            "gain": 478695.62847814546,
+            "tax": 79257.9691106883
+          },
+          {
+            "purpose": "refilling the reserve",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 0.0,
+            "tax": 0.0
+          },
+          {
+            "purpose": "advisory fees",
+            "sold": 133833.7180507714,
+            "share_of_sold": 0.09721285177782446,
+            "gain": 82145.05059324506,
+            "tax": 12168.704880909861
+          },
+          {
+            "purpose": "other (loan)",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 0.0,
+            "tax": 0.0
+          },
+          {
+            "purpose": "fund distributions",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 0.0,
+            "tax": 0.0
+          },
+          {
+            "purpose": "loss harvesting",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": -59853.04331619593,
+            "tax": -1997.5168377017774
+          },
+          {
+            "purpose": "gain harvesting (sold and bought back)",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 0.0,
+            "tax": 0.0
+          }
+        ],
+        "total_sold": {
+          "mean": 1376708.07514877,
+          "median": 1283117.4883687561
+        },
+        "total_gain": {
+          "mean": 814600.7672698741,
+          "median": 710740.8555576552
+        },
+        "gain_from_sales": {
+          "mean": 874453.8105860701,
+          "median": 778086.5010665494
+        },
+        "capital_gains_tax": {
+          "mean": 128077.9287262592,
+          "median": 103771.02569747482
+        },
+        "gifts_in_kind": {
+          "mean": 0.0,
+          "median": 0.0
+        },
+        "gain_given_away": {
+          "mean": 0.0,
+          "median": 0.0
+        },
+        "gifts_in_cash": {
+          "mean": 0.0,
+          "median": 0.0
+        },
+        "fund_distributions": {
+          "mean": 0.0,
+          "median": 0.0
+        }
+      },
+      "lots": {
+        "actual_gain_from_sales": {
+          "mean": 874453.8105860701,
+          "median": 778086.5010665494
+        },
+        "hifo_gain": {
+          "mean": 628283.2745332709,
+          "median": 566853.5714763626
+        },
+        "fifo_gain": {
+          "mean": 833668.9694169792,
+          "median": 741207.272691506
+        },
+        "hifo_short_term_gain": {
+          "mean": 6762.271518479013,
+          "median": 5613.8298496190255
+        },
+        "fifo_short_term_gain": {
+          "mean": -0.02949990611614939,
+          "median": 0.0
+        },
+        "hifo_unrealized_at_horizon": {
+          "mean": 338787.44258982135,
+          "median": 245553.6666082528
+        },
+        "fifo_unrealized_at_horizon": {
+          "mean": 133401.74770611292,
+          "median": 66885.41456329045
+        },
+        "gain_avoided_by_hifo": {
+          "mean": 205385.69488370843,
+          "median": 169566.9113147416
+        },
+        "unrealized_added_by_hifo": {
+          "mean": 205385.6948837084,
+          "median": 169566.91131474142
+        },
+        "run_used": "fifo with harvesting"
+      },
+      "reserve": {
+        "average_pretax": 366824.9141880134,
+        "average_roth": 58486.10958388796,
+        "average_brokerage": 358682.51120180706,
+        "at_retirement_pretax": 305371.3180443146,
+        "at_retirement_roth": 46471.936532436994,
+        "at_retirement_brokerage": 317006.5592916186
+      },
+      "pretax_withdrawals": {
+        "for_goals": 9.693522803355793e-30,
+        "for_spending": 423972.6787376237,
+        "for_gifts": 0.0,
+        "for_taxes": 2.573658703283551e-29,
+        "required": 174564.28662946972,
+        "before_59_and_a_half": 1.2527111174909668e-29,
+        "early_withdrawal_penalty": {
+          "mean": 1.2527111174909668e-30,
+          "median": 0.0
+        },
+        "futures_with_a_penalty": 0.067,
+        "tax_on_optional_withdrawals_with_penalty": 22545.52444354189
+      },
+      "horizon": {
+        "unrealized_gain": {
+          "mean": 152469.94985321802,
+          "median": 82620.83234272708
+        },
+        "tax_charged_when_liquidated": {
+          "mean": 23044.137952847057,
+          "median": 12393.124851409062
+        },
+        "tax_charged_when_passed_to_heirs": {
+          "mean": 0.0,
+          "median": 0.0
+        },
+        "brokerage_equity": {
+          "mean": 431286.939373861,
+          "median": 336057.86672083026
+        },
+        "basis": {
+          "mean": 278816.989520643,
+          "median": 224847.12109880688
+        }
+      },
+      "taxes_by_type": {
+        "by_type": [
+          {
+            "type": "wages and Social Security",
+            "tax": 298622.4512943987
+          },
+          {
+            "type": "interest",
+            "tax": 29020.004303939826
+          },
+          {
+            "type": "pre-tax withdrawals (and the early-withdrawal penalty)",
+            "tax": 22545.52444354189
+          },
+          {
+            "type": "required minimum distributions",
+            "tax": 29434.249207291617
+          },
+          {
+            "type": "Roth conversions",
+            "tax": 0.0
+          },
+          {
+            "type": "short-term gains",
+            "tax": 0.0
+          },
+          {
+            "type": "dividends",
+            "tax": 38509.19844504177
+          },
+          {
+            "type": "long-term gains",
+            "tax": 128077.9287262592
+          },
+          {
+            "type": "charitable deduction",
+            "tax": 0.0
+          }
+        ],
+        "total": {
+          "mean": 546209.356420473,
+          "median": 514100.88097218843
+        },
+        "tax_on_wages_alone": 298622.4512943987
+      }
+    },
+    {
+      "key": "typical_advisor",
+      "label": "Typical advisor",
+      "wealth_liquidated": {
+        "mean": 1149047.9027861399,
+        "median": 941682.2573256497
+      },
+      "wealth_heirs": {
+        "mean": 1105146.7273248057,
+        "median": 873026.7081758729
+      },
+      "lifetime_taxes_paid": {
+        "mean": 561164.8459539757,
+        "median": 532003.6212311971
+      },
+      "tax_owed_on_pretax_at_horizon": {
+        "mean": 88024.86291353371,
+        "median": 40270.1824307609
+      },
+      "sales": {
+        "by_purpose": [
+          {
+            "purpose": "goals",
+            "sold": 120589.4548230836,
+            "share_of_sold": 0.09495128454580963,
+            "gain": 9821.635443783196,
+            "tax": 3632.410804096893
+          },
+          {
+            "purpose": "retirement spending",
+            "sold": 228787.19241428748,
+            "share_of_sold": 0.18014541851305813,
+            "gain": -68192.97064699058,
+            "tax": 477.1353706234866
+          },
+          {
+            "purpose": "charitable gifts (cash part)",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 0.0,
+            "tax": 0.0
+          },
+          {
+            "purpose": "income taxes",
+            "sold": 174203.39749227412,
+            "share_of_sold": 0.1371665241243748,
+            "gain": 50646.283639804344,
+            "tax": 11867.040808373786
+          },
+          {
+            "purpose": "rebalancing",
+            "sold": 622742.327017575,
+            "share_of_sold": 0.49034290749647313,
+            "gain": 135438.31240674647,
+            "tax": 38133.33627199983
+          },
+          {
+            "purpose": "refilling the reserve",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 0.0,
+            "tax": 0.0
+          },
+          {
+            "purpose": "advisory fees",
+            "sold": 123691.56645184365,
+            "share_of_sold": 0.09739386532028443,
+            "gain": 6909.195857976611,
+            "tax": 5021.713720966822
+          },
+          {
+            "purpose": "other (loan)",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 0.0,
+            "tax": 0.0
+          },
+          {
+            "purpose": "fund distributions",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 647906.1006417598,
+            "tax": 88374.87689336075
+          },
+          {
+            "purpose": "loss harvesting",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 0.0,
+            "tax": -44.93986759086615
+          },
+          {
+            "purpose": "gain harvesting (sold and bought back)",
+            "sold": 0.0,
+            "share_of_sold": 0.0,
+            "gain": 0.0,
+            "tax": 0.0
+          }
+        ],
+        "total_sold": {
+          "mean": 1270013.9381990638,
+          "median": 1194898.2275443673
+        },
+        "total_gain": {
+          "mean": 782528.5573430797,
+          "median": 677951.8956342611
+        },
+        "gain_from_sales": {
+          "mean": 134622.45670132004,
+          "median": 80191.9615899009
+        },
+        "capital_gains_tax": {
+          "mean": 147461.5740018307,
+          "median": 126107.9672398086
+        },
+        "gifts_in_kind": {
+          "mean": 0.0,
+          "median": 0.0
+        },
+        "gain_given_away": {
+          "mean": 0.0,
+          "median": 0.0
+        },
+        "gifts_in_cash": {
+          "mean": 0.0,
+          "median": 0.0
+        },
+        "fund_distributions": {
+          "mean": 736256.9325474541,
+          "median": 687838.8147145289
+        }
+      },
+      "lots": {
+        "actual_gain_from_sales": {
+          "mean": 134622.45670132004,
+          "median": 80191.9615899009
+        },
+        "hifo_gain": {
+          "mean": 131232.12283308996,
+          "median": 104313.72357256067
+        },
+        "fifo_gain": {
+          "mean": 185954.68807498706,
+          "median": 135172.48503117042
+        },
+        "hifo_short_term_gain": {
+          "mean": -10814.91006913993,
+          "median": -10272.240473756348
+        },
+        "fifo_short_term_gain": {
+          "mean": 0.0,
+          "median": 0.0
+        },
+        "hifo_unrealized_at_horizon": {
+          "mean": -39031.40321741674,
+          "median": -46985.015837656836
+        },
+        "fifo_unrealized_at_horizon": {
+          "mean": -93753.96845931382,
+          "median": -73840.32328915017
+        },
+        "gain_avoided_by_hifo": {
+          "mean": 54722.56524189709,
+          "median": 26568.88072506652
+        },
+        "unrealized_added_by_hifo": {
+          "mean": 54722.56524189709,
+          "median": 26568.88072506615
+        },
+        "run_used": "fifo"
+      },
+      "reserve": {
+        "average_pretax": 303737.7325822849,
+        "average_roth": 47888.455449890374,
+        "average_brokerage": 272202.75969789695,
+        "at_retirement_pretax": 285949.0734702636,
+        "at_retirement_roth": 43042.41197463928,
+        "at_retirement_brokerage": 273921.8903615545
+      },
+      "pretax_withdrawals": {
+        "for_goals": 1.3328593854614216e-29,
+        "for_spending": 444260.6335586469,
+        "for_gifts": 0.0,
+        "for_taxes": 0.555438218868252,
+        "required": 134726.47935797222,
+        "before_59_and_a_half": 3.155443620884047e-29,
+        "early_withdrawal_penalty": {
+          "mean": 3.1554436208840472e-30,
+          "median": 0.0
+        },
+        "futures_with_a_penalty": 0.1125,
+        "tax_on_optional_withdrawals_with_penalty": 19812.302970390418
+      },
+      "horizon": {
+        "unrealized_gain": {
+          "mean": -64792.686218113806,
+          "median": -34424.748264272
+        },
+        "tax_charged_when_liquidated": {
+          "mean": 2286.819493720346,
+          "median": 0.0
+        },
+        "tax_charged_when_passed_to_heirs": {
+          "mean": 0.0,
+          "median": 0.0
+        },
+        "brokerage_equity": {
+          "mean": 294035.1744495911,
+          "median": 223574.9863168591
+        },
+        "basis": {
+          "mean": 358827.8606677049,
+          "median": 287903.1603214828
+        }
+      },
+      "taxes_by_type": {
+        "by_type": [
+          {
+            "type": "wages and Social Security",
+            "tax": 298622.4512943987
+          },
+          {
+            "type": "interest",
+            "tax": 22040.674019631613
+          },
+          {
+            "type": "pre-tax withdrawals (and the early-withdrawal penalty)",
+            "tax": 19812.302970390418
+          },
+          {
+            "type": "required minimum distributions",
+            "tax": 20153.298957314
+          },
+          {
+            "type": "Roth conversions",
+            "tax": 0.0
+          },
+          {
+            "type": "short-term gains",
+            "tax": 0.0
+          },
+          {
+            "type": "dividends",
+            "tax": 53074.544710410315
+          },
+          {
+            "type": "long-term gains",
+            "tax": 147461.5740018307
+          },
+          {
+            "type": "charitable deduction",
+            "tax": 0.0
+          }
+        ],
+        "total": {
+          "mean": 561164.8459539757,
+          "median": 532003.6212311971
+        },
+        "tax_on_wages_alone": 298622.4512943987
+      }
+    }
+  ],
+  "seconds": 11.013611494000088
+}

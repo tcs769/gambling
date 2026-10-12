@@ -1,0 +1,608 @@
+[
+  {
+    "household": "The sample household (Alex and Jordan Sample)",
+    "years": 42,
+    "age": 38,
+    "plan": {
+      "recommendation": "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, direct indexing",
+      "choices": {
+        "stock_share": "100",
+        "conversion": "fill24_every",
+        "private_credit": "15",
+        "direct_indexing": "on",
+        "goal_bonds": "off",
+        "k401": "pretax",
+        "goal_funding": "sell",
+        "reserve": "6"
+      },
+      "direct_indexing": true,
+      "liquidated": {
+        "good_ria": {
+          "median": 0.018047804867707518,
+          "risk_adjusted": 0.0006134614496120516,
+          "median_dollars": 3076667.6349024093,
+          "plan_median": 5824562.272836968,
+          "baseline_median": 2747894.637934559,
+          "median_low": 0.01764709478370815,
+          "median_high": 0.018751094993731697
+        },
+        "typical_advisor": {
+          "median": 0.02550283958292865,
+          "risk_adjusted": 0.011791480112155028,
+          "median_dollars": 3801939.613876492,
+          "plan_median": 5824562.272836968,
+          "baseline_median": 2022622.6589604765,
+          "median_low": 0.02499303620893769,
+          "median_high": 0.02605714961728508
+        },
+        "typical_advisor_before_distributions": {
+          "median": 0.02490039041640335,
+          "risk_adjusted": 0.01097832346067995,
+          "median_dollars": 3751398.3960282085,
+          "plan_median": 5824562.272836968,
+          "baseline_median": 2073163.8768087595,
+          "median_low": 0.02446361790406463,
+          "median_high": 0.025583642149029272
+        }
+      },
+      "heirs": {
+        "good_ria": {
+          "median": 0.018720973411535224,
+          "risk_adjusted": 0.0017267747362361696,
+          "median_dollars": 3173986.5290172263,
+          "plan_median": 5865363.56077769,
+          "baseline_median": 2691377.031760464,
+          "median_low": 0.01811450911458066,
+          "median_high": 0.01927268206211833
+        },
+        "typical_advisor": {
+          "median": 0.026544419117727314,
+          "risk_adjusted": 0.01305055787181697,
+          "median_dollars": 3913589.2674036524,
+          "plan_median": 5865363.56077769,
+          "baseline_median": 1951774.2933740378,
+          "median_low": 0.02610380787566058,
+          "median_high": 0.027272168910944906
+        },
+        "typical_advisor_before_distributions": {
+          "median": 0.025905343818763304,
+          "risk_adjusted": 0.012152700012211248,
+          "median_dollars": 3861866.672140215,
+          "plan_median": 5865363.56077769,
+          "baseline_median": 2003496.8886374752,
+          "median_low": 0.02539880014542556,
+          "median_high": 0.026578002122689525
+        }
+      },
+      "shortfall": {
+        "plan": 0.0055,
+        "good_ria": 0.006,
+        "typical_advisor": 0.013
+      },
+      "p10": {
+        "plan": 1405803.334420272,
+        "good_ria": 973597.0709030073
+      }
+    },
+    "plan_for_heirs": {
+      "recommendation": "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, direct indexing",
+      "choices": {
+        "stock_share": "100",
+        "conversion": "fill24_every",
+        "private_credit": "15",
+        "direct_indexing": "on",
+        "goal_bonds": "off",
+        "k401": "pretax",
+        "goal_funding": "sell",
+        "reserve": "6"
+      },
+      "direct_indexing": true,
+      "liquidated": {
+        "good_ria": {
+          "median": 0.018047804867707518,
+          "risk_adjusted": 0.0006134614496120516,
+          "median_dollars": 3076667.6349024093,
+          "plan_median": 5824562.272836968,
+          "baseline_median": 2747894.637934559,
+          "median_low": 0.01764709478370815,
+          "median_high": 0.018751094993731697
+        },
+        "typical_advisor": {
+          "median": 0.02550283958292865,
+          "risk_adjusted": 0.011791480112155028,
+          "median_dollars": 3801939.613876492,
+          "plan_median": 5824562.272836968,
+          "baseline_median": 2022622.6589604765,
+          "median_low": 0.02499303620893769,
+          "median_high": 0.02605714961728508
+        },
+        "typical_advisor_before_distributions": {
+          "median": 0.02490039041640335,
+          "risk_adjusted": 0.01097832346067995,
+          "median_dollars": 3751398.3960282085,
+          "plan_median": 5824562.272836968,
+          "baseline_median": 2073163.8768087595,
+          "median_low": 0.02446361790406463,
+          "median_high": 0.025583642149029272
+        }
+      },
+      "heirs": {
+        "good_ria": {
+          "median": 0.018720973411535224,
+          "risk_adjusted": 0.0017267747362361696,
+          "median_dollars": 3173986.5290172263,
+          "plan_median": 5865363.56077769,
+          "baseline_median": 2691377.031760464,
+          "median_low": 0.01811450911458066,
+          "median_high": 0.01927268206211833
+        },
+        "typical_advisor": {
+          "median": 0.026544419117727314,
+          "risk_adjusted": 0.01305055787181697,
+          "median_dollars": 3913589.2674036524,
+          "plan_median": 5865363.56077769,
+          "baseline_median": 1951774.2933740378,
+          "median_low": 0.02610380787566058,
+          "median_high": 0.027272168910944906
+        },
+        "typical_advisor_before_distributions": {
+          "median": 0.025905343818763304,
+          "risk_adjusted": 0.012152700012211248,
+          "median_dollars": 3861866.672140215,
+          "plan_median": 5865363.56077769,
+          "baseline_median": 2003496.8886374752,
+          "median_low": 0.02539880014542556,
+          "median_high": 0.026578002122689525
+        }
+      },
+      "shortfall": {
+        "plan": 0.0055,
+        "good_ria": 0.006,
+        "typical_advisor": 0.013
+      },
+      "p10": {
+        "plan": 1405803.334420272,
+        "good_ria": 973597.0709030073
+      }
+    },
+    "direct_indexing": {
+      "idio_vol": 0.25,
+      "theta": 0.01,
+      "plan_has_direct_indexing": true,
+      "liquidated": {
+        "old_rule": {
+          "median": -1.1211474103767216e-05,
+          "risk_adjusted": 9.285163889383163e-05,
+          "median_dollars": -2733.154773931019,
+          "plan_median": 5802932.613845788,
+          "baseline_median": 5805665.768619719,
+          "median_low": -0.00010141689798923713,
+          "median_high": 0.00012480042503968392
+        },
+        "stock_by_stock": {
+          "median": 7.73733011851796e-05,
+          "risk_adjusted": 0.00012344639816586067,
+          "median_dollars": 18896.50421724934,
+          "plan_median": 5824562.272836968,
+          "baseline_median": 5805665.768619719,
+          "median_low": 4.231959379370487e-05,
+          "median_high": 0.00021608773071871701
+        },
+        "fitted_rule": {
+          "median": -1.1211474103767216e-05,
+          "risk_adjusted": 9.285163889383163e-05,
+          "median_dollars": -2733.154773931019,
+          "plan_median": 5802932.613845788,
+          "baseline_median": 5805665.768619719,
+          "median_low": -0.00010141689798923713,
+          "median_high": 0.00012480042503968392
+        }
+      },
+      "heirs": {
+        "old_rule": {
+          "median": 0.00025008766530310034,
+          "risk_adjusted": 9.381830449362027e-05,
+          "median_dollars": 61359.02468550671,
+          "plan_median": 5873131.837903987,
+          "baseline_median": 5811772.81321848,
+          "median_low": 0.0001443340885048827,
+          "median_high": 0.00032851688210550073
+        },
+        "stock_by_stock": {
+          "median": 0.00021856704177269926,
+          "risk_adjusted": 0.00012381562473184893,
+          "median_dollars": 53590.747559210286,
+          "plan_median": 5865363.56077769,
+          "baseline_median": 5811772.81321848,
+          "median_low": 0.00014484239257674946,
+          "median_high": 0.0003036396882886816
+        },
+        "fitted_rule": {
+          "median": 0.00025008766530310034,
+          "risk_adjusted": 9.381830449362027e-05,
+          "median_dollars": 61359.02468550671,
+          "plan_median": 5873131.837903987,
+          "baseline_median": 5811772.81321848,
+          "median_low": 0.0001443340885048827,
+          "median_high": 0.00032851688210550073
+        }
+      },
+      "harvested_losses": {
+        "old_rule": 1035480.3418155279,
+        "stock_by_stock": 563418.6787955038,
+        "fitted_rule": 1035480.3418155279,
+        "no_direct_indexing": 178609.31951616783
+      },
+      "brokerage_value_today": 150000.0,
+      "harvested_per_year_share_of_brokerage_today": {
+        "old_rule": 0.16436195901833775,
+        "stock_by_stock": 0.08943153631674663,
+        "fitted_rule": 0.16436195901833775,
+        "no_direct_indexing": 0.028350685637486956
+      }
+    },
+    "sensitivity": {
+      "sigma=0.20": 5.637281366155378e-05,
+      "sigma=0.25": 7.73733011851796e-05,
+      "sigma=0.30": 7.507669637019099e-05,
+      "sigma=0.35": 7.919475795037378e-05,
+      "theta=0.00": 7.663132518298532e-05,
+      "theta=0.01": 7.73733011851796e-05,
+      "theta=0.02": 7.749020372949111e-05,
+      "theta=0.05": 4.991347677774094e-05,
+      "theta=0.10": 5.0952703676943045e-05
+    },
+    "giving": {
+      "giving": 20000.0,
+      "recommendation": "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, direct indexing, borrow for goals",
+      "lots_vs_cash": {
+        "liquidated": {
+          "median": 0.00013726761815324728,
+          "risk_adjusted": 4.76489747924802e-06,
+          "median_dollars": 29033.04950956069,
+          "plan_median": 5050754.8622839395,
+          "baseline_median": 5021721.812774379,
+          "median_low": 3.315952482453311e-05,
+          "median_high": 0.00024118097295714464
+        },
+        "heirs": {
+          "median": 9.752744594804241e-05,
+          "risk_adjusted": 4.707791626312741e-06,
+          "median_dollars": 20645.344482211396,
+          "plan_median": 5050754.8622839395,
+          "baseline_median": 5030109.517801728,
+          "median_low": 7.044847208304006e-06,
+          "median_high": 0.00019966469166537992
+        }
+      },
+      "plan_vs_good_ria": {
+        "liquidated": {
+          "median": 0.01858778435071229,
+          "risk_adjusted": 0.0021574527690286782,
+          "median_dollars": 2720406.6312108603,
+          "plan_median": 5050754.8622839395,
+          "baseline_median": 2330348.231073079,
+          "median_low": 0.018226334406041524,
+          "median_high": 0.019345078619157973
+        },
+        "heirs": {
+          "median": 0.019487342427124688,
+          "risk_adjusted": 0.003095690138650964,
+          "median_dollars": 2805223.6812381893,
+          "plan_median": 5050754.8622839395,
+          "baseline_median": 2245531.18104575,
+          "median_low": 0.018964177339975696,
+          "median_high": 0.020035112947501942
+        }
+      },
+      "gifts_in_kind": 653819.3748777299,
+      "gain_given_away": 401132.0829883069,
+      "gifts_in_cash": 186180.62512227014,
+      "tax_lots_vs_cash_median": -7689.733239439782
+    },
+    "seconds": 19.776128150000204
+  },
+  {
+    "household": "The showcase household (the Tanaka family)",
+    "years": 30,
+    "age": 50,
+    "plan": {
+      "recommendation": "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, direct indexing",
+      "choices": {
+        "stock_share": "100",
+        "conversion": "fill24_every",
+        "private_credit": "15",
+        "direct_indexing": "on",
+        "goal_bonds": "off",
+        "k401": "pretax",
+        "goal_funding": "sell",
+        "reserve": "6"
+      },
+      "direct_indexing": true,
+      "liquidated": {
+        "good_ria": {
+          "median": 0.021046352458936157,
+          "risk_adjusted": 0.005763027317462921,
+          "median_dollars": 1126032.1342667402,
+          "plan_median": 2423388.559608858,
+          "baseline_median": 1297356.425342118,
+          "median_low": 0.02003835670869264,
+          "median_high": 0.02206373456942301
+        },
+        "typical_advisor": {
+          "median": 0.03201011873997883,
+          "risk_adjusted": 0.016478114091865725,
+          "median_dollars": 1481706.3022832084,
+          "plan_median": 2423388.559608858,
+          "baseline_median": 941682.2573256497,
+          "median_low": 0.03100876099242883,
+          "median_high": 0.03304021971784162
+        },
+        "typical_advisor_before_distributions": {
+          "median": 0.030198808192977822,
+          "risk_adjusted": 0.0148617860713538,
+          "median_dollars": 1430748.5873404215,
+          "plan_median": 2423388.559608858,
+          "baseline_median": 992639.9722684366,
+          "median_low": 0.029136829384731132,
+          "median_high": 0.03119718658720344
+        }
+      },
+      "heirs": {
+        "good_ria": {
+          "median": 0.022230702990659212,
+          "risk_adjusted": 0.006621750649373315,
+          "median_dollars": 1172776.5500264827,
+          "plan_median": 2428359.1545678945,
+          "baseline_median": 1255582.6045414119,
+          "median_low": 0.021313693237693943,
+          "median_high": 0.023230549494583495
+        },
+        "typical_advisor": {
+          "median": 0.034688239853837954,
+          "risk_adjusted": 0.017133971594982533,
+          "median_dollars": 1555332.4463920216,
+          "plan_median": 2428359.1545678945,
+          "baseline_median": 873026.7081758729,
+          "median_low": 0.03370581180233595,
+          "median_high": 0.03566596620540098
+        },
+        "typical_advisor_before_distributions": {
+          "median": 0.032284639982085306,
+          "risk_adjusted": 0.015504132058050901,
+          "median_dollars": 1492244.6768572521,
+          "plan_median": 2428359.1545678945,
+          "baseline_median": 936114.4777106423,
+          "median_low": 0.031285090374520076,
+          "median_high": 0.033242401643982844
+        }
+      },
+      "shortfall": {
+        "plan": 0.0285,
+        "good_ria": 0.039,
+        "typical_advisor": 0.074
+      },
+      "p10": {
+        "plan": 417975.0381546577,
+        "good_ria": 280009.4904731075
+      }
+    },
+    "plan_for_heirs": {
+      "recommendation": "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, direct indexing",
+      "choices": {
+        "stock_share": "100",
+        "conversion": "fill24_every",
+        "private_credit": "15",
+        "direct_indexing": "on",
+        "goal_bonds": "off",
+        "k401": "pretax",
+        "goal_funding": "sell",
+        "reserve": "6"
+      },
+      "direct_indexing": true,
+      "liquidated": {
+        "good_ria": {
+          "median": 0.021046352458936157,
+          "risk_adjusted": 0.005763027317462921,
+          "median_dollars": 1126032.1342667402,
+          "plan_median": 2423388.559608858,
+          "baseline_median": 1297356.425342118,
+          "median_low": 0.02003835670869264,
+          "median_high": 0.02206373456942301
+        },
+        "typical_advisor": {
+          "median": 0.03201011873997883,
+          "risk_adjusted": 0.016478114091865725,
+          "median_dollars": 1481706.3022832084,
+          "plan_median": 2423388.559608858,
+          "baseline_median": 941682.2573256497,
+          "median_low": 0.03100876099242883,
+          "median_high": 0.03304021971784162
+        },
+        "typical_advisor_before_distributions": {
+          "median": 0.030198808192977822,
+          "risk_adjusted": 0.0148617860713538,
+          "median_dollars": 1430748.5873404215,
+          "plan_median": 2423388.559608858,
+          "baseline_median": 992639.9722684366,
+          "median_low": 0.029136829384731132,
+          "median_high": 0.03119718658720344
+        }
+      },
+      "heirs": {
+        "good_ria": {
+          "median": 0.022230702990659212,
+          "risk_adjusted": 0.006621750649373315,
+          "median_dollars": 1172776.5500264827,
+          "plan_median": 2428359.1545678945,
+          "baseline_median": 1255582.6045414119,
+          "median_low": 0.021313693237693943,
+          "median_high": 0.023230549494583495
+        },
+        "typical_advisor": {
+          "median": 0.034688239853837954,
+          "risk_adjusted": 0.017133971594982533,
+          "median_dollars": 1555332.4463920216,
+          "plan_median": 2428359.1545678945,
+          "baseline_median": 873026.7081758729,
+          "median_low": 0.03370581180233595,
+          "median_high": 0.03566596620540098
+        },
+        "typical_advisor_before_distributions": {
+          "median": 0.032284639982085306,
+          "risk_adjusted": 0.015504132058050901,
+          "median_dollars": 1492244.6768572521,
+          "plan_median": 2428359.1545678945,
+          "baseline_median": 936114.4777106423,
+          "median_low": 0.031285090374520076,
+          "median_high": 0.033242401643982844
+        }
+      },
+      "shortfall": {
+        "plan": 0.0285,
+        "good_ria": 0.039,
+        "typical_advisor": 0.074
+      },
+      "p10": {
+        "plan": 417975.0381546577,
+        "good_ria": 280009.4904731075
+      }
+    },
+    "direct_indexing": {
+      "idio_vol": 0.25,
+      "theta": 0.01,
+      "plan_has_direct_indexing": true,
+      "liquidated": {
+        "old_rule": {
+          "median": 0.0007053153601377371,
+          "risk_adjusted": 0.00047396430549540014,
+          "median_dollars": 50762.81278201565,
+          "plan_median": 2425376.6772914967,
+          "baseline_median": 2374613.864509481,
+          "median_low": 0.0002418082047606296,
+          "median_high": 0.0008490091837638603
+        },
+        "stock_by_stock": {
+          "median": 0.0006779614152971902,
+          "risk_adjusted": 0.00033815375626100597,
+          "median_dollars": 48774.69509937707,
+          "plan_median": 2423388.559608858,
+          "baseline_median": 2374613.864509481,
+          "median_low": 0.00029573851799145066,
+          "median_high": 0.0006221572790811037
+        },
+        "fitted_rule": {
+          "median": 0.0007053153601377371,
+          "risk_adjusted": 0.00047396430549540014,
+          "median_dollars": 50762.81278201565,
+          "plan_median": 2425376.6772914967,
+          "baseline_median": 2374613.864509481,
+          "median_low": 0.0002418082047606296,
+          "median_high": 0.0008490091837638603
+        }
+      },
+      "heirs": {
+        "old_rule": {
+          "median": 0.001170797782709343,
+          "risk_adjusted": 0.0004761495738552224,
+          "median_dollars": 84916.19444633229,
+          "plan_median": 2461737.7996018156,
+          "baseline_median": 2376821.6051554834,
+          "median_low": 0.000704271358097941,
+          "median_high": 0.0011104488704489657
+        },
+        "stock_by_stock": {
+          "median": 0.0007153106825781297,
+          "risk_adjusted": 0.0003387145413236148,
+          "median_dollars": 51537.54941241117,
+          "plan_median": 2428359.1545678945,
+          "baseline_median": 2376821.6051554834,
+          "median_low": 0.00034566347704979573,
+          "median_high": 0.0006640529897167348
+        },
+        "fitted_rule": {
+          "median": 0.001170797782709343,
+          "risk_adjusted": 0.0004761495738552224,
+          "median_dollars": 84916.19444633229,
+          "plan_median": 2461737.7996018156,
+          "baseline_median": 2376821.6051554834,
+          "median_low": 0.000704271358097941,
+          "median_high": 0.0011104488704489657
+        }
+      },
+      "harvested_losses": {
+        "old_rule": 911580.4264294603,
+        "stock_by_stock": 393824.6617966304,
+        "fitted_rule": 911580.4264294603,
+        "no_direct_indexing": 96036.17931312697
+      },
+      "brokerage_value_today": 645776.5889251672,
+      "harvested_per_year_share_of_brokerage_today": {
+        "old_rule": 0.04705344655632365,
+        "stock_by_stock": 0.020328220241622237,
+        "fitted_rule": 0.04705344655632365,
+        "no_direct_indexing": 0.004957141574971509
+      }
+    },
+    "sensitivity": {
+      "sigma=0.20": 0.0005508676248286992,
+      "sigma=0.25": 0.0006779614152971902,
+      "sigma=0.30": 0.0007845147410678877,
+      "sigma=0.35": 0.000862930438198406,
+      "theta=0.00": 0.0006776565969313086,
+      "theta=0.01": 0.0006779614152971902,
+      "theta=0.02": 0.0006855155610059338,
+      "theta=0.05": 0.0006854631171220316,
+      "theta=0.10": 0.0006900316391500461
+    },
+    "giving": {
+      "giving": 20000.0,
+      "recommendation": "2-year spending reserve, the rest in stocks, no conversions, 15% private credit, direct indexing",
+      "lots_vs_cash": {
+        "liquidated": {
+          "median": 0.00230975734699701,
+          "risk_adjusted": 0.0007262029932508796,
+          "median_dollars": 123075.23611649475,
+          "plan_median": 1840461.9014777506,
+          "baseline_median": 1717386.6653612559,
+          "median_low": 0.0019065322086407543,
+          "median_high": 0.0025554283083584206
+        },
+        "heirs": {
+          "median": -0.0003965389108266937,
+          "risk_adjusted": 0.0007162640848796809,
+          "median_dollars": -22531.2642707075,
+          "plan_median": 1882374.7200365518,
+          "baseline_median": 1904905.9843072593,
+          "median_low": -0.0007143298312432045,
+          "median_high": -4.401946652879398e-05
+        }
+      },
+      "plan_vs_good_ria": {
+        "liquidated": {
+          "median": 0.02667217992155857,
+          "risk_adjusted": 0.0067962387345053,
+          "median_dollars": 1004910.8059295882,
+          "plan_median": 1840461.9014777506,
+          "baseline_median": 835551.0955481625,
+          "median_low": 0.025512187805632226,
+          "median_high": 0.02781494674114602
+        },
+        "heirs": {
+          "median": 0.030093523003693168,
+          "risk_adjusted": 0.0071506173731394895,
+          "median_dollars": 1108970.7649077731,
+          "plan_median": 1882374.7200365518,
+          "baseline_median": 773403.9551287788,
+          "median_low": 0.028782366165373587,
+          "median_high": 0.03139937938834471
+        }
+      },
+      "gifts_in_kind": 554918.8993714788,
+      "gain_given_away": 466108.5614420141,
+      "gifts_in_cash": 45081.10062852116,
+      "tax_lots_vs_cash_median": -31888.980234447692
+    },
+    "seconds": 13.249462428999777
+  }
+]

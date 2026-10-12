@@ -93,7 +93,7 @@ The typical advisor's taxable funds are active and pay capital gains out every y
 
 ### 9. The adaptive planner
 
-Item 9.1 (noise at 32, 128 and 512 rollouts) is measured in `reports/adaptive_evaluation_update4.md` (see the end of this section). **9.2 to 9.6 (monthly steps, robustness, repeated improvement, more measures, joint actions) are not built.** The adaptive planner is not in the maximum-gap menu either.
+**9.1 done** (`reports/adaptive_evaluation_update4.md`, sample household, 1,000 fresh futures): the adaptive planner adds +0.01% a year (−0.00% to +0.03%) at the median over the best fixed strategy, and the same +0.01% at 32, 128 and 512 rollouts (4.6, 14.9 and 56.3 seconds per 100 paths), so rollout noise is not what limits it; on a second set of futures +0.01%. The best fixed strategy is +1.87% over the good RIA on these futures (+1.80% on the 2,000 used elsewhere). **9.2 to 9.6 (monthly steps, robustness, repeated improvement, more measures, joint actions) are not built.** The adaptive planner is not in the maximum-gap menu either.
 
 ### 10. Shapley beside the waterfall
 

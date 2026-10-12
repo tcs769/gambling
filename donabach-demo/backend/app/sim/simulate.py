@@ -169,7 +169,7 @@ from app.sim.state import (  # noqa: E402, F401
 from app.sim.stocks import di_buy, di_donate, di_realize, di_sell, di_start, di_year_begin
 from app.sim.stocks import lot_short_share as _lot_short_share
 from app.tax import params_2026 as P
-from app.tax.engine import marginal_rate, pretax_withdrawal_rate, tax_core
+from app.tax.engine import liquidation_taxes, marginal_rate, pretax_withdrawal_rate, tax_core
 
 # Time-varying inputs, one row per simulated year.
 (TV_AGE, TV_RETIRED, TV_SS, TV_NEED, TV_GOAL, TV_BUCKET, TV_EXPWAGE, TV_KIDS, TV_DEPS, TV_NEARN, TV_AGED, TV_SPEND, TV_GIFT) = range(13)
@@ -261,7 +261,8 @@ HC_HARVEST_MODEL = 2  # the aggregate direct-indexing harvest rule: 0 the specif
 HC_DI_FEE_PREMIUM = 3  # extra yearly fee on direct-indexed equity (0 in the specification)
 HC_HARVEST_THRESHOLD = 4  # stock by stock: a lot is harvested when its cost is this far above the price (a fraction)
 HC_HEIRS_RATE = 5  # the flat tax rate the heirs pay on the pre-tax balance they inherit (the "passed to heirs" valuation)
-NHC = 6
+HC_VALUATION = 6  # 0 the tax engine values what is owed on liquidation (`liquidation_taxes`), 1 the flat rates used before Update 4
+NHC = 7
 
 # Kernel result columns.
 R_WEALTH, R_TAXES, R_PRETAX_OWED, R_UNFUNDED, R_WEALTH_HEIRS = range(5)
@@ -1117,6 +1118,20 @@ def _year_begin(st, ys, tv, t, hhc, act, r_e, r_b, r_c, g):
     ys[Y_HARVESTST] = book_loss_short
 
 
+@jit(inline="always")
+def valuation_taxes(st, hhc, interest, dividends, aged, kids, deps):
+    """What liquidating everything would cost in tax, as (tax on the pre-tax balance, tax on the gains): the tax engine's own
+    figure over the years it takes (`liquidation_taxes`), or with `HC_VALUATION` 1 the flat rates used before Update 4."""
+    pretax = st[S_PE] + st[S_PB] + st[S_PP]
+    unrealized = max(0.0, st[S_BE] - st[S_BBASIS])
+    if hhc[HC_VALUATION] > 0.5:
+        rate = pretax_withdrawal_rate(pretax, hhc[HC_SS], aged)
+        return pretax * rate, _LTCG_RATE * (unrealized + max(0.0, st[S_DGAIN]) - st[S_CF])
+    return liquidation_taxes(
+        unrealized, st[S_DGAIN], st[S_DGAIN_ST], st[S_DDIST], pretax, st[S_CF], hhc[HC_SS], interest, dividends, aged, kids, deps
+    )
+
+
 @jit
 def _diag_tax_year(diag, wages_taxable, interest, dividends, dist_st, realized, realized_st, ret_dist, rmd, conv, ss, early_base, kids, deps, cf_in, aged, harvest, harvest_st, total_tax):
     """Split the year's income tax by the kind of income (`app.sim.diag`): the income is stacked in the order the tax is worked
@@ -1204,7 +1219,6 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     free_cash = max(0.0, spare - uncovered)
     roth_gap = max(0.0, uncovered - spare)  # extra tax even spare wages cannot cover: paid from the portfolio
     early = age < _EARLY_AGE
-    ss_annual = hhc[HC_SS]
     aged = tv[t, TV_AGED]
     std = P.STANDARD_DEDUCTION_MFJ + P.STANDARD_DEDUCTION_AGED_PER_SPOUSE * aged
 
@@ -1634,22 +1648,20 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     pretax = 0.0
     if want_wealth or do_log:
         pretax = st[S_PE] + st[S_PB] + st[S_PP]
-        owed = pretax * pretax_withdrawal_rate(pretax, ss_annual, aged)
-        unrealized = max(0.0, st[S_BE] - st[S_BBASIS])
+        val_pretax, val_gains = valuation_taxes(st, hhc, interest, dividends, aged, kids, deps)
+        owed = val_pretax
         wealth = (
             st[S_BE]
             + st[S_BB]
             + st[S_BP]
             + st[S_GB]
-            - _LTCG_RATE * unrealized
             + st[S_RE]
             + st[S_RB]
             + st[S_RP]
             + pretax
             - st[S_LOAN]
             - owed
-            + _LTCG_RATE * st[S_CF]
-            - _LTCG_RATE * max(0.0, st[S_DGAIN])
+            - val_gains
             - st[S_UNFUNDED]
         )
 
@@ -1761,14 +1773,22 @@ def _run_years(st, ys, act, tv, hhc, row, gates, rets, wages, k401, wt, zg, t0, 
 
 
 @jit(inline="always")
-def heirs_wealth(st, rate):
+def heirs_wealth(st, hhc, interest, dividends, aged, kids, deps):
     """After-tax wealth if the household dies with what it has and its heirs inherit it (the second valuation at the horizon;
     `_year_rest` has the first, liquidating everything). Taxable assets pass with a step-up in basis (IRC 1014), so the
-    unrealized gain is never taxed; the Roth is theirs untaxed; the pre-tax accounts are taxed at the heirs' flat rate `rate`
-    (`HEIRS_TAX_RATE`: they must be emptied within ten years, and the heirs are at their prime earning years). A loan is
-    still owed, gains already realized to pay tax or fees are still taxed, and an unused capital-loss carryforward is worth
-    nothing to them (it ends with the owner's last return)."""
+    unrealized gain is never taxed; the Roth is theirs untaxed; the pre-tax accounts are taxed at the heirs' flat rate
+    `hhc[HC_HEIRS_RATE]` (`HEIRS_TAX_RATE`: they must be emptied within ten years, and the heirs are at their prime earning
+    years). A loan is still owed, gains already realized to pay tax or fees are still taxed on the owner's last return
+    (the engine's tax on them alone, or the old flat rate), and an unused capital-loss carryforward is worth nothing to them
+    (it ends with the owner's last return)."""
     pretax = st[S_PE] + st[S_PB] + st[S_PP]
+    if hhc[HC_VALUATION] > 0.5:
+        last_return = _LTCG_RATE * max(0.0, st[S_DGAIN])
+    else:
+        paid = liquidation_taxes(
+            0.0, st[S_DGAIN], st[S_DGAIN_ST], st[S_DDIST], 0.0, 0.0, hhc[HC_SS], interest, dividends, aged, kids, deps
+        )
+        last_return = paid[0] + paid[1]
     return (
         st[S_BE]
         + st[S_BB]
@@ -1777,11 +1797,21 @@ def heirs_wealth(st, rate):
         + st[S_RE]
         + st[S_RB]
         + st[S_RP]
-        + pretax * (1.0 - rate)
+        + pretax * (1.0 - hhc[HC_HEIRS_RATE])
         - st[S_LOAN]
-        - _LTCG_RATE * max(0.0, st[S_DGAIN])
+        - last_return
         - st[S_UNFUNDED]
     )
+
+
+@jit(inline="always")
+def terminal_values(st, ys, hhc, tv, n_years):
+    """(pre-tax tax owed on liquidation, wealth passed to heirs) after the last year, from the state and the last year's scratch."""
+    aged = tv[n_years - 1, TV_AGED]
+    kids = tv[n_years - 1, TV_KIDS]
+    deps = tv[n_years - 1, TV_DEPS]
+    owed = valuation_taxes(st, hhc, ys[Y_INTEREST], ys[Y_DIVIDENDS], aged, kids, deps)[0]
+    return owed, heirs_wealth(st, hhc, ys[Y_INTEREST], ys[Y_DIVIDENDS], aged, kids, deps)
 
 
 @jit
@@ -1799,12 +1829,11 @@ def _simulate_path(s, p, strat, gates, tv, init, hhc, rets, wages, k401, wage_ta
         st, ys, act, tv, hhc, strat[s], gates[s], rets[p], wages[p], k401[p], wage_tax[p], zs[p], 0, n_years, RUN_FULL,
         True, record, path_wealth, do_log, log, diag, do_diag,
     )
-    pretax = st[S_PE] + st[S_PB] + st[S_PP]
-    owed = pretax * pretax_withdrawal_rate(pretax, hhc[HC_SS], tv[n_years - 1, TV_AGED])
+    owed, heirs = terminal_values(st, ys, hhc, tv, n_years)
     if do_diag:
         diag[D_END_BE] = st[S_BE]
         diag[D_END_BASIS] = st[S_BBASIS]
-    return wealth, taxes_paid, owed, st[S_UNFUNDED], heirs_wealth(st, hhc[HC_HEIRS_RATE])
+    return wealth, taxes_paid, owed, st[S_UNFUNDED], heirs
 
 
 @jit(parallel=True, nogil=True)
@@ -1975,6 +2004,7 @@ class ModelOptions:
     idio_vol: float = markets.STOCK_IDIO_VOL  # a stock's own volatility a year, beside the market's (the direct-indexing book)
     harvest_threshold: float = HARVEST_THRESHOLD  # the direct-indexing book harvests a lot whose cost is this far above its price
     heirs_rate: float = HEIRS_TAX_RATE  # the flat rate heirs pay on the pre-tax balance (the "passed to heirs" valuation)
+    valuation: str = "engine"  # how "liquidated at 80" taxes unrealized gains and pre-tax balances: "engine" or the old "flat" 15%
 
 
 @dataclass
@@ -2105,6 +2135,7 @@ def build_inputs(
     hhc[HC_DI_FEE_PREMIUM] = options.di_fee_premium
     hhc[HC_HARVEST_THRESHOLD] = options.harvest_threshold
     hhc[HC_HEIRS_RATE] = options.heirs_rate
+    hhc[HC_VALUATION] = {"engine": 0.0, "flat": 1.0}[options.valuation]
     n_draw = wages.shape[0]
     stock_z = np.random.default_rng(np.random.SeedSequence(seed).spawn(4)[3]).standard_normal(
         (n_draw, n_years, N_STOCKS), dtype=np.float32
@@ -2229,15 +2260,14 @@ def run_forced(
         w, tax = _run_years(st, ys, act, *common, t, t + 1, RUN_REST, t == n_years - 1, False, scratch, True, log, no_diag, False)
         taxes += tax
         wealth = w if t == n_years - 1 else wealth
-    pretax = st[S_PE] + st[S_PB] + st[S_PP]
-    owed = pretax * float(pretax_withdrawal_rate(pretax, float(inputs.hhc[HC_SS]), float(inputs.tv[-1, TV_AGED])))
+    owed, heirs = terminal_values(st, ys, inputs.hhc, inputs.tv, n_years)
     return BatchResult(
         wealth=np.array([[wealth]]),
         taxes_paid=np.array([[taxes]]),
         pretax_owed=np.array([[owed]]),
         unfunded=np.array([[st[S_UNFUNDED]]]),
         log={name: log[:, i].copy() for i, name in enumerate(LOG_COLUMNS)},
-        wealth_heirs=np.array([[float(heirs_wealth(st, float(inputs.hhc[HC_HEIRS_RATE])))]]),
+        wealth_heirs=np.array([[float(heirs)]]),
     )
 
 
@@ -2247,14 +2277,16 @@ def run_detail(inputs: SimInputs, policy: Policy, gate_row: np.ndarray | None = 
     return run_batch(inputs, [policy], gates=gates, log_for=(0, 0))
 
 
-def initial_after_tax_wealth(household: Household) -> float:
-    """After-tax wealth today, by the same formula the simulator reports each year."""
+def initial_after_tax_wealth(household: Household, options: ModelOptions | None = None) -> float:
+    """After-tax wealth today, by the same formula the simulator reports each year (the tax engine's cost of liquidating)."""
     st = _initial_state(household)
     pretax = st[S_PE] + st[S_PB] + st[S_PP]
-    aged = sum(1 for person in household.people if person.age >= P.AGED_AGE)
-    owed = pretax * float(pretax_withdrawal_rate(pretax, household.social_security.annual_benefit, float(aged)))
-    unrealized = max(0.0, st[S_BE] - st[S_BBASIS])
-    return float(
-        st[S_BE] + st[S_BB] - _LTCG_RATE * unrealized + st[S_RE] + st[S_RB] + pretax - owed
-    )
-
+    aged = float(sum(1 for person in household.people if person.age >= P.AGED_AGE))
+    kids = float(sum(1 for age in household.children_ages if age <= P.CTC_MAX_CHILD_AGE))
+    hhc = np.zeros(NHC)
+    hhc[HC_SS] = household.social_security.annual_benefit
+    hhc[HC_VALUATION] = {"engine": 0.0, "flat": 1.0}[(options or ModelOptions()).valuation]
+    interest = markets.BOND_INTEREST_YIELD * (st[S_BB] + st[S_GB]) + markets.PRIVATE_CREDIT_INCOME_YIELD * st[S_BP]
+    dividends = markets.DIVIDEND_YIELD * st[S_BE]
+    owed, gains = valuation_taxes(st, hhc, interest, dividends, aged, kids, kids)
+    return float(st[S_BE] + st[S_BB] + st[S_RE] + st[S_RB] + pretax - owed - gains)

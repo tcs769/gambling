@@ -109,6 +109,18 @@ HOUSEHOLDS = {
         dict(taxable_ira_distributions=80_000, social_security=50_000),
         dict(retirement_distributions=80_000, social_security=50_000),
     ),
+    "update 4 audit: the advisor sells $1,000,000 of stock bought for $400,000 (NIIT, 20% bracket, Illinois without exemptions)": (
+        [60, 59],
+        [],
+        dict(employment_income=150_000, qualified_dividend_income=5_000, long_term_capital_gains=600_000),
+        dict(wages=150_000, qualified_dividends=5_000, ordinary_dividends=5_000, net_capital_gain=600_000),
+    ),
+    "update 4 audit: the same year without the sale": (
+        [60, 59],
+        [],
+        dict(employment_income=150_000, qualified_dividend_income=5_000),
+        dict(wages=150_000, qualified_dividends=5_000, ordinary_dividends=5_000),
+    ),
     "Roth conversion year (Illinois subtracts it)": (
         [62, 61],
         [],

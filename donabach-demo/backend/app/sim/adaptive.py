@@ -67,8 +67,6 @@ from app.sim.simulate import (
     A_PC,
     A_REALIZE,
     A_STOCK,
-    HC_HEIRS_RATE,
-    HC_SS,
     N_STOCKS,
     NACT,
     NGATE,
@@ -101,11 +99,11 @@ from app.sim.simulate import (
     _lots_start,
     _run_years,
     _stock_share,
-    heirs_wealth,
+    terminal_values,
     wants_book,
 )
 from app.tax import params_2026 as P
-from app.tax.engine import pretax_withdrawal_rate, tax_core
+from app.tax.engine import tax_core
 
 # --------------------------------------------------------------------------------------------
 # The action space (spec B3)
@@ -624,13 +622,12 @@ def _adaptive_path(
         )
         taxes += tax
         wealth = w if t == n_years - 1 else wealth
-    pretax = st[S_PE] + st[S_PB] + st[S_PP]
-    owed = pretax * pretax_withdrawal_rate(pretax, hhc[HC_SS], tv[n_years - 1, TV_AGED])
+    owed, heirs = terminal_values(st, ys, hhc, tv, n_years)
     out[p, 0] = wealth
     out[p, 1] = taxes
     out[p, 2] = owed
     out[p, 3] = st[S_UNFUNDED]
-    out[p, 4] = heirs_wealth(st, hhc[HC_HEIRS_RATE])
+    out[p, 4] = heirs
 
 
 @jit(parallel=True, nogil=True)

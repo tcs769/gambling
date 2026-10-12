@@ -250,6 +250,56 @@ def tax_core(
     )
 
 
+@jit
+def liquidation_taxes(
+    unrealized: float,
+    deferred_gain: float,
+    deferred_gain_short: float,
+    deferred_withdrawals: float,
+    pretax: float,
+    carryforward: float,
+    social_security: float,
+    interest: float,
+    dividends: float,
+    aged_spouses: float,
+    kids: float,
+    deps: float,
+):
+    """What the tax engine charges to liquidate a household's holdings: (tax on the pre-tax balance, tax on the gains).
+
+    The valuation every strategy gets at the horizon (and today), so none is favored by the way it is valued. The pre-tax
+    balance is withdrawn evenly over `PRETAX_WITHDRAWAL_YEARS` years and the unrealized gain realized evenly over
+    `GAIN_REALIZATION_YEARS` years, in the same years as that withdrawal, alongside the household's other income: taxable
+    Social Security, and the interest and dividends it earns. The gains stack on top of the withdrawals, the capital-loss
+    carryforward offsets them year after year (what it does not use in the window is worth only the $3,000 a year of ordinary
+    income it deducts), and every year's tax is `tax_core`'s own: brackets, the 0/15/20% gain rates, the 3.8% net investment
+    income tax and Illinois. Gains already realized but not yet reported (selling to pay the last year's tax and fee) land in
+    the first year, and so do pre-tax withdrawals already made to pay tax (`deferred_withdrawals`)."""
+    zero = 0.0
+    withdrawal = pretax / P.PRETAX_WITHDRAWAL_YEARS
+    other = tax_core(zero, interest, dividends, dividends, zero, zero, zero, social_security, zero, kids, deps, zero, aged_spouses).total_tax
+    with_withdrawal = tax_core(zero, interest, dividends, dividends, zero, withdrawal, zero, social_security, zero, kids, deps, zero, aged_spouses).total_tax
+    tax_pretax = P.PRETAX_WITHDRAWAL_YEARS * (with_withdrawal - other)
+    if deferred_withdrawals > 0.0:
+        extra = tax_core(zero, interest, dividends, dividends, zero, withdrawal + deferred_withdrawals, zero, social_security, zero, kids, deps, zero, aged_spouses).total_tax
+        tax_pretax += extra - with_withdrawal
+    tax_gains = 0.0
+    carry = carryforward
+    each = unrealized / P.GAIN_REALIZATION_YEARS
+    for year in range(P.GAIN_REALIZATION_YEARS):
+        gain = each
+        short = 0.0
+        if year == 0:
+            gain += deferred_gain
+            short = deferred_gain_short
+        if gain == 0.0 and carry <= 0.0:
+            continue
+        with_gain = tax_core(zero, interest, dividends, dividends, gain, withdrawal, zero, social_security, zero, kids, deps, carry, aged_spouses, short)
+        tax_gains += with_gain.total_tax - with_withdrawal
+        carry = with_gain.cap_loss_carryforward_out
+    return tax_pretax, tax_gains
+
+
 # --------------------------------------------------------------------------------------------
 # Typed wrapper
 # --------------------------------------------------------------------------------------------

@@ -185,7 +185,11 @@ BORROWING_FORCED_SALE_TRIGGER = 0.40
 # After-tax wealth values a pre-tax balance as if it were withdrawn evenly over this many
 # years alongside Social Security. Project convention (see the simulator spec).
 PRETAX_WITHDRAWAL_YEARS = 20
-# Tax on unrealized gains and on unused loss carryforward in the after-tax wealth formula.
+# Unrealized gains are valued at the tax the engine charges for realizing them evenly over this many years alongside the
+# household's other income (`app.tax.engine.liquidation_taxes`).
+GAIN_REALIZATION_YEARS = 5
+# The flat rate the valuation used before Update 4 on unrealized gains, deferred gains and unused loss carryforward;
+# kept for `ModelOptions(valuation="flat")`, which reproduces the old numbers step by step.
 UNREALIZED_GAIN_TAX_RATE = 0.15
 
 SIMPLIFICATIONS = (

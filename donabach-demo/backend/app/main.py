@@ -15,7 +15,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from app import builder, forecast, showcase, warmup, whatif
+from app import builder, forecast, showcase, showcase_scenarios, warmup, whatif
 from app.api_models import (
     AdaptiveJob,
     DocumentList,
@@ -29,7 +29,9 @@ from app.api_models import (
     PlanRequest,
     PlanResponse,
     ShowcaseRequest,
+    ScenarioInfo,
     ShowcaseResponse,
+    ShowcaseScenario,
     ShowcaseWaterfall,
     WhatIfRequest,
     WhatIfResponse,
@@ -243,3 +245,18 @@ def showcase_analysis(request: ShowcaseRequest) -> ShowcaseWaterfall:
         if unknown:
             raise HTTPException(status_code=422, detail=f"unknown strategies {unknown}; expected some of {sorted(known)}")
     return showcase.analyze(prepared, request.enabled)
+
+
+@app.get("/showcase/scenarios", response_model=list[ScenarioInfo])
+def get_showcase_scenarios() -> list[ScenarioInfo]:
+    """The events the showcase household can be put through (a job lost next year, a 30% fall in stocks next year)."""
+    return showcase_scenarios.infos()
+
+
+@app.get("/showcase/scenarios/{key}", response_model=ShowcaseScenario)
+def get_showcase_scenario(key: str) -> ShowcaseScenario:
+    """The showcase household after the event, planned again: wealth against the advisor on the same shocked futures, what the
+    plan does each year beside what it did before, and the years that differ. Precomputed at start-up, then kept."""
+    if key not in showcase_scenarios.SCENARIOS:
+        raise HTTPException(status_code=404, detail=f"unknown scenario {key!r}; expected one of {sorted(showcase_scenarios.SCENARIOS)}")
+    return showcase_scenarios.scenario(key)

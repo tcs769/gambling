@@ -47,7 +47,7 @@ from dataclasses import dataclass, replace
 import numpy as np
 
 from app.jit import jit, prange
-from app.schemas import HORIZON_AGE, Household, MarketShock
+from app.schemas import HORIZON_AGE, Household, JobLoss, MarketShock
 from app.sim import income, markets, mortality
 from app.sim.diag import (
     D_CARRY_FEE,
@@ -2267,6 +2267,7 @@ def build_inputs(
     deterministic: bool = False,
     shock: MarketShock | None = None,
     options: ModelOptions | None = None,
+    job_loss: JobLoss | None = None,
 ) -> SimInputs:
     """Draw the futures (or build the one deterministic path) and precompute what is shared."""
     options = options or ModelOptions()
@@ -2290,6 +2291,10 @@ def build_inputs(
         wages, logperm = income.household_wage_state(base, ages, retire, shocks)
     if shock is not None:
         rets = markets.with_equity_shock(rets, shock.year, shock.equity_return)
+    if job_loss is not None:
+        # the household's expected wages (tv, the 401(k) limits, what counts as a low-income year) stay as they were: the spell is a surprise
+        wages = wages.copy()
+        wages[:, job_loss.year : job_loss.year + job_loss.years] *= job_loss.keep
 
     tv = _time_table(household, n_years, expected)
     k401 = np.minimum(P.LIMIT_401K_EMPLOYEE * tv[:, TV_NEARN][None, :], KEEP_401K_SHARE_OF_WAGES * wages)

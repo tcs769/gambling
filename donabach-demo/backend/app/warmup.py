@@ -57,6 +57,7 @@ def precompute_showcase() -> None:
 
     if os.environ.get("DONABACH_NO_PRECOMPUTE"):
         return
-    from app import showcase
+    from app import showcase, showcase_scenarios
 
     showcase.precompute()
+    showcase_scenarios.precompute()

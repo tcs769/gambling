@@ -358,3 +358,6 @@ def reset() -> None:
         _prepared.clear()
         _waterfalls.clear()
         _wealth.clear()
+    from app import showcase_scenarios
+
+    showcase_scenarios.reset()

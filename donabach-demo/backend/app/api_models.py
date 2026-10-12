@@ -622,6 +622,70 @@ class ShowcaseWealth(BaseModel):
     advisor_label: str
 
 
+class ScenarioYear(BaseModel):
+    """One year of the deterministic plan after the event, beside the same year of the plan before it (expected returns, no other shocks)."""
+
+    year_index: int
+    age: int
+    wages: float
+    base_wages: float
+    roth_conversion: float
+    base_roth_conversion: float
+    losses_harvested: float
+    base_losses_harvested: float
+    gains_harvested_tax_free: float  # gains realized up to the 0% bracket
+    base_gains_harvested_tax_free: float
+    stock_share: float
+    base_stock_share: float
+    total_tax: float
+    base_total_tax: float
+    wealth: float
+    base_wealth: float
+    changed: list[str]  # which of wages, roth_conversion, losses_harvested, gains_harvested_tax_free, stock_share differ materially
+
+
+class ScenarioChange(BaseModel):
+    age: int
+    key: str
+    label: str
+    before: float
+    after: float
+    text: str  # one sentence, built from the two numbers
+
+
+class ScenarioReplan(BaseModel):
+    """What re-planning is worth after the event: the plan chosen before it and the plan chosen knowing about it, both on the same
+    2,000 shocked futures neither was searched on. It can be small or negative: it is whatever the engine measures."""
+
+    original_plan_median_at_horizon: float
+    replanned_median_at_horizon: float
+    median_rate: float  # annual growth-rate difference of the median (a fraction)
+    median_dollars: float
+
+
+class ScenarioInfo(BaseModel):
+    key: str
+    label: str
+    event: str  # what happens, in a sentence, with what is and is not modeled
+
+
+class ShowcaseScenario(BaseModel):
+    """The showcase household after an event, planned again, against the advisor on the same shocked futures."""
+
+    key: str
+    label: str
+    event: str
+    plan_label: str  # the recommendation in one line, after the event
+    plan_sentence: str
+    original_plan_label: str  # the recommendation before it
+    plan_changed: bool  # whether the strategy itself (not only what it does each year) is different
+    wealth: ShowcaseWealth  # the re-planned plan against the advisor, after the event
+    replan: ScenarioReplan
+    years: list[ScenarioYear]
+    changes: list[ScenarioChange]  # every material difference in what the plan does, by age
+    summary: list[str]  # the largest difference of each kind, in a sentence each
+
+
 class ShowcaseRequest(BaseModel):
     enabled: list[str] | None = None  # strategy keys left on, None for all of them
 

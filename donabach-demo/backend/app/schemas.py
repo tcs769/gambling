@@ -95,3 +95,12 @@ class MarketShock(BaseModel):
 
     year: int = Field(1, ge=0, description="Years from now (1 = next year)")
     equity_return: float = Field(-0.30, gt=-1.0)
+
+
+class JobLoss(BaseModel):
+    """A spell without work, applied to every simulated future (a what-if): wages are multiplied by `keep` for `years` years from
+    `year` (1 = next year) and are back to their usual level afterwards. No unemployment insurance or severance is modeled."""
+
+    year: int = Field(1, ge=0, description="Years from now (1 = next year)")
+    years: int = Field(1, ge=1, le=10)
+    keep: float = Field(0.0, ge=0.0, le=1.0, description="Share of the usual wages still earned during the spell")

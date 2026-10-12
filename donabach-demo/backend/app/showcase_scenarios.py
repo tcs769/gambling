@@ -124,41 +124,50 @@ def _differs(key: str, before: float, after: float) -> bool:
     return abs(after - before) >= (CHANGE_SHARE if key == "stock_share" else CHANGE_DOLLARS)
 
 
-def compare_rows(before: list, after: list) -> tuple[list[ScenarioYear], list[ScenarioChange]]:
-    """The two plans' years side by side, with the years that differ marked, and every difference as a change."""
+def _value(row, key: str) -> float:
+    return float(getattr(row, ROW_FIELD.get(key, key)))
+
+
+def compare_rows(base: list, held: list, new: list) -> tuple[list[ScenarioYear], list[ScenarioChange]]:
+    """Three plans' years side by side. `responded` marks what the original plan does differently once the event happens, and
+    `replanned` what choosing the plan again changes on top of that; every difference is also listed as a change."""
     years: list[ScenarioYear] = []
     changes: list[ScenarioChange] = []
-    for b, a in zip(before, after, strict=True):
-        changed: list[str] = []
+    for b, h, n in zip(base, held, new, strict=True):
+        responded: list[str] = []
+        replanned: list[str] = []
         for key, label, _ in FIELDS:
-            attr = ROW_FIELD.get(key, key)
-            was, now = float(getattr(b, attr)), float(getattr(a, attr))
-            if _differs(key, was, now):
-                changed.append(key)
-                changes.append(ScenarioChange(age=a.age, key=key, label=label, before=was, after=now, text=_sentence(a.age, key, was, now)))
+            vb, vh, vn = _value(b, key), _value(h, key), _value(n, key)
+            if _differs(key, vb, vh):
+                responded.append(key)
+                changes.append(ScenarioChange(age=n.age, key=key, label=label, source="event", before=vb, after=vh, text=_sentence(n.age, key, vb, vh)))
+            if _differs(key, vh, vn):
+                replanned.append(key)
+                changes.append(ScenarioChange(age=n.age, key=key, label=label, source="replan", before=vh, after=vn, text=_sentence(n.age, key, vh, vn)))
         years.append(
             ScenarioYear(
-                year_index=a.year_index, age=a.age,
-                wages=a.wages, base_wages=b.wages,
-                roth_conversion=a.roth_conversion, base_roth_conversion=b.roth_conversion,
-                losses_harvested=a.losses_harvested, base_losses_harvested=b.losses_harvested,
-                gains_harvested_tax_free=a.gains_realized_tax_free, base_gains_harvested_tax_free=b.gains_realized_tax_free,
-                stock_share=a.stock_share, base_stock_share=b.stock_share,
-                total_tax=a.total_tax, base_total_tax=b.total_tax,
-                wealth=a.wealth, base_wealth=b.wealth,
-                changed=changed,
+                year_index=n.year_index, age=n.age,
+                wages=n.wages, base_wages=b.wages,
+                roth_conversion=n.roth_conversion, held_roth_conversion=h.roth_conversion, base_roth_conversion=b.roth_conversion,
+                losses_harvested=n.losses_harvested, held_losses_harvested=h.losses_harvested, base_losses_harvested=b.losses_harvested,
+                gains_harvested_tax_free=n.gains_realized_tax_free, held_gains_harvested_tax_free=h.gains_realized_tax_free,
+                base_gains_harvested_tax_free=b.gains_realized_tax_free,
+                stock_share=n.stock_share, held_stock_share=h.stock_share, base_stock_share=b.stock_share,
+                total_tax=n.total_tax, base_total_tax=b.total_tax,
+                wealth=n.wealth, base_wealth=b.wealth,
+                responded=responded, replanned=replanned,
             )
         )
     return years, changes
 
 
-def summarize(changes: list[ScenarioChange]) -> list[str]:
-    """The biggest difference of each kind that is not the event itself (wages), as the sentence the change carries."""
+def summarize(changes: list[ScenarioChange], source: str) -> list[str]:
+    """The biggest difference of each kind (wages are the event itself, not a decision), as the sentence the change carries."""
     out: list[tuple[float, str]] = []
     for key, _, money in FIELDS:
         if key == "wages":
             continue
-        mine = [c for c in changes if c.key == key]
+        mine = [c for c in changes if c.key == key and c.source == source]
         if not mine:
             continue
         scale = 1.0 if money else 10_000.0  # a stock share moves by fractions: weigh a point as $100
@@ -206,7 +215,9 @@ def scenario(key: str) -> ShowcaseScenario:
         original, replanned = float(np.median(batch.wealth[0])), float(np.median(batch.wealth[1]))
         rate = (replanned / original) ** (1.0 / years_n) - 1.0 if original > 0 and replanned > 0 else 0.0
 
-        years, changes = compare_rows(_base(base), _rows(household, prepared.strategy, spec))
+        years, changes = compare_rows(
+            _base(base), _rows(household, base.strategy, spec), _rows(household, prepared.strategy, spec)
+        )
         result = ShowcaseScenario(
             key=key, label=spec.label, event=spec.event,
             plan_label=prepared.strategy.short_label(), plan_sentence=prepared.strategy.describe(),
@@ -216,7 +227,7 @@ def scenario(key: str) -> ShowcaseScenario:
                 original_plan_median_at_horizon=original, replanned_median_at_horizon=replanned,
                 median_rate=rate, median_dollars=replanned - original,
             ),
-            years=years, changes=changes, summary=summarize(changes),
+            years=years, changes=changes, summary=summarize(changes, "event"), replan_summary=summarize(changes, "replan"),
         )
         _scenarios[key] = result
         return result

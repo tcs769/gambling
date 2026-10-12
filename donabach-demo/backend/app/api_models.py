@@ -623,31 +623,38 @@ class ShowcaseWealth(BaseModel):
 
 
 class ScenarioYear(BaseModel):
-    """One year of the deterministic plan after the event, beside the same year of the plan before it (expected returns, no other shocks)."""
+    """One year on the expected path, for three plans: the plan before the event (no event), the same plan once the event happens
+    (its rules respond to the new situation), and the plan chosen again knowing about the event (expected returns, no other shocks)."""
 
     year_index: int
     age: int
-    wages: float
+    wages: float  # after the event (the same for the last two plans)
     base_wages: float
-    roth_conversion: float
-    base_roth_conversion: float
+    roth_conversion: float  # the plan chosen again
+    held_roth_conversion: float  # the original plan, after the event
+    base_roth_conversion: float  # the original plan, no event
     losses_harvested: float
+    held_losses_harvested: float
     base_losses_harvested: float
     gains_harvested_tax_free: float  # gains realized up to the 0% bracket
+    held_gains_harvested_tax_free: float
     base_gains_harvested_tax_free: float
     stock_share: float
+    held_stock_share: float
     base_stock_share: float
     total_tax: float
     base_total_tax: float
     wealth: float
     base_wealth: float
-    changed: list[str]  # which of wages, roth_conversion, losses_harvested, gains_harvested_tax_free, stock_share differ materially
+    responded: list[str]  # what the original plan does differently because of the event (held against base)
+    replanned: list[str]  # what choosing the plan again changes on top of that (chosen again against held)
 
 
 class ScenarioChange(BaseModel):
     age: int
     key: str
     label: str
+    source: Literal["event", "replan"]  # the original plan's own response, or what choosing again added
     before: float
     after: float
     text: str  # one sentence, built from the two numbers
@@ -683,7 +690,8 @@ class ShowcaseScenario(BaseModel):
     replan: ScenarioReplan
     years: list[ScenarioYear]
     changes: list[ScenarioChange]  # every material difference in what the plan does, by age
-    summary: list[str]  # the largest difference of each kind, in a sentence each
+    summary: list[str]  # the largest difference of each kind in the original plan's response to the event, a sentence each
+    replan_summary: list[str]  # the same for what choosing the plan again changed
 
 
 class ShowcaseRequest(BaseModel):

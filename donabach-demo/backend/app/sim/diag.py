@@ -22,8 +22,8 @@ from __future__ import annotations
 from app.sim.state import MAX_LOTS
 
 # --- purposes -----------------------------------------------------------------------------------------------------
-(P_GOALS, P_SPENDING, P_GIFTS, P_TAXES, P_REBALANCING, P_RESERVE, P_FEES, P_OTHER, P_DISTRIBUTIONS, P_HARVEST) = range(10)
-N_PURPOSES = 10
+(P_GOALS, P_SPENDING, P_GIFTS, P_TAXES, P_REBALANCING, P_RESERVE, P_FEES, P_OTHER, P_DISTRIBUTIONS, P_HARVEST, P_GAIN_HARVEST) = range(11)
+N_PURPOSES = 11
 PURPOSES = (
     "goals",
     "retirement spending",
@@ -35,6 +35,7 @@ PURPOSES = (
     "other (loan)",
     "fund distributions",
     "loss harvesting",
+    "gain harvesting (sold and bought back)",
 )
 
 # --- income types of the tax --------------------------------------------------------------------------------------
@@ -84,12 +85,14 @@ D_END_BASIS = D_END_BE + 1  # its cost basis
 D_YG = D_END_BASIS + 1  # N_PURPOSES: the gains of the year's tax return by purpose (this year's, scratch for sharing out the tax)
 D_SIZE_SCALARS = D_YG + N_PURPOSES
 
-# The tape: per year, the change in brokerage equity at each step (negative a sale, positive a purchase).
+# The tape: per year, the change in brokerage equity at each step (negative a sale, positive a purchase). TAPE_REALIZE is the exception:
+# it holds the gain the year's gain harvesting realized (stock sold and bought back at once, so the equity does not change).
 (
     TAPE_FORCED,
     TAPE_GOALS,
     TAPE_DONATE,
     TAPE_SPENDING,
+    TAPE_REALIZE,
     TAPE_BUCKET,
     TAPE_LOAN,
     TAPE_REBALANCE,
@@ -97,7 +100,7 @@ D_SIZE_SCALARS = D_YG + N_PURPOSES
     TAPE_FEES,
     TAPE_SAVING,
     TAPE_TAXGAP,
-) = range(11)
-NK = 11
+) = range(12)
+NK = 12
 D_TAPE = D_SIZE_SCALARS
 DG_SIZE = D_TAPE + MAX_LOTS * NK

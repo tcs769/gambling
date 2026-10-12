@@ -31,7 +31,7 @@ from app.api_models import ModelStatus as ModelStatusView
 from app.ml import adapters
 from app.ml.adapters import ModelContractError, NotConnected
 from app.planner import explain, guided
-from app.planner.baseline import BASELINES, GOOD_RIA, GOOD_RIA_SENTENCE, RIA_BASELINE
+from app.planner.baseline import BASELINES, GOOD_RIA, GOOD_RIA_SENTENCE
 from app.planner.search import (
     FORCED_SALE_LIMIT,
     RISK_AVERSION,
@@ -40,7 +40,7 @@ from app.planner.search import (
     Outcome,
     RankedStrategy,
     SearchResult,
-    matched_choice,
+    search_matched,
     search,
 )
 from app.planner.strategies import Strategy, menu
@@ -53,6 +53,8 @@ from app.study import metrics
 DEMO_SEED = markets.DEFAULT_SEED
 EVAL_SEED_OFFSET = 1_000_003  # the evaluation futures use the search seed plus this
 SEARCH_LABEL = "Search planner (model not connected)"
+VALIDATION_PATHS = 1_200  # the liability-matched search checks its limits on this many futures it did not search on
+VALIDATION_SEED_OFFSET = 2_000_003
 DEFAULT_STYLE = "equity_first"  # what the app plans with unless asked for "balanced" (see `app.planner.strategies.menu`)
 GUIDED_LABEL = "Model-guided planner (model recommended, engine verified)"
 RIA_SENTENCE = GOOD_RIA_SENTENCE
@@ -233,9 +235,9 @@ def build_plan(
         # with the good advisor); the recommender model, trained on the other families, is not consulted
         panel = RecommenderPanel(status=ModelStatusView(model="recommender", connected=False, reason="Not consulted for the liability-matched style.", expected_path=""))
         model_pick = None
-        result = search(futures, strategies=menu(style=style), extra_policies=[RIA_BASELINE], risk_aversion=risk_aversion, group_of=lambda s: s.reserve_years)
+        validation = build_inputs(household, n_paths=VALIDATION_PATHS, seed=seed + VALIDATION_SEED_OFFSET, shock=shock)
+        result, matched = search_matched(futures, validation, menu(style=style))
         label = SEARCH_LABEL
-        matched = matched_choice(result, result.batch.unfunded[len(result.strategies)])
         chosen = matched.strategy
     else:
         panel, guided_result, model_pick = _recommender_panel(household, futures, style)

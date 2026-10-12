@@ -34,7 +34,7 @@ from app.planner.baseline import RIA_BASELINE, TYPICAL_ADVISOR
 from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, search
 from app.planner.strategies import PRIVATE_CREDIT_SHARES, Strategy, menu
 from app.sim import markets
-from app.sim.simulate import HC_SS, TV_AGED, Policy, SimInputs, build_inputs, run_batch
+from app.sim.simulate import Policy, SimInputs, build_inputs, run_batch
 from app.study.equity_share import (
     DESIGN_SEED_OFFSET,
     Result,
@@ -47,7 +47,6 @@ from app.study.equity_share import (
 )
 from app.study.measure import EVAL_SEED_OFFSET, sample_household
 from app.study.metrics import compare
-from app.tax.engine import pretax_withdrawal_rate
 
 TARGETS = (0.02, 0.025, 0.03)
 GROWTH_RISK_AVERSION = 1.0  # log utility: the planner's setting for a household that wants growth
@@ -74,23 +73,6 @@ def with_equity_return(inputs: SimInputs, mean: float) -> SimInputs:
     return replace(inputs, rets=rets)
 
 
-def pretax_balance(owed: np.ndarray, social_security: float, aged: float) -> np.ndarray:
-    """Pre-tax balances at the horizon from the tax still owed on them (owed = balance x the 20-year-spread rate)."""
-    out = np.zeros_like(owed, dtype=float)
-    for i, due in enumerate(owed):
-        if due <= 0.0:
-            continue
-        low, high = 0.0, max(1.0, due) * 100.0
-        while high - low > 0.01:
-            mid = 0.5 * (low + high)
-            if mid * float(pretax_withdrawal_rate(mid, social_security, aged)) < due:
-                low = mid
-            else:
-                high = mid
-        out[i] = 0.5 * (low + high)
-    return out
-
-
 def raw_advantage(held: SimInputs, plan: Policy, baseline: Policy = RIA_BASELINE) -> float:
     w = run_batch(held, [plan, baseline]).wealth
     return float(annualized(np.median(w[0]), float(np.median(w[1])), held.n_years))
@@ -109,8 +91,7 @@ def best_raw(held: SimInputs, plans: Sequence[Policy], baseline: Policy, heirs: 
     batch = run_batch(held, [*plans, baseline])
     wealth = batch.wealth
     if heirs is not None:
-        ss, aged = float(held.hhc[HC_SS]), float(held.tv[-1, TV_AGED])
-        balances = np.vstack([pretax_balance(batch.pretax_owed[i], ss, aged) for i in range(len(plans) + 1)])
+        balances = batch.pretax_balance
         wealth = wealth + batch.pretax_owed - heirs * balances
     advisor = float(np.median(wealth[-1]))
     raw = [float(annualized(np.median(wealth[i]), advisor, held.n_years)) for i in range(len(plans))]
@@ -264,7 +245,7 @@ def run_reach(
     say("break-even done")
 
     advisor_batch = run_batch(held, [RIA_BASELINE])
-    balances = pretax_balance(advisor_batch.pretax_owed[0], float(held.hhc[HC_SS]), float(held.tv[-1, TV_AGED]))
+    balances = advisor_batch.pretax_balance[0]
     spread_rate = float(np.median(advisor_batch.pretax_owed[0][balances > 0] / balances[balances > 0])) if (balances > 0).any() else 0.0
 
     return Reach(

@@ -19,10 +19,10 @@ from app.main import app
 client = TestClient(app)
 
 
-def test_the_liability_matched_menu_chooses_the_reserve_from_one_to_ten_years():
+def test_the_liability_matched_menu_chooses_the_reserve_from_two_to_twelve_years():
     m = menu(style="liability_matched")
-    assert {s.reserve_years for s in m} == set(strat.LIABILITY_RESERVE_YEARS) == {1, 2, 3, 4, 5, 6, 7, 8, 10}
-    assert len(m) == 9 * len(strat.CONVERSION_OPTIONS) * 4 * 2 * 3 * 2
+    assert {s.reserve_years for s in m} == set(strat.LIABILITY_RESERVE_YEARS) == {2, 3, 4, 5, 6, 7, 8, 9, 10, 12}
+    assert len(m) == 10 * len(strat.CONVERSION_OPTIONS) * 4 * 2 * 3 * 2
     assert "liability_matched" in strat.STYLES
     assert Strategy.from_choices(m[0].choices()) == m[0]
 
@@ -30,7 +30,7 @@ def test_the_liability_matched_menu_chooses_the_reserve_from_one_to_ten_years():
 def test_the_reserve_is_spent_first_when_stocks_fall_so_a_longer_reserve_forces_fewer_sales():
     futures = build_inputs(make_demo_household(), n_paths=300, seed=11)
     pick = lambda years: Strategy(1.0, "none", 0.0, False, False, reserve_years=years)  # noqa: E731
-    policies = [pick(1).policy(), pick(6).policy(), pick(10).policy(), RIA_BASELINE]
+    policies = [pick(2).policy(), pick(6).policy(), pick(10).policy(), RIA_BASELINE]
     batch = run_batch(futures, policies)
     chance = [float(np.mean(batch.forced_years[i] > 0)) for i in range(4)]
     assert chance[0] >= chance[1] >= chance[2]
@@ -52,12 +52,12 @@ def test_the_choice_respects_both_limits_or_says_it_could_not():
               and not s.direct_indexing and s.k401 == "pretax" and s.goal_funding == "sell"]
     result = search(futures, strategies=subset, extra_policies=[RIA_BASELINE], exhaustive=True)
     choice = matched_choice(result, result.batch.unfunded[len(result.strategies)])
+    medians = np.median(result.batch.wealth[: len(result.strategies)], axis=1)
     if choice.feasible:
         assert choice.forced_sale_chance <= FORCED_SALE_LIMIT + 1e-9 and choice.ruin_chance <= choice.advisor_ruin_chance + 1e-9
-        # and no better-ranked strategy met them
-        better = [r for r in result.ranked if r.rank < next(x.rank for x in result.ranked if x.strategy == choice.strategy)]
-        for r in better:
-            i = result.index_of(r.strategy)
+        # and no strategy with a higher median meets them
+        chosen = result.index_of(choice.strategy)
+        for i in np.flatnonzero(medians > medians[chosen]):
             assert (np.mean(result.batch.forced_years[i] > 0) > FORCED_SALE_LIMIT) or (
                 np.mean(result.batch.unfunded[i] > 0) > choice.advisor_ruin_chance)
     else:

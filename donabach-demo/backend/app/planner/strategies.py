@@ -38,8 +38,8 @@ PRIVATE_CREDIT_SHARES = (0.0, 0.05, 0.10, 0.15)
 K401_OPTIONS = ("pretax", "roth", "roth_low")
 GOAL_FUNDING_OPTIONS = ("sell", "borrow")
 RESERVE_YEARS = (0, 2, 4, 6)  # 0: no reserve (the stock share and glide above); else years of expenses held in bonds and private credit
-# The liability-matched style chooses the reserve's length year by year, from one year of upcoming withdrawals to ten.
-LIABILITY_RESERVE_YEARS = (1, 2, 3, 4, 5, 6, 7, 8, 10)
+# The liability-matched style chooses the reserve's length from two years of upcoming withdrawals to twelve.
+LIABILITY_RESERVE_YEARS = (2, 3, 4, 5, 6, 7, 8, 9, 10, 12)
 ALL_RESERVE_YEARS = (0, *sorted(set(RESERVE_YEARS[1:]) | set(LIABILITY_RESERVE_YEARS)))
 STYLES = ("balanced", "equity_first", "liability_matched")
 DONABACH_LOT_METHOD = "hifo"  # sales of brokerage stock take the lot with the highest cost per dollar first
@@ -239,7 +239,7 @@ def menu(
     "balanced": a stock share with a glide path, 4,032 strategies with the full menus (the original menu).
     "equity_first": a spending reserve of 2, 4 or 6 years with everything outside it in stocks; the stock share, the glide and
     the goal bonds are not choices, so 1,008 strategies.
-    "liability_matched": the same with the reserve's length chosen from 1 to 10 years of upcoming withdrawals (1,512 strategies); the
+    "liability_matched": the same with the reserve's length chosen from 2 to 12 years of upcoming withdrawals (3,360 strategies); the
     planner picks the one with the most in stocks that keeps the chance of selling stocks in a falling year to pay for goals or
     spending at 2% or less and the chance of running out of money no higher than the good advisor's (`app.planner.search.search_matched`).
     """

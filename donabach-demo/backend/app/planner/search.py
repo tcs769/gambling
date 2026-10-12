@@ -26,6 +26,7 @@ from dataclasses import dataclass, replace
 
 import numpy as np
 
+from app.planner.baseline import RIA_BASELINE
 from app.planner.strategies import Strategy, menu
 from app.sim.simulate import BatchResult, Policy, SimInputs, run_batch
 
@@ -235,19 +236,63 @@ class MatchedChoice:
     feasible: bool  # False: nothing in the menu met both limits, and this is the one that came closest
 
 
-def matched_choice(result: SearchResult, advisor_unfunded: np.ndarray, limit: float = FORCED_SALE_LIMIT) -> MatchedChoice:
-    """Among the strategies scored on every future, the best (by certainty equivalent) whose chance of a forced sale in a falling year
-    is at most `limit` and whose chance of running out of money is no higher than the advisor's (`advisor_unfunded`, one value per
-    future). With none feasible, the strategy with the least excess over the two limits."""
+def feasibility_mask(inputs: SimInputs, limit: float = FORCED_SALE_LIMIT, forced_slack: float = 0.06, ruin_slack: float = 0.03):
+    """A `screen_mask` for the liability-matched search: a strategy may pass the screen when, on the screen's own futures, its chance of a
+    forced sale is within `forced_slack` of the limit and its chance of ruin within `ruin_slack` of the good advisor's (a screen of a
+    hundred futures cannot tell 2% from 4%, so it is only asked to keep the clearly infeasible out of the finalists)."""
+
+    def mask(batch: BatchResult) -> np.ndarray:
+        advisor = run_batch(subset_inputs(inputs, batch.wealth.shape[1]), [RIA_BASELINE])
+        ruin_limit = float(np.mean(advisor.unfunded[0] > 0)) + ruin_slack
+        return (np.mean(batch.forced_years > 0, axis=1) <= limit + forced_slack) & (np.mean(batch.unfunded > 0, axis=1) <= ruin_limit)
+
+    return mask
+
+
+def matched_choice(result: SearchResult, advisor_unfunded: np.ndarray, limit: float = FORCED_SALE_LIMIT, validation: BatchResult | None = None) -> MatchedChoice:
+    """Among the strategies scored on every future, the best (by median wealth, which is the gap over the advisor and so, within the
+    limits, the most in stocks) whose chance of a forced sale in a falling year is at most `limit` and whose chance of running out of
+    money is no higher than the advisor's (`advisor_unfunded`, one value per future). With none feasible, the strategy with the least
+    excess over the two limits.
+
+    `validation` is the same strategies (and then the advisor) run on more futures, which the search never saw: the chances and the median
+    are then those of both sets together. A limit checked on the futures the best of many strategies was picked on is optimistic (the one
+    that happens to have few forced sales there wins), and the extra futures are what makes the limit mean something."""
     n = len(result.strategies)
-    forced = np.mean(result.batch.forced_years[:n] > 0, axis=1)
-    ruin = np.mean(result.batch.unfunded[:n] > 0, axis=1)
-    advisor = float(np.mean(advisor_unfunded > 0))
+    wealth = result.batch.wealth[:n]
+    forced_paths = result.batch.forced_years[:n] > 0
+    ruin_paths = result.batch.unfunded[:n] > 0
+    advisor_paths = advisor_unfunded > 0
+    if validation is not None:
+        wealth = np.concatenate([wealth, validation.wealth[:n]], axis=1)
+        forced_paths = np.concatenate([forced_paths, validation.forced_years[:n] > 0], axis=1)
+        ruin_paths = np.concatenate([ruin_paths, validation.unfunded[:n] > 0], axis=1)
+        advisor_paths = np.concatenate([advisor_paths, validation.unfunded[n] > 0])
+    forced = np.mean(forced_paths, axis=1)
+    ruin = np.mean(ruin_paths, axis=1)
+    advisor = float(np.mean(advisor_paths))
+    median = np.median(wealth, axis=1)
     ok = (forced <= limit + 1e-12) & (ruin <= advisor + 1e-12)
-    for ranked in result.ranked:
-        i = result.index_of(ranked.strategy)
-        if ok[i]:
-            return MatchedChoice(ranked.strategy, float(forced[i]), float(ruin[i]), advisor, True)
+    feasible = [i for i in np.argsort(-median, kind="stable") if ok[i]]
+    if feasible:
+        i = int(feasible[0])
+        return MatchedChoice(result.strategies[i], float(forced[i]), float(ruin[i]), advisor, True)
     excess = np.maximum(0.0, forced - limit) + np.maximum(0.0, ruin - advisor)
     i = int(np.argmin(excess))
     return MatchedChoice(result.strategies[i], float(forced[i]), float(ruin[i]), advisor, False)
+
+
+def search_matched(
+    inputs: SimInputs, validation_inputs: SimInputs, strategies: list[Strategy] | None = None, limit: float = FORCED_SALE_LIMIT
+) -> tuple[SearchResult, MatchedChoice]:
+    """The liability-matched planner: the staged search of the strategies by median wealth, kept to those that look feasible on the
+    screen's futures and with the best of every reserve length going on to be scored on every future; then the finalists are run on
+    `validation_inputs` too and the best that meets both limits on all the futures together is chosen (`matched_choice`)."""
+    strategies = strategies if strategies is not None else menu(style="liability_matched")
+    result = search(
+        inputs, strategies=strategies, extra_policies=[RIA_BASELINE], group_of=lambda s: s.reserve_years,
+        screen_mask=feasibility_mask(inputs), criterion=median_wealth,
+    )
+    n = len(result.strategies)
+    validation = run_batch(validation_inputs, [s.policy() for s in result.strategies] + [RIA_BASELINE])
+    return result, matched_choice(result, result.batch.unfunded[n], limit, validation)

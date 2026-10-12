@@ -27,12 +27,11 @@ from app.planner.baseline import BASELINES, TYPICAL_ADVISOR
 from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, search
 from app.planner.strategies import menu
 from app.sim import adaptive as ad
-from app.sim.simulate import HC_SS, TV_AGED, build_inputs, run_batch, run_detail
+from app.sim.simulate import build_inputs, run_batch, run_detail
 from app.study import households as hh
 from app.study.adaptive_evaluation import LABELS, four_way
 from app.study.metrics import annualized, compare
 from app.study.equity_share import advisor_allocation_chain, equity_exposure
-from app.study.reach import pretax_balance
 
 EVAL_SEED_OFFSET = 1_000_003
 DEFAULT_N_EVAL = 1_000
@@ -186,8 +185,7 @@ def household_row(
             )
         row["skill_shortfall"] = float(np.mean(batch.unfunded[extra["skill"]] > 0))
     if heirs_rates:
-        ss, aged = float(held.hhc[HC_SS]), float(held.tv[-1, TV_AGED])
-        balances = np.vstack([pretax_balance(batch.pretax_owed[i], ss, aged) for i in range(len(policies))])
+        balances = batch.pretax_balance
         for rate in heirs_rates:
             wealth = batch.wealth + batch.pretax_owed - rate * balances
             for i, baseline in enumerate(BASELINES, start=1):

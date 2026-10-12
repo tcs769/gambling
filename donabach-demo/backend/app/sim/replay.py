@@ -7,7 +7,7 @@ bought, but with a chosen lot rule: highest cost first or first in first out. Wh
 the realized gains of two replays are a like-for-like comparison of the rules.
 
 Left out, because they are not sales: loss harvesting (an advisor that does not harvest has none to compare), and anything
-but the equity. Taxes are not worked out again, so the dollars sold to pay them stay what they were in the run.
+but the equity. Gain harvesting is replayed as the same step under either rule (the gain it realized, sold at the lowest cost and bought back). Taxes are not worked out again, so the dollars sold to pay them stay what they were in the run.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import numpy as np
 
 from app.jit import jit, prange
 from app.sim import markets
-from app.sim.diag import D_TAPE, NK, TAPE_DONATE
+from app.sim.diag import D_TAPE, NK, TAPE_DONATE, TAPE_REALIZE
 from app.sim.simulate import (
     _KERNEL_LOCK,
     HC_HARVEST_THRESHOLD,
@@ -29,6 +29,7 @@ from app.sim.simulate import (
     SimInputs,
     _lots_buy,
     _lots_donate,
+    _lots_realize,
     _lots_sell,
     _lots_start,
     wants_book,
@@ -110,7 +111,10 @@ def replay_path(row, tv, init, hhc, rets, g, tape, method, out):
                 st[S_BBASIS] += rate * st[S_BE]
         for slot in range(NK):
             change = tape[t * NK + slot]
-            if change < -1e-9:
+            if slot == TAPE_REALIZE:
+                if change > 1e-9:
+                    realized += _lots_realize(st, change)  # gain harvesting: the same step whatever the lot rule (lowest cost sold and bought back)
+            elif change < -1e-9:
                 if slot == TAPE_DONATE:
                     _lots_donate(st, -change)
                 else:

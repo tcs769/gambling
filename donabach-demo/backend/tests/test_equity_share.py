@@ -19,7 +19,6 @@ from app.study import equity_share as es
 from app.study import reach as rc
 from app.study.households import generate
 from app.study.measure import sample_household
-from app.tax.engine import pretax_withdrawal_rate
 
 SPEC_MARKET = markets.DEFAULT_ASSUMPTIONS
 
@@ -126,12 +125,11 @@ def test_moving_the_equity_mean_of_drawn_futures_is_the_same_as_drawing_them_aga
     assert base.rets[0, 0, 0] != moved.rets[0, 0, 0]  # and the original futures are not changed in place
 
 
-def test_the_pretax_balance_is_recovered_from_the_tax_still_owed_on_it():
-    balances = np.array([0.0, 500_000.0, 3_000_000.0, 9_000_000.0])  # (a balance below the standard deduction owes nothing, so it cannot be recovered)
-    owed = np.array([b * float(pretax_withdrawal_rate(b, 30_000.0, 1.0)) for b in balances])
-    recovered = rc.pretax_balance(owed, 30_000.0, 1.0)
-    assert recovered[0] == 0.0
-    assert recovered[1:] == pytest.approx(balances[1:], rel=1e-4)
+def test_the_batch_reports_the_pretax_balance_at_the_horizon():
+    inputs = build_inputs(sample_household(), deterministic=True)
+    batch = run_batch(inputs, [RIA_BASELINE], log_for=(0, 0))
+    assert batch.pretax_balance.shape == batch.wealth.shape
+    assert batch.pretax_balance[0, 0] == pytest.approx(batch.log["pretax"][-1])
 
 
 def test_taxing_pretax_money_more_favors_the_plan_that_holds_less_of_it():

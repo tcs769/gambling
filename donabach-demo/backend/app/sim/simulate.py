@@ -82,6 +82,7 @@ from app.sim.diag import (
     NK,
     P_DISTRIBUTIONS,
     P_FEES,
+    P_GAIN_HARVEST,
     P_GIFTS,
     P_GOALS,
     P_HARVEST,
@@ -104,6 +105,7 @@ from app.sim.diag import (
     TAPE_FORCED,
     TAPE_GOALS,
     TAPE_LOAN,
+    TAPE_REALIZE,
     TAPE_REBALANCE,
     TAPE_SAVING,
     TAPE_SPENDING,
@@ -276,8 +278,8 @@ HC_VALUATION = 6  # 0 the tax engine values what is owed on liquidation (`liquid
 NHC = 8
 
 # Kernel result columns.
-R_WEALTH, R_TAXES, R_PRETAX_OWED, R_UNFUNDED, R_WEALTH_HEIRS, R_FORCED, R_WEALTH80 = range(7)
-NRESULT = 7
+R_WEALTH, R_TAXES, R_PRETAX_OWED, R_UNFUNDED, R_WEALTH_HEIRS, R_FORCED, R_WEALTH80, R_PRETAX = range(8)
+NRESULT = 8
 
 # Detailed year-log columns (deterministic path).
 LOG_COLUMNS = (
@@ -1520,6 +1522,11 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, single, want
                 gain_harvest = min(room, unrealized)
                 st[S_BBASIS] += gain_harvest
             realized += gain_harvest
+            if track and gain_harvest > 0.0:
+                diag[D_GAIN + P_GAIN_HARVEST] += gain_harvest
+                diag[D_YG + P_GAIN_HARVEST] += gain_harvest
+                diag[D_TAPE + t * NK + TAPE_REALIZE] += gain_harvest
+                realized_mark = realized  # (not a step's sale: the steps after it measure their own gains)
 
     # 6. Fund or release the goal bucket (bonds held in the taxable account). With a spending reserve it covers the goals of
     # the next `A_RESERVE` years (the retirement spending part of the reserve is held in step 7) and, like the rest of the
@@ -1933,7 +1940,7 @@ def _simulate_path(s, p, strat, gates, tv, init, hhc, rets, wages, k401, wage_ta
     if do_diag:
         diag[D_END_BE] = st[S_BE]
         diag[D_END_BASIS] = st[S_BBASIS]
-    return wealth, taxes_paid, owed, st[S_UNFUNDED], heirs, st[S_FSALE], st[S_W80]
+    return wealth, taxes_paid, owed, st[S_UNFUNDED], heirs, st[S_FSALE], st[S_W80], st[S_PE] + st[S_PB] + st[S_PP]
 
 
 @jit(parallel=True, nogil=True)
@@ -1955,6 +1962,7 @@ def _simulate_batch(strat, gates, tv, init, hhc, rets, wages, k401, wage_tax, zs
         out[s, p, R_WEALTH_HEIRS] = res[4]
         out[s, p, R_FORCED] = res[5]
         out[s, p, R_WEALTH80] = res[6]
+        out[s, p, R_PRETAX] = res[7]
 
 
 @jit(parallel=True, nogil=True)
@@ -2308,6 +2316,7 @@ class BatchResult:
     wealth_heirs: np.ndarray | None = None  # (policies, paths) the second valuation at the horizon: passed to heirs (`heirs_wealth`)
     diag: np.ndarray | None = None  # (policies, paths, DG_SIZE) diagnostics, when asked for (`app.sim.diag`)
     wealth_at_80: np.ndarray | None = None  # (policies, paths) after-tax wealth at age 80 (the same as `wealth` when the horizon is 80)
+    pretax_balance: np.ndarray | None = None  # (policies, paths) the pre-tax balance at the horizon
     forced_years: np.ndarray | None = None  # (policies, paths) years the household sold stock for goals or spending in a year stocks fell
 
 
@@ -2352,6 +2361,7 @@ def run_batch(
         wealth_heirs=out[:, :, R_WEALTH_HEIRS],
         forced_years=out[:, :, R_FORCED],
         wealth_at_80=out[:, :, R_WEALTH80],
+        pretax_balance=out[:, :, R_PRETAX],
         diag=diag if diagnostics else None,
     )
 

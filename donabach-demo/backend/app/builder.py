@@ -129,6 +129,7 @@ def build_household(
         college_years=answers.college_years,
         retirement_age=answers.retirement_age,
         retirement_spending=answers.retirement_spending,
+        charitable_giving=answers.charitable_giving,
     )
     return Household(
         people=people,

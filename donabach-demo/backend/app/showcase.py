@@ -7,8 +7,10 @@ bar of the waterfall and the wealth lines, so the bars add up to the headline an
 
 from __future__ import annotations
 
+import csv
 import json
 import os
+import statistics
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,9 +24,12 @@ from app.api_models import (
     CardPerson,
     HouseholdCard,
     ShowcaseAdvantage,
-    ShowcaseAnalysis,
     ShowcaseBar,
+    ShowcaseHeirs,
+    ShowcaseMedian,
     ShowcaseResponse,
+    ShowcaseWaterfall,
+    ShowcaseWealth,
     WealthLines,
 )
 from app.planner import plan as planner
@@ -32,10 +37,13 @@ from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, search
 from app.planner.strategies import Strategy, menu
 from app.planner.waterfall import run_waterfall, waterfall_strategies
 from app.schemas import HORIZON_AGE, Household
+from app.sim import simulate as sim
 from app.sim.simulate import SimInputs, build_inputs, initial_after_tax_wealth
+from app.study import metrics
 
 FIXTURE = Path(__file__).resolve().parents[2] / "fixtures" / "showcase.json"
 FIXTURE_ENV = "DONABACH_SHOWCASE"
+STUDY_CSV = Path(__file__).resolve().parents[2] / "reports" / "household_study_equity_first" / "household_study.csv"
 SEARCH_PATHS = 400
 EVAL_PATHS = 2000
 SEED = 2026
@@ -136,6 +144,11 @@ def build_card(household: Household) -> HouseholdCard:
             f"Retirement at {g.retirement_age} leaves {before_ss} years before Social Security starts at {ss.start_age}: "
             "years of low taxable income that suit Roth conversions."
         )
+    if g.charitable_giving > 0:
+        notes.append(
+            f"{_money(g.charitable_giving)} a year goes to charity: the plan gives shares that have gained the most instead of cash, "
+            "so that gain is never taxed."
+        )
     return HouseholdCard(
         people=people,
         children_ages=list(household.children_ages),
@@ -154,9 +167,30 @@ class Prepared:
     inputs: SimInputs  # the 2,000 futures everything is measured on
 
 
-_lock = threading.Lock()
+_lock = threading.RLock()  # also held while something is worked out, so two requests for the same thing do not both do it
 _prepared: dict[str, Prepared] = {}
-_analyses: dict[tuple[str, tuple[str, ...]], ShowcaseAnalysis] = {}
+_waterfalls: dict[tuple[str, tuple[str, ...]], ShowcaseWaterfall] = {}
+_wealth: dict[str, ShowcaseWealth] = {}
+
+
+def typical_rate(csv_path: Path | None = None) -> float | None:
+    """What a typical household sees: the median over the 300 households of the study of the raw advantage over the good advisor
+    (a fraction a year), or None when the study's table is not there."""
+    path = csv_path or STUDY_CSV
+    try:
+        with path.open(newline="") as f:
+            rates = [float(row["adv_median_vs_good_ria"]) for row in csv.DictReader(f) if row.get("adv_median_vs_good_ria")]
+    except (OSError, KeyError, ValueError):
+        return None
+    return statistics.median(rates) if rates else None
+
+
+def footer_note(rate: float | None) -> str:
+    """The line the showcase footer adds."""
+    note = "Results for this household."
+    if rate is not None:
+        note += f" A typical household in our model sees about {rate * 100:.1f}% a year."
+    return note
 
 
 def prepare(fixture: Fixture | None = None) -> Prepared:
@@ -166,27 +200,45 @@ def prepare(fixture: Fixture | None = None) -> Prepared:
         cached = _prepared.get(fixture.id)
         if cached is not None:
             return cached
-    futures = build_inputs(fixture.household, n_paths=SEARCH_PATHS, seed=SEED)
-    strategy = search(futures, strategies=menu(style=planner.DEFAULT_STYLE), risk_aversion=RISK_AVERSION).best.strategy
-    inputs = build_inputs(fixture.household, n_paths=EVAL_PATHS, seed=SEED + planner.EVAL_SEED_OFFSET)
-    prepared = Prepared(fixture, strategy, inputs)
-    with _lock:
+        futures = build_inputs(fixture.household, n_paths=SEARCH_PATHS, seed=SEED)
+        strategy = search(futures, strategies=menu(style=planner.DEFAULT_STYLE), risk_aversion=RISK_AVERSION).best.strategy
+        inputs = build_inputs(fixture.household, n_paths=EVAL_PATHS, seed=SEED + planner.EVAL_SEED_OFFSET)
+        prepared = Prepared(fixture, strategy, inputs)
         _prepared[fixture.id] = prepared
-    return prepared
+        return prepared
 
 
-def analyze(prepared: Prepared, enabled: list[str] | None = None) -> ShowcaseAnalysis:
-    """The waterfall, the headline and the wealth lines with the strategies in `enabled` left on (None: all)."""
-    steps = waterfall_strategies(prepared.strategy)
-    keys = [s.key for s in steps]
-    on = keys if enabled is None else [k for k in keys if k in set(enabled)]
-    cache_key = (prepared.fixture.id, tuple(on))
-    with _lock:
-        cached = _analyses.get(cache_key)
-    if cached is not None:
-        return cached
+def _bars(result) -> list[ShowcaseBar]:
+    return [
+        ShowcaseBar(
+            key=b.key, label=b.label, detail=b.detail, enabled=b.enabled, delta_rate=b.delta_rate, delta_dollars=b.delta_dollars,
+            cumulative_rate=b.cumulative_rate, cumulative_dollars=b.cumulative_dollars,
+        )
+        for b in result.bars
+    ]
 
-    result = run_waterfall(prepared.inputs, prepared.strategy, set(on), risk_aversion=RISK_AVERSION)
+
+def _waterfall_model(result, on: list[str], prepared: Prepared) -> ShowcaseWaterfall:
+    adv = result.advantage
+    return ShowcaseWaterfall(
+        enabled=on,
+        bars=_bars(result),
+        advantage=ShowcaseMedian(
+            median_rate=adv.median,
+            median_dollars=adv.median_dollars,
+            median_low=adv.median_range[0],
+            median_high=adv.median_range[1],
+            plan_median_at_horizon=float(np.median(result.plan_wealth)),
+            advisor_median_at_horizon=float(np.median(result.baseline_wealth)),
+        ),
+        n_paths=prepared.inputs.n_paths,
+        years=result.years,
+        horizon_age=HORIZON_AGE,
+        advisor_label=ADVISOR_LABEL,
+    )
+
+
+def _wealth_model(result, prepared: Prepared) -> ShowcaseWealth:
     household = prepared.fixture.household
     start = initial_after_tax_wealth(household)
     ages = [household.primary_age] + [household.primary_age + t + 1 for t in range(result.years)]
@@ -198,15 +250,18 @@ def analyze(prepared: Prepared, enabled: list[str] | None = None) -> ShowcaseAna
     plan_median, plan_p10 = lines(result.plan_paths)
     advisor_median, advisor_p10 = lines(result.baseline_paths)
     adv = result.advantage
-    analysis = ShowcaseAnalysis(
-        enabled=on,
-        bars=[
-            ShowcaseBar(
-                key=b.key, label=b.label, detail=b.detail, enabled=b.enabled, delta_rate=b.delta_rate, delta_dollars=b.delta_dollars,
-                cumulative_rate=b.cumulative_rate, cumulative_dollars=b.cumulative_dollars,
-            )
-            for b in result.bars
-        ],
+    heirs = metrics.compare(result.plan_wealth_heirs, result.baseline_wealth_heirs, result.years, RISK_AVERSION, median_only=True)
+    return ShowcaseWealth(
+        liquidated_label=planner.LIQUIDATED_LABEL,
+        heirs=ShowcaseHeirs(
+            label=planner.HEIRS_LABEL,
+            note=planner.heirs_note(),
+            rate=sim.HEIRS_TAX_RATE,
+            median_rate=heirs.median,
+            median_dollars=heirs.median_dollars,
+            plan_median_at_horizon=float(np.median(result.plan_wealth_heirs)),
+            advisor_median_at_horizon=float(np.median(result.baseline_wealth_heirs)),
+        ),
         advantage=ShowcaseAdvantage(
             median_rate=adv.median,
             median_dollars=adv.median_dollars,
@@ -232,22 +287,65 @@ def analyze(prepared: Prepared, enabled: list[str] | None = None) -> ShowcaseAna
         horizon_age=HORIZON_AGE,
         risk_aversion=RISK_AVERSION,
         advisor_label=ADVISOR_LABEL,
-        plan_label=prepared.strategy.short_label(),
-        plan_sentence=prepared.strategy.describe(),
     )
+
+
+def whole_plan(prepared: Prepared) -> tuple[ShowcaseWaterfall, ShowcaseWealth]:
+    """The waterfall with every strategy on and the wealth view of the whole plan, worked out together and kept."""
     with _lock:
-        if len(_analyses) > 256:
-            _analyses.clear()
-        _analyses[cache_key] = analysis
-    return analysis
+        steps = waterfall_strategies(prepared.strategy)
+        keys = tuple(s.key for s in steps)
+        cached = _wealth.get(prepared.fixture.id)
+        if cached is not None and (prepared.fixture.id, keys) in _waterfalls:
+            return _waterfalls[(prepared.fixture.id, keys)], cached
+        result = run_waterfall(prepared.inputs, prepared.strategy, None, risk_aversion=RISK_AVERSION)
+        waterfall = _waterfall_model(result, list(keys), prepared)
+        wealth = _wealth_model(result, prepared)
+        _waterfalls[(prepared.fixture.id, keys)] = waterfall
+        _wealth[prepared.fixture.id] = wealth
+        return waterfall, wealth
 
 
-def showcase(enabled: list[str] | None = None) -> ShowcaseResponse:
+def analyze(prepared: Prepared, enabled: list[str] | None = None) -> ShowcaseWaterfall:
+    """The waterfall, median advantage only, with the strategies in `enabled` left on (None: all). Kept by the set."""
+    steps = waterfall_strategies(prepared.strategy)
+    keys = [s.key for s in steps]
+    on = keys if enabled is None else [k for k in keys if k in set(enabled)]
+    with _lock:
+        cache_key = (prepared.fixture.id, tuple(on))
+        cached = _waterfalls.get(cache_key)
+        if cached is not None:
+            return cached
+        if on == keys:
+            return whole_plan(prepared)[0]
+        result = run_waterfall(prepared.inputs, prepared.strategy, set(on), risk_aversion=RISK_AVERSION, median_only=True)
+        waterfall = _waterfall_model(result, on, prepared)
+        if len(_waterfalls) > 256:
+            _waterfalls.clear()
+        _waterfalls[cache_key] = waterfall
+        return waterfall
+
+
+def precompute(prepared: Prepared | None = None) -> Prepared:
+    """Everything the three screens show at first, and the waterfall with each one strategy switched off, so that none of it
+    waits on a simulation when the demo is on camera."""
+    prepared = prepared or prepare()
+    whole_plan(prepared)
+    keys = [s.key for s in waterfall_strategies(prepared.strategy)]
+    for key in keys:
+        analyze(prepared, [k for k in keys if k != key])
+    return prepared
+
+
+def showcase() -> ShowcaseResponse:
     prepared = prepare()
     f = prepared.fixture
+    waterfall, wealth = whole_plan(prepared)
+    rate = typical_rate()
     return ShowcaseResponse(
         id=f.id, name=f.name, type_label=f.type_label, tagline=f.tagline, household=f.household,
-        card=build_card(f.household), analysis=analyze(prepared, enabled),
+        card=build_card(f.household), plan_label=prepared.strategy.short_label(), plan_sentence=prepared.strategy.describe(),
+        waterfall=waterfall, wealth=wealth, typical_rate=rate, footer_note=footer_note(rate),
     )
 
 
@@ -255,4 +353,5 @@ def reset() -> None:
     """Forget what was prepared (tests, and a changed fixture)."""
     with _lock:
         _prepared.clear()
-        _analyses.clear()
+        _waterfalls.clear()
+        _wealth.clear()

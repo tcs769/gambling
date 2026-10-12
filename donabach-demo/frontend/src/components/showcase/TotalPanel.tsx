@@ -1,5 +1,5 @@
 import { count, money, signedMoney } from "@/lib/format";
-import type { ShowcaseAnalysis } from "@/lib/types";
+import type { ShowcaseWaterfall } from "@/lib/types";
 import { strategiesOn } from "./text";
 import { ratePercent } from "./waterfall";
 import styles from "./TotalPanel.module.css";
@@ -8,15 +8,15 @@ import styles from "./TotalPanel.module.css";
  * The total the waterfall adds up to, in large type: the yearly advantage and the dollars it is worth at the horizon,
  * measured as the median of the simulated futures, and the median after-tax wealth each side ends with.
  */
-export function TotalPanel({ analysis, computing }: { analysis: ShowcaseAnalysis; computing: boolean }) {
-  const { advantage, horizon_age: horizon } = analysis;
-  const on = analysis.bars.filter((bar) => bar.enabled).length;
+export function TotalPanel({ waterfall, computing }: { waterfall: ShowcaseWaterfall; computing: boolean }) {
+  const { advantage, horizon_age: horizon } = waterfall;
+  const on = waterfall.bars.filter((bar) => bar.enabled).length;
   return (
     <div className={styles.frame}>
       <section className={styles.total} aria-labelledby="total-title" data-stale={computing}>
         <div className={styles.main}>
           <h2 id="total-title" className={styles.kicker}>
-            Donabach&apos;s advantage over a {analysis.advisor_label.toLowerCase()}
+            Donabach&apos;s advantage over a {waterfall.advisor_label.toLowerCase()}
           </h2>
           <p className={styles.headline}>
             <span className={styles.figure}>
@@ -29,14 +29,14 @@ export function TotalPanel({ analysis, computing }: { analysis: ShowcaseAnalysis
             </span>
           </p>
           <p className={styles.basis}>
-            Median of {count(analysis.n_paths)} simulated futures.
-            {analysis.bars.length > 0 && ` ${strategiesOn(on, analysis.bars.length)}.`}
+            Median of {count(waterfall.n_paths)} simulated futures.
+            {waterfall.bars.length > 0 && ` ${strategiesOn(on, waterfall.bars.length)}.`}
           </p>
         </div>
         <div className={styles.medians}>
           <dl className={styles.pair}>
             <div className={styles.median}>
-              <dt>{analysis.advisor_label}</dt>
+              <dt>{waterfall.advisor_label}</dt>
               <dd>{money(advantage.advisor_median_at_horizon)}</dd>
             </div>
             <div className={styles.median}>

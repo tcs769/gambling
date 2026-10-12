@@ -13,7 +13,7 @@ import pytest
 from app.planner.strategies import CHOICE_OPTIONS, CHOICES, RESERVE_YEARS, STYLES, Strategy, menu
 from app.schemas import Accounts, Goals, MarketShock, Person, SocialSecurity
 from app.sim import simulate as sim
-from app.sim.simulate import Policy, build_inputs, run_batch, run_detail
+from app.sim.simulate import ModelOptions, Policy, build_inputs, run_batch, run_detail
 
 from tests.conftest import make_demo_household
 from tests.test_sim import detail, state
@@ -31,10 +31,12 @@ def reserve_policy(years=4, pc=0.0, refill=True, **kw) -> Policy:
 def test_strategies_without_a_reserve_give_exactly_the_results_they_gave_before_the_reserve_existed():
     from app.planner.baseline import RIA_BASELINE, TYPICAL_ADVISOR
 
-    inputs = build_inputs(make_demo_household(), n_paths=150, seed=77)
-    # Pinned to the average-cost lot method, which is what every result was computed with before tax lots existed.
-    policies = [RIA_BASELINE, TYPICAL_ADVISOR] + [s.policy() for s in menu()[::250][:6]]
-    policies = [p.replace(lot_method="average", short_term_ordinary=False) for p in policies]
+    # Pinned to what every result was computed with before tax lots, stock-level direct indexing and the typical advisor's fund
+    # distributions existed: the average-cost lot method, the specification's aggregate harvest rule, and funds that distribute nothing.
+    inputs = build_inputs(make_demo_household(), n_paths=150, seed=77, options=ModelOptions(harvest_model="spec"))
+    typical = TYPICAL_ADVISOR.replace(fund_distribution=0.0, fund_distribution_short_term=0.0)
+    policies = [RIA_BASELINE, typical] + [s.policy() for s in menu()[::250][:6]]
+    policies = [p.replace(lot_method="average", short_term_ordinary=False, di_model="aggregate") for p in policies]
     batch = run_batch(inputs, policies)
     assert [round(float(np.median(w))) for w in batch.wealth] == [2836952, 2667300, 2799253, 2824798, 2442731, 3307733, 3100390, 2957486]
     assert [round(float(np.median(t))) for t in batch.taxes_paid] == [1504864, 1497800, 1629627, 1648298, 1673934, 1616932, 1843802, 1663421]

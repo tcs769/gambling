@@ -10,9 +10,10 @@ export const metadata: Metadata = {
 };
 
 /**
- * The showcase flow's layout. The provider keeps the household and the strategies chosen on the second screen for the
- * third (a layout does not remount when you move between its pages). `data-showcase` is what the dark theme in
- * globals.css looks for: the theme applies while this flow is on the page and nowhere else.
+ * The showcase flow's layout. The provider keeps the household and the strategies chosen on the second screen across the
+ * three screens (a layout does not remount when you move between its pages). `data-showcase` marks the flow for the one
+ * style that applies only inside it (globals.css: focus is scrolled to below the sticky header). The flow is light, like
+ * the rest of the demo.
  */
 export default function ShowcaseLayout({ children }: { children: ReactNode }) {
   return (

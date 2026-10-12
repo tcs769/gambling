@@ -2,7 +2,7 @@
 // Nothing here makes a number up: positions, totals and labels come from the API's bars and advantage.
 
 import { money, rateDigits, signedMoney, signedPercent } from "@/lib/format";
-import type { ShowcaseAnalysis } from "@/lib/types";
+import type { ShowcaseWaterfall } from "@/lib/types";
 import { niceAxis, type Axis } from "./axis";
 
 /** What the length of a bar encodes: dollars of median after-tax wealth at the horizon, or a yearly rate. */
@@ -21,7 +21,7 @@ export interface WaterfallRow {
   label: string;
   /** What the strategy does, in the API's words (strategies only). */
   detail: string;
-  /** Whether the strategy is switched on in the analysis the row comes from (the start and the total always are). */
+  /** Whether the strategy is switched on in the waterfall the row comes from (the start and the total always are). */
   enabled: boolean;
   /** Where the bar starts and where it ends, in both units. A strategy that is off starts and ends at the same place. */
   from: Amount;
@@ -37,12 +37,12 @@ const ZERO: Amount = { rate: 0, dollars: 0 };
  * row per strategy in the order the API switched them on, and the total. Each strategy's bar starts where the one before
  * it ended (the API's running total), so the bars join up and the last one ends on the total.
  */
-export function waterfallRows(analysis: ShowcaseAnalysis): WaterfallRow[] {
+export function waterfallRows(waterfall: ShowcaseWaterfall): WaterfallRow[] {
   const rows: WaterfallRow[] = [
     {
       kind: "start",
       key: "start",
-      label: analysis.advisor_label,
+      label: waterfall.advisor_label,
       detail: "",
       enabled: true,
       from: ZERO,
@@ -51,7 +51,7 @@ export function waterfallRows(analysis: ShowcaseAnalysis): WaterfallRow[] {
     },
   ];
   let before = ZERO;
-  for (const bar of analysis.bars) {
+  for (const bar of waterfall.bars) {
     const after: Amount = { rate: bar.cumulative_rate, dollars: bar.cumulative_dollars };
     rows.push({
       kind: "strategy",
@@ -65,7 +65,7 @@ export function waterfallRows(analysis: ShowcaseAnalysis): WaterfallRow[] {
     });
     before = after;
   }
-  const total: Amount = { rate: analysis.advantage.median_rate, dollars: analysis.advantage.median_dollars };
+  const total: Amount = { rate: waterfall.advantage.median_rate, dollars: waterfall.advantage.median_dollars };
   rows.push({
     kind: "total",
     key: "total",
@@ -82,13 +82,13 @@ export function waterfallRows(analysis: ShowcaseAnalysis): WaterfallRow[] {
 export type { Axis };
 
 /**
- * The axis for one unit, from zero (the advisor's result) in clean steps. It has to hold every bar of every analysis given
- * (the analysis on screen, and the one with everything on, so switching a strategy off shrinks its bar against a scale that
+ * The axis for one unit, from zero (the advisor's result) in clean steps. It has to hold every bar of every waterfall given
+ * (the waterfall on screen, and the one with everything on, so switching a strategy off shrinks its bar against a scale that
  * stays put), and a strategy that lowers the total reaches below zero. A narrow chart asks for fewer intervals, so its tick
  * labels never touch.
  */
-export function axisFor(unit: Unit, analyses: readonly ShowcaseAnalysis[], maxIntervals = 6): Axis {
-  const values = [0, ...analyses.flatMap((a) => waterfallRows(a).flatMap((row) => [row.from[unit], row.to[unit]]))];
+export function axisFor(unit: Unit, waterfalls: readonly ShowcaseWaterfall[], maxIntervals = 6): Axis {
+  const values = [0, ...waterfalls.flatMap((a) => waterfallRows(a).flatMap((row) => [row.from[unit], row.to[unit]]))];
   return niceAxis(Math.min(...values), Math.max(...values), maxIntervals);
 }
 
@@ -119,8 +119,8 @@ export function axisCaption(unit: Unit, horizon: number): string {
 }
 
 /** The strategy that adds the most dollars of the ones that are on, if any adds anything. */
-export function biggestStep(analysis: ShowcaseAnalysis) {
-  const on = analysis.bars.filter((bar) => bar.enabled);
+export function biggestStep(waterfall: ShowcaseWaterfall) {
+  const on = waterfall.bars.filter((bar) => bar.enabled);
   const best = on.reduce<(typeof on)[number] | undefined>(
     (top, bar) => (top === undefined || bar.delta_dollars > top.delta_dollars ? bar : top),
     undefined,

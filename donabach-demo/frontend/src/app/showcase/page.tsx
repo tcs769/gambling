@@ -9,9 +9,9 @@ import { useShowcase } from "@/lib/showcase";
 
 /** Screen 1: who the household is, what it has and what it is saving for. */
 export default function ShowcaseHouseholdPage() {
-  const { status, data, analysis } = useShowcase();
+  const { status, data } = useShowcase();
 
-  if (status !== "ready" || !data || !analysis) {
+  if (status !== "ready" || !data) {
     return (
       <>
         {/* Neutral while the household loads and if it cannot be loaded: its name is not known yet. */}
@@ -28,12 +28,12 @@ export default function ShowcaseHouseholdPage() {
         title={data.name}
         subtitle={<span className={styles.tagline}>{data.tagline}</span>}
       />
-      <HouseholdCardView card={data.card} horizonAge={analysis.horizon_age} />
+      <HouseholdCardView card={data.card} horizonAge={data.waterfall.horizon_age} />
       <FlowNav
         back={{ href: "/", label: "Back to the demo home" }}
         next={{ href: "/showcase/strategies", label: "See the strategies" }}
       />
-      <ResultsFooter />
+      <ResultsFooter note={data.footer_note} />
     </>
   );
 }

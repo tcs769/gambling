@@ -221,7 +221,8 @@ export interface paths {
         };
         /**
          * Get Showcase
-         * @description The showcase household: its summary card, and its plan measured against the advisor with every strategy on.
+         * @description The showcase household: its summary card, the waterfall with every strategy on, and the whole plan over time against the
+         *     advisor (both measures of the advantage). All of it is worked out once and kept.
          */
         get: operations["get_showcase_showcase_get"];
         put?: never;
@@ -243,7 +244,7 @@ export interface paths {
         put?: never;
         /**
          * Showcase Analysis
-         * @description The strategy waterfall, headline and wealth lines with only the strategies in `enabled` switched on.
+         * @description The strategy waterfall, median advantage only, with only the strategies in `enabled` switched on.
          */
         post: operations["showcase_analysis_showcase_analysis_post"];
         delete?: never;
@@ -1398,33 +1399,6 @@ export interface components {
             /** Advisor Shortfall */
             advisor_shortfall: number;
         };
-        /** ShowcaseAnalysis */
-        ShowcaseAnalysis: {
-            /** Enabled */
-            enabled: string[];
-            /** Bars */
-            bars: components["schemas"]["ShowcaseBar"][];
-            advantage: components["schemas"]["ShowcaseAdvantage"];
-            wealth: components["schemas"]["WealthLines"];
-            /** Risk Adjusted Label */
-            risk_adjusted_label: string;
-            /** Risk Adjusted Explanation */
-            risk_adjusted_explanation: string;
-            /** N Paths */
-            n_paths: number;
-            /** Years */
-            years: number;
-            /** Horizon Age */
-            horizon_age: number;
-            /** Risk Aversion */
-            risk_aversion: number;
-            /** Advisor Label */
-            advisor_label: string;
-            /** Plan Label */
-            plan_label: string;
-            /** Plan Sentence */
-            plan_sentence: string;
-        };
         /**
          * ShowcaseBar
          * @description One strategy of the waterfall.
@@ -1447,6 +1421,24 @@ export interface components {
             /** Cumulative Dollars */
             cumulative_dollars: number;
         };
+        /**
+         * ShowcaseMedian
+         * @description The waterfall's headline: the median advantage and nothing else.
+         */
+        ShowcaseMedian: {
+            /** Median Rate */
+            median_rate: number;
+            /** Median Dollars */
+            median_dollars: number;
+            /** Median Low */
+            median_low: number;
+            /** Median High */
+            median_high: number;
+            /** Plan Median At Horizon */
+            plan_median_at_horizon: number;
+            /** Advisor Median At Horizon */
+            advisor_median_at_horizon: number;
+        };
         /** ShowcaseRequest */
         ShowcaseRequest: {
             /** Enabled */
@@ -1464,7 +1456,59 @@ export interface components {
             tagline: string;
             household: components["schemas"]["Household"];
             card: components["schemas"]["HouseholdCard"];
-            analysis: components["schemas"]["ShowcaseAnalysis"];
+            /** Plan Label */
+            plan_label: string;
+            /** Plan Sentence */
+            plan_sentence: string;
+            waterfall: components["schemas"]["ShowcaseWaterfall"];
+            wealth: components["schemas"]["ShowcaseWealth"];
+            /** Typical Rate */
+            typical_rate: number | null;
+            /** Footer Note */
+            footer_note: string;
+        };
+        /**
+         * ShowcaseWaterfall
+         * @description The strategies switched on in sequence on the same futures: one bar each, and what they add up to (median only).
+         */
+        ShowcaseWaterfall: {
+            /** Enabled */
+            enabled: string[];
+            /** Bars */
+            bars: components["schemas"]["ShowcaseBar"][];
+            advantage: components["schemas"]["ShowcaseMedian"];
+            /** N Paths */
+            n_paths: number;
+            /** Years */
+            years: number;
+            /** Horizon Age */
+            horizon_age: number;
+            /** Advisor Label */
+            advisor_label: string;
+        };
+        /**
+         * ShowcaseWealth
+         * @description The whole plan (every strategy on) against the advisor: wealth over time and both measures of the advantage.
+         *
+         *     Worked out once. Switching strategies off on the waterfall does not change it.
+         */
+        ShowcaseWealth: {
+            advantage: components["schemas"]["ShowcaseAdvantage"];
+            wealth: components["schemas"]["WealthLines"];
+            /** Risk Adjusted Label */
+            risk_adjusted_label: string;
+            /** Risk Adjusted Explanation */
+            risk_adjusted_explanation: string;
+            /** N Paths */
+            n_paths: number;
+            /** Years */
+            years: number;
+            /** Horizon Age */
+            horizon_age: number;
+            /** Risk Aversion */
+            risk_aversion: number;
+            /** Advisor Label */
+            advisor_label: string;
         };
         /** SocialSecurity */
         SocialSecurity: {
@@ -2196,7 +2240,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ShowcaseAnalysis"];
+                    "application/json": components["schemas"]["ShowcaseWaterfall"];
                 };
             };
             /** @description Validation Error */

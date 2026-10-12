@@ -12,27 +12,28 @@
 // The third series (the typical advisor) is also drawn dashed and the fourth (the adaptive planner) dotted, so
 // line style carries them as well as colour. With four series every pair is checked: six pairs.
 //
-// Both themes are checked. The light tokens are the ones in :root. The dark theme of the showcase flow re-declares
-// the series for the dark panel (the `@media (prefers-color-scheme: dark)` block): the same gates, except that the
-// lightness band is the validator's dark one, 0.48 to 0.67, since the colours have to read on a dark surface.
 // The savings bar of the showcase household card puts the account colours side by side (--account-taxable,
-// -pretax, -roth, -cash, in that order), so each neighbouring pair is checked in both themes, and each account's
-// contrast on the panel.
+// -pretax, -roth, -cash, in that order), so each neighbouring pair is checked, and each account's contrast on the panel.
 // Exits 1 if any gate fails.
 
 import { readFileSync } from "node:fs";
 
 const css = readFileSync(new URL("../src/app/globals.css", import.meta.url), "utf8");
 
-// The two places tokens are declared: :root (the light theme) and the dark block of the showcase flow.
-const DARK_MARKER = "@media (prefers-color-scheme: dark)";
-const darkAt = css.indexOf(DARK_MARKER);
-if (darkAt < 0) throw new Error("globals.css has no dark theme block to check");
-const THEMES = {
-  light: { css: css.slice(0, darkAt), lightness: [0.43, 0.77] },
-  dark: { css: css.slice(darkAt), lightness: [0.48, 0.67] },
+const token = (name) => {
+  const match = css.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`));
+  if (!match) throw new Error(`--${name} is not a hex colour in globals.css`);
+  return match[1].toLowerCase();
 };
 
+const SERIES = {
+  donabach: token("series-donabach"),
+  ria: token("series-ria"),
+  typical: token("series-typical"),
+  adaptive: token("series-adaptive"),
+};
+const SURFACES = { panel: token("panel"), cream: token("cream") };
+const LIGHTNESS = [0.43, 0.77];
 const MIN_CONTRAST = 3;
 const MIN_CHROMA = 0.1;
 const MIN_CVD = 8;
@@ -81,74 +82,55 @@ const gate = (ok, message) => {
   if (!ok) failures.push(message);
 };
 
-for (const [theme, { css: source, lightness }] of Object.entries(THEMES)) {
-  console.log(`\n== ${theme} theme ==`);
-  const token = (name) => {
-    const match = source.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`));
-    if (!match) throw new Error(`--${name} is not a hex colour in the ${theme} part of globals.css`);
-    return match[1].toLowerCase();
-  };
-  const SERIES = {
-    donabach: token("series-donabach"),
-    ria: token("series-ria"),
-    typical: token("series-typical"),
-    adaptive: token("series-adaptive"),
-  };
-  const SURFACES = { panel: token("panel"), cream: token("cream") };
-  const label = (text) => `${theme}: ${text}`;
+for (const [name, hex] of Object.entries(SERIES)) {
+  const [L, a, b] = oklab(toLinear(hex));
+  const C = Math.hypot(a, b);
+  const hue = ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
+  console.log(`${name.padEnd(9)} ${hex}  OKLCH L ${L.toFixed(3)} C ${C.toFixed(3)} hue ${hue.toFixed(0)}`);
+  gate(L >= LIGHTNESS[0] && L <= LIGHTNESS[1] && C >= MIN_CHROMA, `${name}: lightness ${L.toFixed(2)} in ${LIGHTNESS.join("-")} and chroma ${C.toFixed(2)} >= ${MIN_CHROMA}`);
+  for (const [surface, surfaceHex] of Object.entries(SURFACES)) {
+    const ratio = contrast(hex, surfaceHex);
+    // The charts sit on the panel; cream is reported only (the page background, for the legend and notes).
+    if (surface === "panel") gate(ratio >= MIN_CONTRAST, `${name}: contrast ${ratio.toFixed(2)}:1 on the ${surface} (>= ${MIN_CONTRAST}:1)`);
+    else console.log(`        contrast ${ratio.toFixed(2)}:1 on the ${surface}`);
+  }
+}
 
-  for (const [name, hex] of Object.entries(SERIES)) {
-    const [L, a, b] = oklab(toLinear(hex));
-    const C = Math.hypot(a, b);
-    const hue = ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
-    console.log(`${name.padEnd(9)} ${hex}  OKLCH L ${L.toFixed(3)} C ${C.toFixed(3)} hue ${hue.toFixed(0)}`);
-    gate(L >= lightness[0] && L <= lightness[1] && C >= MIN_CHROMA, label(`${name}: lightness ${L.toFixed(2)} in ${lightness.join("-")} and chroma ${C.toFixed(2)} >= ${MIN_CHROMA}`));
-    for (const [surface, surfaceHex] of Object.entries(SURFACES)) {
-      const ratio = contrast(hex, surfaceHex);
-      // The charts sit on the panel; cream is reported only (the page background, for the legend and notes).
-      if (surface === "panel") gate(ratio >= MIN_CONTRAST, label(`${name}: contrast ${ratio.toFixed(2)}:1 on the ${surface} (>= ${MIN_CONTRAST}:1)`));
-      else console.log(`        contrast ${ratio.toFixed(2)}:1 on the ${surface}`);
-    }
+const names = Object.keys(SERIES);
+for (let i = 0; i < names.length; i++) {
+  for (let j = i + 1; j < names.length; j++) {
+    const [x, y] = [SERIES[names[i]], SERIES[names[j]]];
+    const normal = deltaE(x, y);
+    const cvd = Object.fromEntries(Object.keys(CVD).map((kind) => [kind, deltaE(x, y, kind)]));
+    console.log(
+      `${names[i]} vs ${names[j]}: Delta E normal ${normal.toFixed(1)}, ` + Object.entries(cvd).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(", "),
+    );
+    gate(normal >= MIN_NORMAL, `${names[i]} vs ${names[j]}: normal vision ${normal.toFixed(1)} >= ${MIN_NORMAL}`);
+    gate(Math.min(...Object.values(cvd)) >= MIN_CVD, `${names[i]} vs ${names[j]}: worst colour-blind pair ${Math.min(...Object.values(cvd)).toFixed(1)} >= ${MIN_CVD}`);
   }
+}
 
-  const names = Object.keys(SERIES);
-  for (let i = 0; i < names.length; i++) {
-    for (let j = i + 1; j < names.length; j++) {
-      const [x, y] = [SERIES[names[i]], SERIES[names[j]]];
-      const normal = deltaE(x, y);
-      const cvd = Object.fromEntries(Object.keys(CVD).map((kind) => [kind, deltaE(x, y, kind)]));
-      console.log(
-        `${names[i]} vs ${names[j]}: Delta E normal ${normal.toFixed(1)}, ` + Object.entries(cvd).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(", "),
-      );
-      gate(normal >= MIN_NORMAL, label(`${names[i]} vs ${names[j]}: normal vision ${normal.toFixed(1)} >= ${MIN_NORMAL}`));
-      gate(Math.min(...Object.values(cvd)) >= MIN_CVD, label(`${names[i]} vs ${names[j]}: worst colour-blind pair ${Math.min(...Object.values(cvd)).toFixed(1)} >= ${MIN_CVD}`));
-    }
-  }
-
-  // The savings bar of the household card: the accounts' colours, in the bar's order, with each neighbouring pair next to each other.
-  // An account token is declared once, in :root, as a var() of a series token or of --muted (cash, the de-emphasis gray); the dark
-  // theme re-declares what it points at, so a token is looked up in this theme first and in the light part otherwise.
-  const resolve = (name) => {
-    const find = (text) => text.match(new RegExp(`--${name}:\\s*([^;]+);`));
-    const match = find(source) ?? find(THEMES.light.css);
-    if (!match) throw new Error(`--${name} is not declared in globals.css`);
-    const value = match[1].trim();
-    const ref = value.match(/^var\(--([\w-]+)\)$/);
-    if (ref) return resolve(ref[1]);
-    if (!/^#[0-9a-fA-F]{6}$/.test(value)) throw new Error(`--${name} is not a colour in globals.css`);
-    return value.toLowerCase();
-  };
-  const ACCOUNTS = ["taxable", "pretax", "roth", "cash"].map((name) => [name, resolve(`account-${name}`)]);
-  for (const [name, hex] of ACCOUNTS) {
-    gate(contrast(hex, SURFACES.panel) >= MIN_CONTRAST, label(`account ${name} ${hex}: contrast ${contrast(hex, SURFACES.panel).toFixed(2)}:1 on the panel (>= ${MIN_CONTRAST}:1)`));
-  }
-  for (let i = 0; i + 1 < ACCOUNTS.length; i++) {
-    const [[nameA, a], [nameB, b]] = [ACCOUNTS[i], ACCOUNTS[i + 1]];
-    const normal = deltaE(a, b);
-    const worst = Math.min(...Object.keys(CVD).map((kind) => deltaE(a, b, kind)));
-    console.log(`savings bar, ${nameA} next to ${nameB}: Delta E normal ${normal.toFixed(1)}, worst colour-blind ${worst.toFixed(1)}`);
-    gate(normal >= MIN_NORMAL && worst >= MIN_CVD, label(`savings bar: ${nameA} next to ${nameB}: normal vision ${normal.toFixed(1)} >= ${MIN_NORMAL}, worst colour-blind ${worst.toFixed(1)} >= ${MIN_CVD}`));
-  }
+// The savings bar of the household card: the accounts' colours, in the bar's order, with each neighbouring pair next to each other.
+// An account token is declared as a var() of a series token or of --muted (cash, the de-emphasis gray), so it is followed to its colour.
+const resolve = (name) => {
+  const match = css.match(new RegExp(`--${name}:\\s*([^;]+);`));
+  if (!match) throw new Error(`--${name} is not declared in globals.css`);
+  const value = match[1].trim();
+  const ref = value.match(/^var\(--([\w-]+)\)$/);
+  if (ref) return resolve(ref[1]);
+  if (!/^#[0-9a-fA-F]{6}$/.test(value)) throw new Error(`--${name} is not a colour in globals.css`);
+  return value.toLowerCase();
+};
+const ACCOUNTS = ["taxable", "pretax", "roth", "cash"].map((name) => [name, resolve(`account-${name}`)]);
+for (const [name, hex] of ACCOUNTS) {
+  gate(contrast(hex, SURFACES.panel) >= MIN_CONTRAST, `account ${name} ${hex}: contrast ${contrast(hex, SURFACES.panel).toFixed(2)}:1 on the panel (>= ${MIN_CONTRAST}:1)`);
+}
+for (let i = 0; i + 1 < ACCOUNTS.length; i++) {
+  const [[nameA, a], [nameB, b]] = [ACCOUNTS[i], ACCOUNTS[i + 1]];
+  const normal = deltaE(a, b);
+  const worst = Math.min(...Object.keys(CVD).map((kind) => deltaE(a, b, kind)));
+  console.log(`savings bar, ${nameA} next to ${nameB}: Delta E normal ${normal.toFixed(1)}, worst colour-blind ${worst.toFixed(1)}`);
+  gate(normal >= MIN_NORMAL && worst >= MIN_CVD, `savings bar: ${nameA} next to ${nameB}: normal vision ${normal.toFixed(1)} >= ${MIN_NORMAL}, worst colour-blind ${worst.toFixed(1)} >= ${MIN_CVD}`);
 }
 
 console.log(failures.length ? `\n${failures.length} gate(s) failed` : "\nAll gates passed");

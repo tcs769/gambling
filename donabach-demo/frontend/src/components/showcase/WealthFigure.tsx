@@ -6,7 +6,7 @@ import { ChartLegend, type LegendItem } from "@/components/charts/ChartLegend";
 import { CHART_HEIGHT } from "@/components/charts/chartTheme";
 import { DataTable, type DataColumn } from "@/components/ui";
 import { money } from "@/lib/format";
-import type { ShowcaseAnalysis } from "@/lib/types";
+import type { ShowcaseWealth } from "@/lib/types";
 import { useElementWidth } from "./useElementWidth";
 import { WealthChart } from "./WealthChart";
 import { wealthRows, wealthSeries, type WealthRow, type WealthSeries } from "./wealthData";
@@ -44,13 +44,13 @@ function columnsFor(series: readonly WealthSeries[]): DataColumn<WealthRow>[] {
  * Wealth over time against the advisor: the chart (Donabach and the advisor, each as a typical and a bad-market line),
  * its legend with a line on what the dashed lines are, the same numbers as a table, and in words where each line ends.
  */
-export function WealthFigure({ analysis, computing }: { analysis: ShowcaseAnalysis; computing: boolean }) {
+export function WealthFigure({ wealth }: { wealth: ShowcaseWealth }) {
   const [measure, width] = useElementWidth<HTMLDivElement>();
-  const series = useMemo(() => wealthSeries(analysis.advisor_label), [analysis.advisor_label]);
-  const rows = useMemo(() => wealthRows(analysis), [analysis]);
+  const series = useMemo(() => wealthSeries(wealth.advisor_label), [wealth.advisor_label]);
+  const rows = useMemo(() => wealthRows(wealth), [wealth]);
   const columns = useMemo(() => columnsFor(series), [series]);
-  const advisor = analysis.advisor_label.toLowerCase();
-  const { advantage, horizon_age: horizon } = analysis;
+  const advisor = wealth.advisor_label.toLowerCase();
+  const { advantage, horizon_age: horizon } = wealth;
 
   // Donabach's lines first in the legend (the chart draws them last, on top).
   const legend: LegendItem[] = [...series].reverse().map((line) => ({
@@ -82,7 +82,7 @@ export function WealthFigure({ analysis, computing }: { analysis: ShowcaseAnalys
       }
       wrapToolbar
       chart={
-        <div ref={measure} className={styles.chartBox} data-stale={computing} aria-busy={computing}>
+        <div ref={measure} className={styles.chartBox}>
           <WealthChart
             rows={rows}
             series={series}

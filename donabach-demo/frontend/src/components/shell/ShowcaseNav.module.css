@@ -67,7 +67,7 @@ a.step:hover {
 .dot[data-active="true"] {
   background: var(--gold);
   border-color: var(--gold);
-  color: var(--on-gold);
+  color: var(--espresso);
 }
 
 .dot[data-done="true"] {

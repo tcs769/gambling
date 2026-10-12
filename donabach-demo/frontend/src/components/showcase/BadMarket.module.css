@@ -6,10 +6,6 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
-  transition: opacity 220ms ease;
-}
-.grid[data-stale="true"] .values {
-  opacity: 0.5;
 }
 
 .card {
@@ -39,7 +35,6 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 128px), 1fr));
   gap: 12px 24px;
   margin: 10px 0 0;
-  transition: opacity 220ms ease;
 }
 
 .value dt {

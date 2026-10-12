@@ -9,3 +9,10 @@
   gap: 6px;
   max-width: 110ch;
 }
+
+/* A line of the screen's own ahead of the disclaimers: a little more present than they are. */
+.note {
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}

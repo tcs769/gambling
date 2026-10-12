@@ -311,7 +311,7 @@
   background: var(--cream);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  box-shadow: var(--tooltip-shadow);
+  box-shadow: 0 6px 20px rgba(90, 69, 33, 0.18);
   pointer-events: none;
   transform: translate(16px, -50%);
   line-height: 1.4;

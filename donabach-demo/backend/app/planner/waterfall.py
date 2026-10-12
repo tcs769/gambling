@@ -53,8 +53,11 @@ def waterfall_strategies(strategy: Strategy, baseline: Policy = RIA_BASELINE) ->
         WaterfallStrategy(
             "lots",
             "Highest-cost lots first",
-            "When stock is sold in the taxable account, sell the shares that cost the most first, so the least gain is realized (the advisor sells the oldest shares first).",
-            lambda p: p.replace(lot_method=chosen.lot_method, short_term_ordinary=chosen.short_term_ordinary),
+            "When stock is sold in the taxable account, sell the shares that cost the most first, so the least gain is realized (the advisor sells the oldest shares first). "
+            "Gifts to charity are made with the shares that have gained the most, not with cash.",
+            lambda p: p.replace(
+                lot_method=chosen.lot_method, short_term_ordinary=chosen.short_term_ordinary, donate_lots=chosen.donate_lots
+            ),
         ),
         WaterfallStrategy(
             "harvest",
@@ -145,6 +148,8 @@ class WaterfallResult:
     bars: list[Bar]
     baseline_wealth: np.ndarray  # (paths,)
     plan_wealth: np.ndarray  # (paths,) with the enabled strategies
+    baseline_wealth_heirs: np.ndarray  # (paths,) the same, with the estate passed to heirs at the horizon
+    plan_wealth_heirs: np.ndarray
     baseline_paths: np.ndarray  # (paths, years) after-tax wealth at each year end
     plan_paths: np.ndarray
     advantage: metrics.Advantage
@@ -159,8 +164,12 @@ def run_waterfall(
     enabled: set[str] | None = None,
     baseline: Policy = RIA_BASELINE,
     risk_aversion: float = 3.0,
+    median_only: bool = False,
 ) -> WaterfallResult:
-    """Every cumulative policy on the same futures. `enabled` is the set of strategy keys left on (None: all of them)."""
+    """Every cumulative policy on the same futures. `enabled` is the set of strategy keys left on (None: all of them).
+
+    With `median_only` the risk-adjusted advantage is not worked out (its fields are 0.0) and the wealth paths are not kept:
+    that is the waterfall, which is about the median alone."""
     steps = waterfall_strategies(strategy, baseline)
     on = {s.key for s in steps} if enabled is None else set(enabled) & {s.key for s in steps}
     policies = [baseline]
@@ -168,7 +177,7 @@ def run_waterfall(
         policies.append(step.change(policies[-1]) if step.key in on else policies[-1])
     # A strategy that is off adds nothing: it reuses the policy before it, so only the distinct ones are simulated.
     distinct = list(dict.fromkeys(policies))
-    batch = run_batch(inputs, distinct, record_paths=True)
+    batch = run_batch(inputs, distinct, record_paths=not median_only)
     index = {p: i for i, p in enumerate(distinct)}
     years = inputs.n_years
     medians = [float(np.median(batch.wealth[index[p]])) for p in policies]
@@ -191,9 +200,13 @@ def run_waterfall(
         bars=bars,
         baseline_wealth=batch.wealth[index[baseline]],
         plan_wealth=batch.wealth[index[plan_policy]],
-        baseline_paths=batch.path_wealth[index[baseline]],
-        plan_paths=batch.path_wealth[index[plan_policy]],
-        advantage=metrics.compare(batch.wealth[index[plan_policy]], batch.wealth[index[baseline]], years, risk_aversion, with_range=True),
+        baseline_wealth_heirs=batch.wealth_heirs[index[baseline]],
+        plan_wealth_heirs=batch.wealth_heirs[index[plan_policy]],
+        baseline_paths=np.zeros((0, years)) if median_only else batch.path_wealth[index[baseline]],
+        plan_paths=np.zeros((0, years)) if median_only else batch.path_wealth[index[plan_policy]],
+        advantage=metrics.compare(
+            batch.wealth[index[plan_policy]], batch.wealth[index[baseline]], years, risk_aversion, with_range=True, median_only=median_only
+        ),
         years=years,
         baseline_shortfall=float(np.mean(batch.unfunded[index[baseline]] > 0)),
         plan_shortfall=float(np.mean(batch.unfunded[index[plan_policy]] > 0)),

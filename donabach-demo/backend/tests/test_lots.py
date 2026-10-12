@@ -233,14 +233,21 @@ def test_policies_choose_their_lot_method():
 def walk(inputs, policy, path=0):
     """The state after each simulated year of one path."""
     n_years = inputs.n_years
-    st = inputs.init.copy()
     row = policy.row(inputs.current_age)
+    if sim.wants_book(row):
+        st = np.zeros(sim.NSTATE_DI)
+        st[: sim.NSTATE] = inputs.init
+    else:
+        st = inputs.init.copy()
     sim._lots_start(st, row)
     ys, act = np.zeros(sim.NY), np.zeros(sim.NACT)
     gates, scratch, log = np.ones((n_years, sim.NGATE)), np.zeros(n_years), np.zeros((n_years, sim.NLOG))
-    common = (inputs.tv, inputs.hhc, row, gates, inputs.rets[path], inputs.wages[path], inputs.k401[path], inputs.wage_tax[path])
+    common = (
+        inputs.tv, inputs.hhc, row, gates, inputs.rets[path], inputs.wages[path], inputs.k401[path], inputs.wage_tax[path],
+        inputs.stock_g[path],
+    )
     for t in range(n_years):
-        sim._run_years(st, ys, act, *common, t, t + 1, sim.RUN_FULL, False, False, scratch, False, log)
+        sim._run_years(st, ys, act, *common, t, t + 1, sim.RUN_FULL, False, False, scratch, False, log, np.zeros(1), False)
         yield t, st
 
 
@@ -256,9 +263,23 @@ POLICIES = {
 @pytest.mark.parametrize("name", POLICIES)
 def test_the_account_is_always_its_lots(name):
     inputs = build_inputs(make_demo_household(), n_paths=4, seed=11)
+    book = sim.wants_book(POLICIES[name].row(inputs.current_age))
     for path in range(4):
         for t, st in walk(inputs, POLICIES[name], path):
             n = min(t + 2, sim.MAX_LOTS)
+            if book:
+                # the direct-indexing book: 100 stocks, each with its price, its units and its lots
+                units = st[sim.D_LOTU : sim.D_LOTU + sim.N_STOCKS * sim.MAX_LOTS].reshape(sim.N_STOCKS, sim.MAX_LOTS)
+                cost = st[sim.D_LOTC : sim.D_LOTC + sim.N_STOCKS * sim.MAX_LOTS].reshape(sim.N_STOCKS, sim.MAX_LOTS)
+                price = st[sim.D_PRICE : sim.D_PRICE + sim.N_STOCKS]
+                held = st[sim.D_UNITS : sim.D_UNITS + sim.N_STOCKS]
+                assert (units >= -1e-9).all() and (cost >= -1e-12).all() and (price > 0).all()
+                assert units[:, :n].sum(axis=1) == pytest.approx(held, abs=1e-6, rel=1e-9)
+                assert st[sim.S_BE] == pytest.approx(float((price * held).sum()), abs=1e-3, rel=1e-9)
+                assert st[sim.S_BBASIS] == pytest.approx(float((units * cost).sum()), abs=1e-3, rel=1e-8)
+                assert not units[:, n:].any()
+                assert st[sim.S_LOTS] == sim.LOTS_STOCK and st[sim.S_STACC] == 0.0
+                continue
             units = st[sim.S_LOTU : sim.S_LOTU + n]
             cost = st[sim.S_LOTC : sim.S_LOTC + n]
             assert (units >= -1e-9).all() and (cost >= -1e-12).all()
@@ -308,7 +329,7 @@ def test_a_large_embedded_gain_makes_highest_cost_first_pay_less_tax_than_first_
 
 def test_short_term_gains_cost_something_to_a_strategy_that_sells_recent_lots():
     inputs = build_inputs(make_demo_household(), n_paths=120, seed=21)
-    policy = Strategy(0.8, "none", 0.0, True, False).policy()
+    policy = Strategy(0.8, "none", 0.0, False, False).policy()  # no direct indexing: its harvested lots carry no gain to tax
     taxed = run_batch(inputs, [policy])
     free = run_batch(inputs, [policy.replace(short_term_ordinary=False)])
     assert np.median(taxed.taxes_paid) > np.median(free.taxes_paid)

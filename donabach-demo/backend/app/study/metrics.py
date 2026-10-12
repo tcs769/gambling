@@ -57,16 +57,27 @@ def compare(
     risk_aversion: float = RISK_AVERSION,
     floor: float = WEALTH_FLOOR,
     with_range: bool = False,
+    median_only: bool = False,
 ) -> Advantage:
-    """Both advantage measures for `plan_wealth` against `baseline_wealth` (same futures, same order)."""
+    """Both advantage measures for `plan_wealth` against `baseline_wealth` (same futures, same order).
+
+    With `median_only` the risk-adjusted measure is not worked out: its fields are 0.0.
+    """
     plan_median = float(np.median(plan_wealth))
     base_median = float(np.median(baseline_wealth))
-    plan_ce = float(certainty_equivalent(plan_wealth, risk_aversion, floor))
-    base_ce = float(certainty_equivalent(baseline_wealth, risk_aversion, floor))
-    ranges = bootstrap_range(plan_wealth, baseline_wealth, years, risk_aversion, floor) if with_range else ((0.0, 0.0), (0.0, 0.0))
+    if median_only:
+        plan_ce = base_ce = 0.0
+    else:
+        plan_ce = float(certainty_equivalent(plan_wealth, risk_aversion, floor))
+        base_ce = float(certainty_equivalent(baseline_wealth, risk_aversion, floor))
+    ranges = (
+        bootstrap_range(plan_wealth, baseline_wealth, years, risk_aversion, floor, median_only=median_only)
+        if with_range
+        else ((0.0, 0.0), (0.0, 0.0))
+    )
     return Advantage(
         median=annualized(plan_median, base_median, years),
-        risk_adjusted=annualized(plan_ce, base_ce, years),
+        risk_adjusted=0.0 if median_only else annualized(plan_ce, base_ce, years),
         median_dollars=plan_median - base_median,
         risk_adjusted_dollars=plan_ce - base_ce,
         plan_median=plan_median,
@@ -87,20 +98,24 @@ def bootstrap_range(
     floor: float = WEALTH_FLOOR,
     n_boot: int = 300,
     seed: int = 0,
+    median_only: bool = False,
 ) -> tuple[tuple[float, float], tuple[float, float]]:
     """5th-95th percentile of both annualized advantages over resamples of the futures.
 
     The same resampled futures are used for the plan and the baseline (they were simulated on common
     random numbers), so this is the uncertainty in the difference, not in either wealth alone.
+    With `median_only` the risk-adjusted range is not worked out and comes back as (0, 0).
     """
     n = len(plan_wealth)
     idx = np.random.default_rng(seed).integers(0, n, size=(n_boot, n))
     plan, base = plan_wealth[idx], baseline_wealth[idx]
     med_p, med_b = np.median(plan, axis=1), np.median(base, axis=1)
+    medians = np.array([annualized(a, b, years) for a, b in zip(med_p, med_b, strict=True)])
+    m_lo, m_hi = np.percentile(medians, [5, 95])
+    if median_only:
+        return (float(m_lo), float(m_hi)), (0.0, 0.0)
     ce_p = certainty_equivalent(plan, risk_aversion, floor)
     ce_b = certainty_equivalent(base, risk_aversion, floor)
-    medians = np.array([annualized(a, b, years) for a, b in zip(med_p, med_b, strict=True)])
     ces = np.array([annualized(a, b, years) for a, b in zip(ce_p, ce_b, strict=True)])
-    m_lo, m_hi = np.percentile(medians, [5, 95])
     c_lo, c_hi = np.percentile(ces, [5, 95])
     return (float(m_lo), float(m_hi)), (float(c_lo), float(c_hi))

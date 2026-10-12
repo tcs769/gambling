@@ -1,55 +1,43 @@
 {
-  "id": "sample",
-  "name": "The sample household",
-  "type_label": "Diversified, modest unrealized gains",
-  "tagline": "Two earners in their late thirties with a home purchase, college and retirement ahead.",
+  "id": "tanaka",
+  "name": "The Tanaka family",
+  "type_label": "Large unrealized gains",
+  "tagline": "One earner aged 50 with a child, a large appreciated taxable account, and retirement planned at 60.",
   "household": {
     "people": [
       {
-        "name": "Alex Sample",
-        "age": 38,
-        "wages": 140000.0,
-        "pretax_401k": 24500.0
-      },
-      {
-        "name": "Jordan Sample",
-        "age": 37,
-        "wages": 110000.0,
-        "pretax_401k": 24500.0
+        "name": "Kenji Tanaka",
+        "age": 50,
+        "wages": 204268.1178437558,
+        "pretax_401k": 0.0
       }
     ],
     "children_ages": [
-      8
+      10
     ],
     "accounts": {
-      "brokerage_value": 150000.0,
-      "brokerage_basis": 110000.0,
-      "pretax_balance": 400000.0,
-      "pretax_equity_share": 0.75,
-      "roth_balance": 30000.0,
+      "brokerage_value": 645776.5889251672,
+      "brokerage_basis": 232795.28743796155,
+      "pretax_balance": 429185.46348976647,
+      "pretax_equity_share": 0.6000000000000001,
+      "roth_balance": 94380.31580549403,
       "roth_equity_share": 1.0,
-      "cash": 40000.0
+      "cash": 23940.442563266348
     },
     "goals": {
-      "home_purchase_in_years": 3,
+      "home_purchase_in_years": null,
       "home_down_payment": 120000.0,
-      "college_starts_in_years": 10,
-      "college_annual_cost": 35000.0,
+      "college_starts_in_years": 8,
+      "college_annual_cost": 44539.6192132624,
       "college_years": 4,
-      "retirement_age": 62,
-      "retirement_spending": 110000.0
+      "retirement_age": 60,
+      "retirement_spending": 90015.30971996777
     },
     "social_security": {
-      "annual_benefit": 50000.0,
+      "annual_benefit": 61280.43535312674,
       "start_age": 67
     },
-    "snapshot": {
-      "wages_after_401k": 201000.0,
-      "interest": 800.0,
-      "qualified_dividends": 2700.0,
-      "ordinary_dividends": 3000.0,
-      "net_capital_gain": 1500.0
-    },
+    "snapshot": null,
     "estimated": []
   }
 }

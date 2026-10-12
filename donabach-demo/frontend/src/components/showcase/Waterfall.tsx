@@ -4,7 +4,7 @@ import { useCallback, useId, useMemo, useRef, useState, type FocusEvent, type Po
 import { ChartFrame } from "@/components/charts/ChartFrame";
 import { Button, DataTable, Icon, Spinner, type DataColumn } from "@/components/ui";
 import { money, signedMoney } from "@/lib/format";
-import type { ShowcaseAnalysis } from "@/lib/types";
+import type { ShowcaseWaterfall } from "@/lib/types";
 import { Segmented } from "./Segmented";
 import { StrategySwitch } from "./StrategySwitch";
 import { useElementWidth } from "./useElementWidth";
@@ -34,13 +34,13 @@ interface Hover {
 }
 
 interface WaterfallProps {
-  /** The analysis on screen (it may be a step behind the switches while a new one is being worked out). */
-  analysis: ShowcaseAnalysis;
-  /** The analysis with every strategy on: the axis is never narrower than its bars, so a bar shrinks against a scale that stays put. */
-  full: ShowcaseAnalysis;
+  /** The waterfall on screen (it may be a step behind the switches while a new one is being worked out). */
+  waterfall: ShowcaseWaterfall;
+  /** The waterfall with every strategy on: the axis is never narrower than its bars, so a bar shrinks against a scale that stays put. */
+  full: ShowcaseWaterfall;
   /** The strategies that are switched on: what the switches show. */
   enabled: readonly string[];
-  /** A new analysis is on its way: the bars and numbers are dimmed until it arrives. */
+  /** A new waterfall is on its way: the bars and numbers are dimmed until it arrives. */
   computing: boolean;
   onToggle: (key: string, on: boolean) => void;
   /** Put every strategy back on. */
@@ -54,7 +54,7 @@ interface WaterfallProps {
  * that is off is an empty dashed bar of zero. What a bar's length means is a choice (dollars at the horizon or a yearly
  * rate), and both numbers are written on every row whichever is chosen. The same numbers are one toggle away as a table.
  */
-export function Waterfall({ analysis, full, enabled, computing, onToggle, onAllOn }: WaterfallProps) {
+export function Waterfall({ waterfall, full, enabled, computing, onToggle, onAllOn }: WaterfallProps) {
   const [unit, setUnit] = useState<Unit>("dollars");
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   const [hover, setHover] = useState<Hover | null>(null);
@@ -69,12 +69,12 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle, onAllO
   );
   const ids = useId();
 
-  const horizon = analysis.horizon_age;
-  const rows = useMemo(() => waterfallRows(analysis), [analysis]);
+  const horizon = waterfall.horizon_age;
+  const rows = useMemo(() => waterfallRows(waterfall), [waterfall]);
   // Seven tick labels do not fit a phone's width: a narrow chart gets half as many.
   const axis = useMemo(
-    () => axisFor(unit, [analysis, full], width > 0 && width < 560 ? 3 : 6),
-    [unit, analysis, full, width],
+    () => axisFor(unit, [waterfall, full], width > 0 && width < 560 ? 3 : 6),
+    [unit, waterfall, full, width],
   );
   const strategyRows = rows.filter((row) => row.kind === "strategy");
   const allOpen = strategyRows.length > 0 && strategyRows.every((row) => open.has(row.key));
@@ -109,16 +109,16 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle, onAllO
   };
 
   const tipRow = hover ? rows.find((row) => row.key === hover.key) : undefined;
-  const on = analysis.bars.filter((bar) => bar.enabled).length;
-  const biggest = biggestStep(analysis);
-  const total = analysis.advantage;
+  const on = waterfall.bars.filter((bar) => bar.enabled).length;
+  const biggest = biggestStep(waterfall);
+  const total = waterfall.advantage;
 
   // The figure's text alternative, in words: how many strategies are on, what they come to, and the biggest step.
-  const advisorName = analysis.advisor_label.toLowerCase();
+  const advisorName = waterfall.advisor_label.toLowerCase();
   const ahead = total.median_dollars >= 0;
   const summary = (
     <>
-      {strategiesOn(on, analysis.bars.length)}:{" "}
+      {strategiesOn(on, waterfall.bars.length)}:{" "}
       {on === 0 ? (
         <>Donabach&apos;s plan is the {advisorName}&apos;s own, so the advantage is zero.</>
       ) : (
@@ -159,7 +159,7 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle, onAllO
         <Icon name="info" size={18} />
         {allOpen ? "Hide the explanations" : "Explain each strategy"}
       </Button>
-      {enabled.length < analysis.bars.length && (
+      {enabled.length < waterfall.bars.length && (
         <Button variant="secondary" className={styles.allOn} onClick={onAllOn}>
           Switch every strategy on
         </Button>
@@ -175,7 +175,7 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle, onAllO
 
   return (
     <ChartFrame
-      label={`Waterfall from the ${analysis.advisor_label.toLowerCase()}'s result to Donabach's: what each strategy adds to median after-tax wealth at ${horizon}`}
+      label={`Waterfall from the ${waterfall.advisor_label.toLowerCase()}'s result to Donabach's: what each strategy adds to median after-tax wealth at ${horizon}`}
       height="auto"
       wrapToolbar
       legend={controls}
@@ -184,7 +184,7 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle, onAllO
         <div ref={setChart} className={styles.chart} data-stale={computing} aria-busy={computing}>
           <ol
             className={styles.rows}
-            aria-label={`What each strategy adds, from the ${analysis.advisor_label.toLowerCase()}'s result to Donabach's`}
+            aria-label={`What each strategy adds, from the ${waterfall.advisor_label.toLowerCase()}'s result to Donabach's`}
           >
             {rows.map((row, i) => (
               <RowView
@@ -195,7 +195,7 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle, onAllO
                 unit={unit}
                 axis={axis}
                 horizon={horizon}
-                analysis={analysis}
+                waterfall={waterfall}
                 checked={enabled.includes(row.key)}
                 open={open.has(row.key)}
                 detailId={`${ids}-${row.key}`}
@@ -233,12 +233,12 @@ export function Waterfall({ analysis, full, enabled, computing, onToggle, onAllO
               data-flip={hover.x > hover.width - 290}
               style={{ left: hover.x, top: hover.y }}
             >
-              <Tip row={tipRow} unit={unit} horizon={horizon} analysis={analysis} />
+              <Tip row={tipRow} unit={unit} horizon={horizon} waterfall={waterfall} />
             </div>
           )}
         </div>
       }
-      table={<WaterfallTable rows={rows} horizon={horizon} analysis={analysis} />}
+      table={<WaterfallTable rows={rows} horizon={horizon} waterfall={waterfall} />}
     />
   );
 }
@@ -248,18 +248,18 @@ function Tip({
   row,
   unit,
   horizon,
-  analysis,
+  waterfall,
 }: {
   row: WaterfallRow;
   unit: Unit;
   horizon: number;
-  analysis: ShowcaseAnalysis;
+  waterfall: ShowcaseWaterfall;
 }) {
   if (row.kind === "start") {
     return (
       <>
         <div className={styles.tipName}>{row.label}</div>
-        <div className={styles.tipValue}>{money(analysis.advantage.advisor_median_at_horizon)}</div>
+        <div className={styles.tipValue}>{money(waterfall.advantage.advisor_median_at_horizon)}</div>
         <div className={styles.tipDetail}>Median after-tax wealth at {horizon}: where everything is measured from</div>
       </>
     );
@@ -297,7 +297,7 @@ interface RowProps {
   unit: Unit;
   axis: Axis;
   horizon: number;
-  analysis: ShowcaseAnalysis;
+  waterfall: ShowcaseWaterfall;
   checked: boolean;
   open: boolean;
   detailId: string;
@@ -316,7 +316,7 @@ function RowView({
   unit,
   axis,
   horizon,
-  analysis,
+  waterfall,
   checked,
   open,
   detailId,
@@ -359,9 +359,9 @@ function RowView({
         : dollarsText(row.delta.dollars, horizon);
   const median =
     row.kind === "start"
-      ? analysis.advantage.advisor_median_at_horizon
+      ? waterfall.advantage.advisor_median_at_horizon
       : row.kind === "total"
-        ? analysis.advantage.plan_median_at_horizon
+        ? waterfall.advantage.plan_median_at_horizon
         : undefined;
 
   return (
@@ -453,11 +453,11 @@ function RowView({
 function WaterfallTable({
   rows,
   horizon,
-  analysis,
+  waterfall,
 }: {
   rows: readonly WaterfallRow[];
   horizon: number;
-  analysis: ShowcaseAnalysis;
+  waterfall: ShowcaseWaterfall;
 }) {
   const columns: DataColumn<WaterfallRow>[] = [
     {
@@ -470,12 +470,12 @@ function WaterfallTable({
           {row.label}
           {row.kind === "start" && (
             <span className={styles.tableNote}>
-              Starting point: median {money(analysis.advantage.advisor_median_at_horizon)} at {horizon}
+              Starting point: median {money(waterfall.advantage.advisor_median_at_horizon)} at {horizon}
             </span>
           )}
           {row.kind === "total" && (
             <span className={styles.tableNote}>
-              Median {money(analysis.advantage.plan_median_at_horizon)} at {horizon}
+              Median {money(waterfall.advantage.plan_median_at_horizon)} at {horizon}
             </span>
           )}
           {row.kind === "strategy" && !row.enabled && <span className={styles.tableNote}>Switched off</span>}

@@ -502,3 +502,77 @@ def test_compiled_kernel_matches_plain_python():
 def test_all_outputs_are_finite_on_extreme_inputs():
     r = tax_core(5e7, 1e6, 1e6, 1e6, 1e7, 1e6, 1e6, 1e5, 1e6, 3.0, 3.0, 0.0, 2.0)
     assert all(math.isfinite(x) for x in r)
+
+
+# --- Charitable gifts ----------------------------------------------------------------------
+
+
+def test_no_gifts_leave_the_deduction_alone():
+    r = ret(wages=150_000.0)
+    assert r.deduction_used == P.STANDARD_DEDUCTION_MFJ and r.charitable_deduction == 0.0 and not r.itemized
+    assert ret(wages=150_000.0, cash_gifts=0.0, stock_gifts=0.0) == r
+
+
+def test_a_household_that_does_not_itemize_deducts_up_to_2000_of_cash_gifts_on_top_of_the_standard_deduction():
+    base = ret(wages=150_000.0)
+    r = ret(wages=150_000.0, cash_gifts=1_500.0)
+    assert r.deduction_used == pytest.approx(P.STANDARD_DEDUCTION_MFJ + 1_500.0) and not r.itemized
+    assert r.taxable_income == pytest.approx(base.taxable_income - 1_500.0)
+    big = ret(wages=150_000.0, cash_gifts=10_000.0)  # still under the standard deduction: only the allowance
+    assert big.deduction_used == pytest.approx(P.STANDARD_DEDUCTION_MFJ + P.CHARITY_NON_ITEMIZER_MFJ) and not big.itemized
+    assert big.charitable_deduction == pytest.approx(2_000.0)
+
+
+def test_gifts_of_stock_get_no_allowance_when_the_household_does_not_itemize():
+    r = ret(wages=150_000.0, stock_gifts=10_000.0)
+    assert r.deduction_used == P.STANDARD_DEDUCTION_MFJ and r.charitable_deduction == 0.0 and not r.itemized
+    assert r.grand_total == ret(wages=150_000.0).grand_total
+
+
+def test_a_household_itemizes_when_its_gifts_beat_the_standard_deduction_after_the_half_percent_floor():
+    wages = 200_000.0
+    floor = P.CHARITY_ITEMIZER_FLOOR * wages
+    r = ret(wages=wages, cash_gifts=50_000.0)
+    assert r.itemized and r.deduction_used == pytest.approx(50_000.0 - floor) and r.charitable_deduction == r.deduction_used
+    assert r.taxable_income == pytest.approx(wages - (50_000.0 - floor))
+    # a dollar short of what itemizing needs, the allowance route is taken instead
+    short = ret(wages=wages, cash_gifts=P.STANDARD_DEDUCTION_MFJ + P.CHARITY_NON_ITEMIZER_MFJ + floor - 1.0)
+    assert not short.itemized and short.deduction_used == pytest.approx(P.STANDARD_DEDUCTION_MFJ + P.CHARITY_NON_ITEMIZER_MFJ)
+    over = ret(wages=wages, cash_gifts=P.STANDARD_DEDUCTION_MFJ + P.CHARITY_NON_ITEMIZER_MFJ + floor + 1.0)
+    assert over.itemized and over.deduction_used == pytest.approx(P.STANDARD_DEDUCTION_MFJ + P.CHARITY_NON_ITEMIZER_MFJ + 1.0)
+
+
+def test_gifts_are_limited_by_agi_sixty_percent_for_cash_thirty_for_stock_sixty_together():
+    wages = 200_000.0
+    floor = P.CHARITY_ITEMIZER_FLOOR * wages
+    assert ret(wages=wages, cash_gifts=500_000.0).deduction_used == pytest.approx(0.60 * wages - floor)
+    assert ret(wages=wages, stock_gifts=500_000.0).deduction_used == pytest.approx(0.30 * wages - floor)
+    # cash takes 100,000 of the 120,000 the two share, and stock the 20,000 left
+    assert ret(wages=wages, cash_gifts=100_000.0, stock_gifts=100_000.0).deduction_used == pytest.approx(120_000.0 - floor)
+
+
+def test_for_a_household_that_itemizes_cash_and_stock_gifts_are_worth_the_same():
+    cash = ret(wages=300_000.0, cash_gifts=60_000.0)
+    stock = ret(wages=300_000.0, stock_gifts=60_000.0)
+    assert cash.itemized and stock.itemized and cash.grand_total == pytest.approx(stock.grand_total)
+
+
+def test_illinois_tax_ignores_charitable_gifts():
+    assert ret(wages=200_000.0, cash_gifts=50_000.0).illinois_tax == ret(wages=200_000.0).illinois_tax
+
+
+def test_the_return_shows_the_deduction_that_was_used():
+    labels = [line.label for line in ret(wages=200_000.0, cash_gifts=50_000.0).lines()]
+    assert "Itemized deductions (charitable gifts)" in labels and "Standard deduction" not in labels
+    labels = [line.label for line in ret(wages=150_000.0, cash_gifts=1_000.0).lines()]
+    assert "Standard deduction" in labels and "Charitable gifts of cash (without itemizing)" in labels
+    assert "Standard deduction" in [line.label for line in ret(wages=150_000.0).lines()]
+
+
+def test_compiled_kernel_matches_plain_python_with_gifts():
+    py = getattr(tax_core, "py_func", tax_core)
+    args = (201_000.0, 800.0, 2_700.0, 3_000.0, -1_500.0, 12_000.0, 30_000.0, 50_000.0, 5_000.0, 1.0, 1.0, 2_000.0, 1.0, 500.0)
+    for gifts in ((0.0, 0.0), (1_500.0, 0.0), (0.0, 20_000.0), (60_000.0, 40_000.0), (400_000.0, 400_000.0)):
+        fast, slow = tax_core(*args, *gifts), py(*args, *gifts)
+        for a, b in zip(fast, slow, strict=True):
+            assert a == pytest.approx(b, rel=1e-12, abs=1e-9)

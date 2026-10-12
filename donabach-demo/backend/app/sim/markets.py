@@ -37,6 +37,18 @@ BOND_INTEREST_YIELD = 0.035  # taxable bond interest, ordinary income, on broker
 # is not taxed each year.)
 PRIVATE_CREDIT_INCOME_YIELD = float(MEANS[PRIVATE_CREDIT]) + ASSUMED_INFLATION
 
+# A stock's own movement beside the market's, in the direct-indexing book (app/sim/stocks.py): the annualized standard
+# deviation of its return after the market's part is taken out. Two published estimates bracket it:
+#   * Campbell, Lettau, Malkiel and Xu (2022), "Idiosyncratic Equity Risk Two Decades Later", NBER Working Paper 29916
+#     (Critical Finance Review 12, 2023): the value-weighted average idiosyncratic volatility of US stocks was 26% a year
+#     from 1962 to 1997 and 28% from 1997 to 2021 (market volatility 12% and 18%), net of industry effects.
+#   * S&P Dow Jones Indices, "The Dispersion-Correlation Map": the annualized dispersion of S&P 500 constituents' returns sat
+#     between 20% and 25% from 1990 to 2015.
+# 25% is taken (the top of the second, just under the first: a sleeve of large stocks, and the first's daily-return measure
+# includes microstructure noise). With the model's 16% market volatility a stock's total volatility is then 30%.
+# `app.study.harvest_calibration` and the report show what 20% and 30% do (reports/final_report.md, Update 4).
+STOCK_IDIO_VOL = 0.25
+
 MIN_RETURN = -0.95  # a normal draw can never wipe out more than this in a year
 
 DEFAULT_SEED = 2026

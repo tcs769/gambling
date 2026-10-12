@@ -35,6 +35,9 @@ class Goals(BaseModel):
     college_years: int = Field(4, ge=0, le=8)
     retirement_age: int = Field(62, ge=50, le=70)
     retirement_spending: float = Field(110_000.0, ge=0, description="Spending a year, before tax")
+    charitable_giving: float = Field(
+        0.0, ge=0, description="Gifts to charity a year (real dollars), paid in cash unless the plan gives appreciated stock instead"
+    )
 
 
 class SocialSecurity(BaseModel):

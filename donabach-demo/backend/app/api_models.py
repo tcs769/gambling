@@ -53,6 +53,7 @@ class Answers(BaseModel):
     college_years: int = Field(4, ge=0, le=8)
     retirement_age: int = Field(62, ge=50, le=70)
     retirement_spending: float = Field(110_000.0, ge=0)
+    charitable_giving: float = Field(0.0, ge=0, description="Gifts to charity a year")
     roth_balance: float = Field(30_000.0, ge=0)
     cash: float = Field(40_000.0, ge=0)
     social_security_annual: float = Field(50_000.0, ge=0)
@@ -250,23 +251,28 @@ class BaselineView(BaseModel):
     key: Literal["good_ria", "typical_advisor"]
     label: str
     definition: str
-    outcome: OutcomeView
+    outcome: OutcomeView  # liquidated at the horizon
+    outcome_heirs: OutcomeView  # the same futures with the estate passed to heirs at the horizon
     lifetime_taxes: float  # median income tax paid plus tax still owed on pre-tax accounts
     shortfall_chance: float  # share of futures in which spending or a goal could not be funded
-    advantage: AdvantageView  # the plan's advantage over this baseline
+    advantage: AdvantageView  # the plan's advantage over this baseline, liquidated at the horizon
+    advantage_heirs: AdvantageView  # ... and with the estate passed to heirs
     fan: FanSeries
 
 
 class StatCards(BaseModel):
     typical_outcome: OutcomeView
     ria_typical_outcome: OutcomeView
+    typical_outcome_heirs: OutcomeView
+    ria_typical_outcome_heirs: OutcomeView
     advantage_per_year: float  # typical outcome minus the RIA's typical outcome, over the plan years
     advantage_total: float
     lifetime_taxes: float  # income taxes paid plus tax still owed on pre-tax accounts (median)
     ria_lifetime_taxes: float
     years: int
     shortfall_chance: float  # share of futures in which the plan could not fund spending or a goal
-    advantage: AdvantageView  # over the good RIA
+    advantage: AdvantageView  # over the good RIA, liquidated at the horizon
+    advantage_heirs: AdvantageView  # over the good RIA, with the estate passed to heirs
 
 
 class PlanSettings(BaseModel):
@@ -283,6 +289,10 @@ class PlanSettings(BaseModel):
     wealth_floor: float  # wealth below this counts as this much when scoring
     market_shock: MarketShock | None = None
     planning_style: Literal["balanced", "equity_first"] = "equity_first"  # which family of strategies was searched
+    heirs_rate: float = 0.24  # the flat tax rate on pre-tax accounts in the "passed to heirs" valuation
+    liquidated_label: str = "Liquidated at 80"
+    heirs_label: str = "Passed to heirs at 80"
+    heirs_note: str = ""  # what the "passed to heirs" valuation assumes and why
 
 
 # --- The adaptive planner (spec part B) ---------------------------------------------------------
@@ -417,6 +427,7 @@ class HouseholdEdits(BaseModel):
 
     retirement_age: int | None = Field(None, ge=50, le=70)
     retirement_spending: float | None = Field(None, ge=0)
+    charitable_giving: float | None = Field(None, ge=0)
     home_purchase_in_years: int | None = Field(None, ge=0, le=30)
     home_down_payment: float | None = Field(None, ge=0)
     college_starts_in_years: int | None = Field(None, ge=0, le=30)
@@ -521,6 +532,29 @@ class WealthLines(BaseModel):
     advisor_p10: list[float]
 
 
+class ShowcaseMedian(BaseModel):
+    """The waterfall's headline: the median advantage and nothing else."""
+
+    median_rate: float  # annual growth-rate advantage of median after-tax wealth at the horizon (a fraction)
+    median_dollars: float
+    median_low: float  # the 5th to 95th percentile over resamples of the futures
+    median_high: float
+    plan_median_at_horizon: float
+    advisor_median_at_horizon: float
+
+
+class ShowcaseWaterfall(BaseModel):
+    """The strategies switched on in sequence on the same futures: one bar each, and what they add up to (median only)."""
+
+    enabled: list[str]
+    bars: list[ShowcaseBar]
+    advantage: ShowcaseMedian
+    n_paths: int
+    years: int
+    horizon_age: int
+    advisor_label: str
+
+
 class ShowcaseAdvantage(BaseModel):
     median_rate: float  # annual growth-rate advantage of median after-tax wealth at the horizon (a fraction)
     median_dollars: float
@@ -536,10 +570,27 @@ class ShowcaseAdvantage(BaseModel):
     advisor_shortfall: float
 
 
-class ShowcaseAnalysis(BaseModel):
-    enabled: list[str]
-    bars: list[ShowcaseBar]
+class ShowcaseHeirs(BaseModel):
+    """The same plan and advisor with the estate passed to heirs at the horizon (step-up on the taxable account, the pre-tax
+    accounts taxed at the heirs' rate), on the same futures. The median only: the risk-adjusted advantage is shown once."""
+
+    label: str
+    note: str  # what it assumes and why, with the rate
+    rate: float  # the heirs' flat tax rate on pre-tax accounts
+    median_rate: float
+    median_dollars: float
+    plan_median_at_horizon: float
+    advisor_median_at_horizon: float
+
+
+class ShowcaseWealth(BaseModel):
+    """The whole plan (every strategy on) against the advisor: wealth over time and both measures of the advantage.
+
+    Worked out once. Switching strategies off on the waterfall does not change it."""
+
+    liquidated_label: str  # the valuation of `advantage` and the wealth lines: everything sold at 80
     advantage: ShowcaseAdvantage
+    heirs: ShowcaseHeirs
     wealth: WealthLines
     risk_adjusted_label: str
     risk_adjusted_explanation: str  # one line
@@ -548,8 +599,6 @@ class ShowcaseAnalysis(BaseModel):
     horizon_age: int
     risk_aversion: float
     advisor_label: str
-    plan_label: str  # the recommendation in one line
-    plan_sentence: str  # the recommendation in plain language
 
 
 class ShowcaseRequest(BaseModel):
@@ -563,4 +612,9 @@ class ShowcaseResponse(BaseModel):
     tagline: str
     household: Household
     card: HouseholdCard
-    analysis: ShowcaseAnalysis
+    plan_label: str  # the recommendation in one line
+    plan_sentence: str  # the recommendation in plain language
+    waterfall: ShowcaseWaterfall  # every strategy on
+    wealth: ShowcaseWealth  # the whole plan
+    typical_rate: float | None  # the typical household's median advantage a year (a fraction), from the 300-household study
+    footer_note: str  # what the showcase footer adds: these results are for this household, and what a typical one sees

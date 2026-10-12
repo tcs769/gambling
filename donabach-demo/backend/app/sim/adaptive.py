@@ -67,11 +67,14 @@ from app.sim.simulate import (
     A_PC,
     A_REALIZE,
     A_STOCK,
+    HC_HEIRS_RATE,
     HC_SS,
+    N_STOCKS,
     NACT,
     NGATE,
     NLOG,
     NSTATE,
+    NSTATE_DI,
     NY,
     RUN_BEGIN,
     RUN_REST,
@@ -79,6 +82,7 @@ from app.sim.simulate import (
     S_BBASIS,
     S_BE,
     S_BP,
+    S_LOTS,
     S_PB,
     S_PE,
     S_PP,
@@ -97,6 +101,8 @@ from app.sim.simulate import (
     _lots_start,
     _run_years,
     _stock_share,
+    heirs_wealth,
+    wants_book,
 )
 from app.tax import params_2026 as P
 from app.tax.engine import pretax_withdrawal_rate, tax_core
@@ -293,13 +299,19 @@ def _score(st, ys, act_candidate, t, k_roll, tv, hhc, row, gates1, fut_rets, fut
     n_years = tv.shape[0]
     total = 0.0
     weights = 0.0
+    no_book = np.ones((1, N_STOCKS), dtype=np.float32)
+    no_diag = np.zeros(1)
     for k in range(k_roll):
-        st_r[:] = st
+        st_r[:] = st[:NSTATE]
+        if st_r[S_LOTS] > 2.5:
+            # The rollouts imagine the future on the account's totals (average cost, the aggregate harvest rule): they need
+            # no stock-by-stock book, which would be copied and run for every rollout of every candidate.
+            st_r[S_LOTS] = 0.0
         ys_r[:] = ys
         act_r[:] = act_candidate
         wealth, _ = _run_years(
-            st_r, ys_r, act_r, tv, hhc, row, gates1, fut_rets[k], fut_wages[k], fut_k[k], fut_wt[k],
-            t, n_years, RUN_REST, True, False, scratch_pw, False, scratch_log,
+            st_r, ys_r, act_r, tv, hhc, row, gates1, fut_rets[k], fut_wages[k], fut_k[k], fut_wt[k], no_book,
+            t, n_years, RUN_REST, True, False, scratch_pw, False, scratch_log, no_diag, False,
         )
         u = _utility(wealth, gamma, floor)
         util_out[k] = u
@@ -490,7 +502,7 @@ def _confirm_moves(
 
 @jit
 def _adaptive_path(
-    p, p_abs, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
+    p, p_abs, row, tv, init, hhc, rets, wages, k401, wt, zs, logperm, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
     inc_working, n_earn, cfg, seed, force, record, out, path_wealth, chosen, cont, ce_chosen, ce_cont, n_cand, extra,
     rec_act, rec_ce, rec_state, record_state, log, do_log,
 ):
@@ -506,7 +518,11 @@ def _adaptive_path(
     tilt = cfg[CFG_TILT]
     apply = cfg[CFG_APPLY] > 0.5
     cap2 = max(k2, 2)
-    st = init.copy()
+    if wants_book(row):
+        st = np.zeros(NSTATE_DI)  # the direct-indexing book follows the base state
+        st[:NSTATE] = init[:NSTATE]
+    else:
+        st = init.copy()
     _lots_start(st, row)
     ys = np.zeros(NY)
     act0 = np.zeros(NACT)
@@ -538,15 +554,16 @@ def _adaptive_path(
     means = np.zeros(2)
     scratch_pw = np.zeros(n_years)
     scratch_log = np.zeros((1, NLOG))
+    no_diag = np.zeros(1)
     lp0 = np.zeros(2)
     taxes = 0.0
     wealth = 0.0
     for t in range(n_years):
-        _run_years(st, ys, act0, tv, hhc, row, gates1, rets[p], wages[p], k401[p], wt[p], t, t + 1, RUN_BEGIN, False, False, scratch_pw, False, scratch_log)
+        _run_years(st, ys, act0, tv, hhc, row, gates1, rets[p], wages[p], k401[p], wt[p], zs[p], t, t + 1, RUN_BEGIN, False, False, scratch_pw, False, scratch_log, no_diag, False)
         act[:] = act0
         picked[:] = act0
         if record_state:
-            rec_state[p, t, :] = st
+            rec_state[p, t, :] = st[:NSTATE]
         if not force:
             lp0[0] = logperm[p, t, 0]
             lp0[1] = logperm[p, t, 1]
@@ -602,8 +619,8 @@ def _adaptive_path(
             chosen[p, t, d] = picked[DIMS[d]]
             cont[p, t, d] = act0[DIMS[d]]
         w, tax = _run_years(
-            st, ys, act, tv, hhc, row, gates1, rets[p], wages[p], k401[p], wt[p], t, t + 1, RUN_REST, t == n_years - 1,
-            True, path_wealth[p], do_log, log,
+            st, ys, act, tv, hhc, row, gates1, rets[p], wages[p], k401[p], wt[p], zs[p], t, t + 1, RUN_REST, t == n_years - 1,
+            True, path_wealth[p], do_log, log, no_diag, False,
         )
         taxes += tax
         wealth = w if t == n_years - 1 else wealth
@@ -613,18 +630,19 @@ def _adaptive_path(
     out[p, 1] = taxes
     out[p, 2] = owed
     out[p, 3] = st[S_UNFUNDED]
+    out[p, 4] = heirs_wealth(st, hhc[HC_HEIRS_RATE])
 
 
 @jit(parallel=True, nogil=True)
 def _adaptive_batch(
-    p_offset, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
+    p_offset, row, tv, init, hhc, rets, wages, k401, wt, zs, logperm, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
     inc_working, n_earn, cfg, seed, force, record, out, path_wealth, chosen, cont, ce_chosen, ce_cont, n_cand, extra,
     rec_act, rec_ce, rec_state, record_state, log, log_path,
 ):
     n_paths = rets.shape[0]
     for p in prange(n_paths):
         _adaptive_path(
-            p, p_offset + p, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base,
+            p, p_offset + p, row, tv, init, hhc, rets, wages, k401, wt, zs, logperm, mk_means, mk_sds, mk_chol, inc_base,
             inc_growth, inc_working, n_earn, cfg, seed, force, record, out, path_wealth, chosen, cont, ce_chosen,
             ce_cont, n_cand, extra, rec_act, rec_ce, rec_state, record_state, log, p == log_path,
         )
@@ -632,7 +650,7 @@ def _adaptive_batch(
 
 @jit(nogil=True)
 def _adaptive_batch_serial(
-    p_offset, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
+    p_offset, row, tv, init, hhc, rets, wages, k401, wt, zs, logperm, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
     inc_working, n_earn, cfg, seed, force, record, out, path_wealth, chosen, cont, ce_chosen, ce_cont, n_cand, extra,
     rec_act, rec_ce, rec_state, record_state, log, log_path,
 ):
@@ -641,7 +659,7 @@ def _adaptive_batch_serial(
     n_paths = rets.shape[0]
     for p in range(n_paths):
         _adaptive_path(
-            p, p_offset + p, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base,
+            p, p_offset + p, row, tv, init, hhc, rets, wages, k401, wt, zs, logperm, mk_means, mk_sds, mk_chol, inc_base,
             inc_growth, inc_working, n_earn, cfg, seed, force, record, out, path_wealth, chosen, cont, ce_chosen,
             ce_cont, n_cand, extra, rec_act, rec_ce, rec_state, record_state, log, p == log_path,
         )
@@ -649,14 +667,18 @@ def _adaptive_batch_serial(
 
 @jit
 def _probe_path(
-    p, p_abs, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
+    p, p_abs, row, tv, init, hhc, rets, wages, k401, wt, zs, logperm, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
     inc_working, n_earn, gamma, floor, tilt, ref_seed, ref_k, cand_vals, n_cand, picked_vals, out_u,
 ):
     """Walk path `p` with the continuation policy (the planner's own decisions are not applied) and, in each year,
     score the candidates the planner considered (and the action it took) on `ref_k` reference futures drawn from
     a stream the planner never used. The result is an independent estimate of what each candidate was worth."""
     n_years = tv.shape[0]
-    st = init.copy()
+    if wants_book(row):
+        st = np.zeros(NSTATE_DI)
+        st[:NSTATE] = init[:NSTATE]
+    else:
+        st = init.copy()
     _lots_start(st, row)
     ys = np.zeros(NY)
     act0 = np.zeros(NACT)
@@ -673,9 +695,10 @@ def _probe_path(
     util = np.zeros(ref_k)
     scratch_pw = np.zeros(n_years)
     scratch_log = np.zeros((1, NLOG))
+    no_diag = np.zeros(1)
     lp0 = np.zeros(2)
     for t in range(n_years):
-        _run_years(st, ys, act0, tv, hhc, row, gates1, rets[p], wages[p], k401[p], wt[p], t, t + 1, RUN_BEGIN, False, False, scratch_pw, False, scratch_log)
+        _run_years(st, ys, act0, tv, hhc, row, gates1, rets[p], wages[p], k401[p], wt[p], zs[p], t, t + 1, RUN_BEGIN, False, False, scratch_pw, False, scratch_log, no_diag, False)
         lp0[0] = logperm[p, t, 0]
         lp0[1] = logperm[p, t, 1]
         _make_futures(
@@ -690,17 +713,17 @@ def _probe_path(
                 st, ys, act, t, ref_k, tv, hhc, row, gates1, fut_rets, fut_wages, fut_k, fut_wt, fut_w, st_r, ys_r, act_r,
                 scratch_pw, scratch_log, gamma, floor, util,
             )
-        _run_years(st, ys, act0, tv, hhc, row, gates1, rets[p], wages[p], k401[p], wt[p], t, t + 1, RUN_REST, False, False, scratch_pw, False, scratch_log)
+        _run_years(st, ys, act0, tv, hhc, row, gates1, rets[p], wages[p], k401[p], wt[p], zs[p], t, t + 1, RUN_REST, False, False, scratch_pw, False, scratch_log, no_diag, False)
 
 
 @jit(parallel=True, nogil=True)
 def _probe_batch(
-    p_offset, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
+    p_offset, row, tv, init, hhc, rets, wages, k401, wt, zs, logperm, mk_means, mk_sds, mk_chol, inc_base, inc_growth,
     inc_working, n_earn, gamma, floor, tilt, ref_seed, ref_k, cand_vals, n_cand, picked_vals, out_u,
 ):
     for p in prange(rets.shape[0]):
         _probe_path(
-            p, p_offset + p, row, tv, init, hhc, rets, wages, k401, wt, logperm, mk_means, mk_sds, mk_chol, inc_base,
+            p, p_offset + p, row, tv, init, hhc, rets, wages, k401, wt, zs, logperm, mk_means, mk_sds, mk_chol, inc_base,
             inc_growth, inc_working, n_earn, gamma, floor, tilt, ref_seed, ref_k, cand_vals, n_cand, picked_vals, out_u,
         )
 
@@ -754,6 +777,7 @@ class AdaptiveResult:
     taxes_paid: np.ndarray
     pretax_owed: np.ndarray
     unfunded: np.ndarray
+    wealth_heirs: np.ndarray  # (paths,) the same households' wealth passed to their heirs at the horizon
     path_wealth: np.ndarray  # (paths, years) after-tax wealth at the end of each year
     chosen: np.ndarray  # (paths, years, ND) the action taken, by `DIM_NAMES`
     continuation: np.ndarray  # (paths, years, ND) what the continuation policy would have done
@@ -827,7 +851,7 @@ def run_adaptive(
     means, sds, chol = _market_arrays(inputs.market)
     seed = rollout_seed(inputs.seed)
 
-    out = np.zeros((n_paths, 4))
+    out = np.zeros((n_paths, 5))
     path_wealth = np.zeros((n_paths, n_years))
     chosen = np.zeros((n_paths, n_years, ND))
     cont = np.zeros((n_paths, n_years, ND))
@@ -860,7 +884,7 @@ def run_adaptive(
         # basic slices of C-contiguous arrays are views: the kernel writes straight into the full arrays
         args = (
             p0, row, inputs.tv, inputs.init, inputs.hhc,
-            inputs.rets[sl], inputs.wages[sl], inputs.k401[sl], inputs.wage_tax[sl], inputs.logperm[sl],
+            inputs.rets[sl], inputs.wages[sl], inputs.k401[sl], inputs.wage_tax[sl], inputs.stock_g[sl], inputs.logperm[sl],
             means, sds, chol, inputs.inc_base, inputs.inc_growth, inputs.inc_working, int(inputs.n_earners),
             cfg, seed, settings.force_continuation, record_candidates,
             part["out"], part["path_wealth"], part["chosen"], part["cont"], part["ce_chosen"], part["ce_cont"],
@@ -879,6 +903,7 @@ def run_adaptive(
         taxes_paid=out[:, 1].copy(),
         pretax_owed=out[:, 2].copy(),
         unfunded=out[:, 3].copy(),
+        wealth_heirs=out[:, 4].copy(),
         path_wealth=path_wealth,
         chosen=chosen,
         continuation=cont,
@@ -939,7 +964,7 @@ def probe_candidates(
         with _KERNEL_LOCK.background():
             _probe_batch(
                 p0, row, inputs.tv, inputs.init, inputs.hhc,
-                inputs.rets[sl], inputs.wages[sl], inputs.k401[sl], inputs.wage_tax[sl], inputs.logperm[sl],
+                inputs.rets[sl], inputs.wages[sl], inputs.k401[sl], inputs.wage_tax[sl], inputs.stock_g[sl], inputs.logperm[sl],
                 means, sds, chol, inputs.inc_base, inputs.inc_growth, inputs.inc_working, int(inputs.n_earners),
                 settings.risk_aversion, settings.floor,
                 settings.tilt if reference_tilt is None else reference_tilt, ref_seed, int(reference_k),

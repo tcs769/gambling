@@ -74,6 +74,9 @@ def apply_whatif(
     if edits.retirement_spending is not None:
         change("retirement_spending", "Retirement spending", _money(goals["retirement_spending"]), _money(edits.retirement_spending))
         goals["retirement_spending"] = edits.retirement_spending
+    if edits.charitable_giving is not None:
+        change("charitable_giving", "Charitable giving a year", _money(goals["charitable_giving"]), _money(edits.charitable_giving))
+        goals["charitable_giving"] = edits.charitable_giving
     if edits.remove_home_purchase:
         set_home(None)
     elif edits.home_purchase_in_years is not None:

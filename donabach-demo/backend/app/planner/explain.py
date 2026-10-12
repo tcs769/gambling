@@ -47,7 +47,7 @@ def advantage_policies(strategy: Strategy) -> list[tuple[str, Policy]]:
     p0 = RIA_BASELINE
     p1 = p0.replace(breakpoint_fees=False, flat_fee=DONABACH_FLAT_FEE)
     p2 = p1.replace(donabach_location=True)
-    p2b = p2.replace(lot_method=chosen.lot_method, short_term_ordinary=chosen.short_term_ordinary)
+    p2b = p2.replace(lot_method=chosen.lot_method, short_term_ordinary=chosen.short_term_ordinary, donate_lots=chosen.donate_lots)
     p3 = p2b.replace(direct_indexing=chosen.direct_indexing)
     p4 = p3.replace(
         goal_bonds=chosen.goal_bonds,
@@ -138,7 +138,7 @@ def tax_return_for_year(log: dict[str, np.ndarray], t: int) -> TaxReturn:
             wages=max(0.0, float(log["wages_taxable"][t])),
             interest=max(0.0, float(log["interest"][t])),
             qualified_dividends=max(0.0, float(log["dividends"][t])),
-            ordinary_dividends=max(0.0, float(log["dividends"][t])),
+            ordinary_dividends=max(0.0, float(log["dividends"][t])) + float(log["fund_distribution_short_term"][t]),
             net_capital_gain=float(log["net_gain"][t]),
             short_term_gain=float(log["short_term_gain"][t]),
             retirement_distributions=max(0.0, float(log["ret_dist"][t])),
@@ -149,6 +149,8 @@ def tax_return_for_year(log: dict[str, np.ndarray], t: int) -> TaxReturn:
             dependents=int(log["deps"][t]),
             capital_loss_carryforward=max(0.0, float(log["cf_in"][t])),
             aged_spouses=int(log["aged"][t]),
+            cash_gifts=float(log["gift_cash"][t]),
+            stock_gifts=float(log["gift_stock"][t]),
         )
     )
 

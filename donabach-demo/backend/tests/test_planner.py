@@ -458,7 +458,9 @@ def test_the_typical_advisor_pays_a_flat_one_percent_and_the_good_ria_less():
     from app.planner.baseline import TYPICAL_ADVISOR
 
     inp = build_inputs(make_demo_household(), deterministic=True)
-    typical = run_detail(inp, TYPICAL_ADVISOR).log
+    # (without its funds' capital-gain distributions: their tax lowers the assets the fee is charged on, which is not what is checked)
+    quiet_funds = TYPICAL_ADVISOR.replace(fund_distribution=0.0, fund_distribution_short_term=0.0)
+    typical = run_detail(inp, quiet_funds).log
     ria = run_detail(inp, RIA_BASELINE).log
     # The fee comes off the assets before the year's contributions go in, so compare it with the
     # balance it was charged on: once retired (no contributions) that is exactly 1.0% every year.

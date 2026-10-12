@@ -4,10 +4,11 @@
 //
 //   BASE_URL=http://localhost:3000 CHROMIUM_PATH=... node e2e/showcase.mjs
 //
-// Every expectation is read from the API's own responses (GET /showcase, POST /showcase/analysis): the card's numbers, one bar per
-// strategy with its percent and dollars, the total, what switching a strategy off does, the headline and the four lines. Nothing
-// about the household is typed here, so any household the API serves is checked the same way (a strategy or goal that is not
-// there is simply not looked for).
+// Every expectation is read from the API's own responses: GET /showcase (the card, the waterfall with every strategy on, the whole
+// plan's wealth over time, the footer's note) and POST /showcase/analysis (the median-only waterfall for a set of strategies). The
+// card's numbers, one bar per strategy with its percent and dollars, the total, what switching a strategy off does, the headline
+// and the four lines are all checked against them. Nothing about the household is typed here, so any household the API serves is
+// checked the same way (a strategy or goal that is not there is simply not looked for).
 
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
@@ -40,7 +41,7 @@ const list = (items) =>
 const noun = (n) => `${n} ${n === 1 ? "strategy" : "strategies"}`;
 const strategiesOn = (on, total) => (on === total ? `All ${noun(on)} on` : `${on} of ${noun(total)} on`);
 
-// --- Contrast: WCAG, for the text on the showcase screens in both themes -------------------------------------------------------
+// --- Contrast: WCAG, for the text on the showcase screens -------------------------------------------------------
 /** Every visible piece of text on the page against the surface behind it: under 4.5:1 (3:1 for large text) is listed. */
 async function lowContrast(page) {
   return page.evaluate(() => {
@@ -108,6 +109,30 @@ async function lowContrast(page) {
 }
 
 /**
+ * Run in the page: starts watching for a loading placeholder (a panel that is aria-busy, or a "Loading ..." label in main).
+ * `window.__placeholder` says whether one has been on screen since.
+ */
+function watchPlaceholders() {
+  window.__placeholder = false;
+  const look = () => {
+    const main = document.querySelector("main");
+    if (main && (main.querySelector('[aria-busy="true"]') || /Loading (the|wealth)/.test(main.textContent ?? "")))
+      window.__placeholder = true;
+  };
+  new MutationObserver(look).observe(document.body, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    characterData: true,
+  });
+  const frame = () => {
+    look();
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+
+/**
  * @param {object} t
  * @param {import("playwright-core").Browser} t.browser
  * @param {string} t.base the app's address
@@ -128,17 +153,32 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       })
     ).json();
 
-  // The API's own answers: the household, its card and the analysis with everything on, and the analysis for a set of strategies.
+  // The API's own answers: the household with its card, the waterfall with every strategy on, the whole plan's wealth over time and
+  // the footer's note; and the waterfall (median only) for a set of strategies.
   const started = Date.now();
   const showcase = await getJson("/showcase");
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
-  const { card, analysis: full } = showcase;
+  const { card, waterfall: full, wealth } = showcase;
   const horizon = full.horizon_age;
   const keys = full.bars.map((b) => b.key);
   const analysisFor = (on) => postJson("/showcase/analysis", { enabled: on });
   check(
     keys.length > 0 && full.enabled.length === keys.length,
     `showcase api: GET /showcase answers with the household and ${noun(keys.length)}, all on (${seconds}s here)`,
+  );
+  const medianOnly = (w) =>
+    typeof w.advantage?.median_rate === "number" &&
+    !Object.keys(w.advantage).some((k) => k.startsWith("risk_adjusted"));
+  const oneOff = keys.length > 0 ? await analysisFor(keys.slice(1)) : full;
+  check(
+    !("analysis" in showcase) &&
+      medianOnly(full) &&
+      medianOnly(oneOff) &&
+      typeof wealth.advantage.risk_adjusted_rate === "number" &&
+      typeof wealth.risk_adjusted_label === "string" &&
+      wealth.risk_adjusted_explanation.length > 0 &&
+      showcase.footer_note.length > 0,
+    "showcase api: the household answer carries the waterfall (median only), the whole plan's wealth with both measures of the advantage, and the footer's note; the analysis answer is a median-only waterfall",
   );
 
   const newPage = async (width = 1440, scheme = "light", height = 900) => {
@@ -197,6 +237,48 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     check(result.overflow <= 0, `${name}: no horizontal overflow (${result.overflow}px)`);
   };
 
+  /** The footer of a showcase screen: the API's own line first, on a line of its own, then the disclaimers the other screens carry. */
+  const footerLine = async (page, name) => {
+    const lines = (await page.locator("footer p").allInnerTexts()).map(squash);
+    check(
+      lines.length >= 2 &&
+        lines[0] === squash(showcase.footer_note) &&
+        /^Prototype for illustration only/.test(lines[1]),
+      `${name}: the footer opens with the API's own line, word for word ("${showcase.footer_note}"), ahead of the disclaimers`,
+    );
+  };
+
+  // The strategies screen is the median advantage only: nothing on it, shown or folded away, speaks of the risk-adjusted one. Its
+  // words are looked for in everything the page holds (the folded sentences and the live region too), and its two figures are looked for
+  // unless the screen has the same text for a figure of its own.
+  const riskWords = /risk[- ]adjusted|risk aversion|wealth you can count on|bad futures weigh/i;
+  const ownTexts = new Set(
+    full.bars.flatMap((b) => [
+      `${ratePct(b.delta_rate)} a year`,
+      `${ratePct(b.cumulative_rate)} a year`,
+      `${signedMoney(b.delta_dollars)} at ${horizon}`,
+      `${signedMoney(b.cumulative_dollars)} at ${horizon}`,
+    ]),
+  );
+  const riskFigures = [
+    `${ratePct(wealth.advantage.risk_adjusted_rate)} a year`,
+    `${signedMoney(wealth.advantage.risk_adjusted_dollars)} at ${horizon}`,
+  ].filter((figure) => !ownTexts.has(figure) && figure !== `${ratePct(full.advantage.median_rate)} a year`);
+  const withoutRiskAdjusted = async (page) => {
+    const text = squash(
+      await page.evaluate(
+        () =>
+          `${document.querySelector("main")?.textContent ?? ""} ${document.querySelector("footer")?.textContent ?? ""}`,
+      ),
+    );
+    return (
+      !riskWords.test(text) &&
+      !text.includes(squash(wealth.risk_adjusted_explanation)) &&
+      !text.includes(wealth.risk_adjusted_label) &&
+      riskFigures.every((figure) => !text.includes(figure))
+    );
+  };
+
   const settled = (page) =>
     page.waitForFunction(
       () =>
@@ -220,9 +302,9 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       )
       .catch(() => notes.push("showcase: the chart lines were still animating at the check"));
 
-  // === The home page leads in ===========================================================================================
+  // === The home page leads in, and asks for the household before the link is followed ====================================
   {
-    const { context, page, issues } = await newPage();
+    const { context, page, issues, requests } = await newPage();
     await page.goto(base + "/", { waitUntil: "networkidle" });
     const entry = page.getByRole("link", { name: /Open the showcase/ });
     await entry.waitFor({ timeout: 20000 });
@@ -230,18 +312,97 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       (await entry.getAttribute("href")) === "/showcase",
       "showcase entry: the home page has a clear link, 'Open the showcase', that goes to /showcase",
     );
-    const dark = await newPage(1440, "dark");
-    await dark.page.goto(base + "/", { waitUntil: "networkidle" });
-    const homeBackground = await dark.page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    check(
+      requests.showcase === 1,
+      `showcase entry: the household is asked for as soon as the link is on the home page, before anyone clicks (${requests.showcase} request)`,
+    );
+    await entry.hover();
+    await entry.focus();
+    await page.waitForTimeout(300);
+    check(
+      requests.showcase === 1,
+      `showcase entry: hovering and focusing the link do not ask again while the answer is fresh (${requests.showcase} request)`,
+    );
+    const asksDark = await newPage(1440, "dark");
+    await asksDark.page.goto(base + "/", { waitUntil: "networkidle" });
+    const homeBackground = await asksDark.page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     check(
       homeBackground === "rgb(251, 247, 238)",
-      `dark theme: the home page (the demo itself) stays on its light theme when the system asks for dark (background ${homeBackground})`,
+      `light theme only: the home page stays light when the system asks for dark (background ${homeBackground})`,
     );
-    await dark.context.close();
+    await asksDark.context.close();
+    await audit(page, issues, "home with the showcase link");
+    // Followed after the answer is in: the household card draws at once, with no placeholder and no second request.
+    await page.evaluate(watchPlaceholders);
+    const clicked = Date.now();
     await entry.click();
     await page.waitForURL("**/showcase");
-    check(true, "showcase entry: the link leads into the flow");
-    await audit(page, issues, "home with the showcase link");
+    await page.locator("article").first().waitFor({ timeout: 5000 });
+    const sinceClick = Date.now() - clicked;
+    const placeholder = await page.evaluate(() => window.__placeholder);
+    check(
+      !placeholder && requests.showcase === 1 && sinceClick < 1000,
+      `showcase entry: following the link opens the household card in ${sinceClick} ms with no loading placeholder and no second request`,
+    );
+    await context.close();
+  }
+
+  // Followed before the household has arrived: the first screen waits for that same request (never a second one), then shows it.
+  {
+    const { context, page, requests } = await newPage();
+    let release;
+    const held = new Promise((r) => (release = r));
+    await page.route("**/api/showcase", async (route) => {
+      await held;
+      await route.fallback();
+    });
+    const asked = page.waitForRequest((r) => new URL(r.url()).pathname === "/api/showcase" && r.method() === "GET");
+    await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+    await asked;
+    await page.getByRole("link", { name: /Open the showcase/ }).click();
+    await page.waitForURL("**/showcase");
+    await page.getByText("Loading the household").waitFor({ timeout: 10000 });
+    release();
+    await page.locator("article").first().waitFor({ timeout: 90000 });
+    check(
+      requests.showcase === 1 && (await page.getByRole("heading", { level: 1 }).innerText()) === showcase.name,
+      "showcase entry: followed before the household has arrived, the first screen waits for that same request (no second one) and then shows the household",
+    );
+    await context.close();
+  }
+
+  // The request is made again when the link is hovered or focused if the first one never produced an answer.
+  {
+    const { context, page, requests } = await newPage();
+    let calls = 0;
+    await page.route("**/api/showcase", (route) => {
+      calls++;
+      return calls === 1
+        ? route.fulfill({
+            status: 500,
+            contentType: "application/json",
+            body: JSON.stringify({ detail: "the e2e made this error up" }),
+          })
+        : route.fallback();
+    });
+    await page.goto(base + "/", { waitUntil: "networkidle" });
+    const entry = page.getByRole("link", { name: /Open the showcase/ });
+    await entry.waitFor({ timeout: 20000 });
+    const first = requests.showcase;
+    const second = page.waitForRequest((r) => new URL(r.url()).pathname === "/api/showcase" && r.method() === "GET");
+    await Promise.all([second, entry.hover()]);
+    await page.waitForLoadState("networkidle");
+    await page.evaluate(watchPlaceholders);
+    await entry.click();
+    await page.waitForURL("**/showcase");
+    await page.locator("article").first().waitFor({ timeout: 5000 });
+    check(
+      first === 1 &&
+        requests.showcase === 2 &&
+        !(await page.evaluate(() => window.__placeholder)) &&
+        (await page.locator("main").innerText()).includes(showcase.name),
+      "showcase entry: if the first request failed, hovering the link asks again, and the flow then opens with the household in hand",
+    );
     await context.close();
   }
 
@@ -391,12 +552,7 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     );
     await audit(page, issues, "showcase 1 household", "showcase-1-household");
 
-    // The dark theme: the flow's own, applied while it is on the page.
-    const lightBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    check(
-      lightBg === "rgb(251, 247, 238)",
-      `dark theme: with a light system setting the showcase is on the light theme too (background ${lightBg})`,
-    );
+    await footerLine(page, "showcase household");
     const weak = await lowContrast(page);
     check(
       weak.length === 0,
@@ -417,23 +573,19 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await context.close();
   }
 
-  // === Narrow and dark: the three screens at a phone's width, and in the dark theme ==================================
-  for (const [path, label, waitFor] of [
+  // === The three screens at a phone's width, a tablet's and a desktop's =================================================
+  const screens = [
     ["/showcase", "household", "article"],
     ["/showcase/strategies", "strategies", keys.length > 0 ? "li[data-key]" : "main h1"],
     ["/showcase/wealth", "wealth", ".recharts-wrapper"],
-  ]) {
-    for (const [width, scheme] of [
-      [390, "light"],
-      [768, "light"],
-      [1280, "dark"],
-      [390, "dark"],
-    ]) {
-      const { context, page, issues } = await newPage(width, scheme);
+  ];
+  for (const [path, label, waitFor] of screens) {
+    for (const width of [390, 768, 1280]) {
+      const { context, page, issues } = await newPage(width);
       await page.goto(base + path, { waitUntil: "networkidle" });
       await page.locator(waitFor).first().waitFor({ timeout: 90000 });
       await page.waitForTimeout(label === "wealth" ? 2500 : 600);
-      const name = `showcase ${label} at ${width}px, ${scheme}`;
+      const name = `showcase ${label} at ${width}px`;
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       check(overflow <= 0, `${name}: no horizontal overflow (${overflow}px)`);
       const spill = await page.evaluate(() => {
@@ -454,19 +606,66 @@ export async function runShowcase({ browser, base, out, check, notes }) {
         spill.length === 0,
         `${name}: nothing spills out of its panel${spill.length ? ` (${spill.join(", ")})` : ""}`,
       );
-      if (scheme === "dark") {
-        const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-        check(bg === "rgb(21, 18, 13)", `${name}: the page is on the dark theme (background ${bg})`);
-      }
       if (width !== 768) {
         const weak = await lowContrast(page);
         check(weak.length === 0, `${name}: all text has enough contrast${weak.length ? ` (${weak.join("; ")})` : ""}`);
       }
       check(issues.length === 0, `${name}: no console errors${issues.length ? ` (${issues[0]})` : ""}`);
-      if (width === 390 || scheme === "dark")
-        await page.screenshot({ path: `${out}/showcase-${label}-${width}-${scheme}.png`, fullPage: true });
+      if (width !== 768) await page.screenshot({ path: `${out}/showcase-${label}-${width}.png`, fullPage: true });
       await context.close();
     }
+  }
+
+  // === The flow is light, whatever the system asks for ===================================================================
+  /** What makes a page light: the colour scheme it declares, its page and text colours and the design tokens' values. */
+  const lightFacts = (page) =>
+    page.evaluate(() => {
+      const root = getComputedStyle(document.documentElement);
+      const body = getComputedStyle(document.body);
+      const tokens = [
+        "--cream",
+        "--panel",
+        "--espresso",
+        "--brown",
+        "--gold",
+        "--muted-text",
+        "--line",
+        "--series-donabach",
+        "--series-ria",
+      ].map((token) => root.getPropertyValue(token).trim());
+      return {
+        asksDark: matchMedia("(prefers-color-scheme: dark)").matches,
+        scheme: root.colorScheme,
+        background: body.backgroundColor,
+        text: body.color,
+        tokens,
+      };
+    });
+  for (const [path, label, waitFor] of screens) {
+    const dark = await newPage(1280, "dark");
+    await dark.page.goto(base + path, { waitUntil: "networkidle" });
+    await dark.page.locator(waitFor).first().waitFor({ timeout: 90000 });
+    await dark.page.waitForTimeout(label === "wealth" ? 2500 : 600);
+    const asked = await lightFacts(dark.page);
+    const plain = await newPage(1280, "light");
+    await plain.page.goto(base + path, { waitUntil: "networkidle" });
+    await plain.page.locator(waitFor).first().waitFor({ timeout: 90000 });
+    const normal = await lightFacts(plain.page);
+    check(
+      asked.asksDark &&
+        !normal.asksDark &&
+        asked.scheme === "light" &&
+        asked.background === "rgb(251, 247, 238)" &&
+        JSON.stringify({ ...asked, asksDark: null }) === JSON.stringify({ ...normal, asksDark: null }),
+      `light theme only: the ${label} screen stays light when the system asks for dark (colour scheme ${asked.scheme}, background ${asked.background}, the same colours and tokens as with a light setting)`,
+    );
+    const weak = await lowContrast(dark.page);
+    check(
+      weak.length === 0 && dark.issues.length === 0,
+      `light theme only: the ${label} screen's text is as legible when the system asks for dark${weak.length ? ` (${weak.join("; ")})` : ""}${dark.issues.length ? ` (${dark.issues[0]})` : ""}`,
+    );
+    await dark.context.close();
+    await plain.context.close();
   }
 
   // === Screen 2: the waterfall ==========================================================================================
@@ -543,6 +742,10 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       switches &&= (await s.count()) === 1 && (await s.isChecked());
     }
     check(switches, `showcase waterfall: every strategy has a switch labelled with its name, all ${keys.length} on`);
+    check(
+      await withoutRiskAdjusted(page),
+      `showcase waterfall: the median advantage only: no risk-adjusted word or figure (${riskFigures.join(", ") || "none that differs from its own"}) anywhere on the screen`,
+    );
     const probe = full.bars[0];
     const info = page.getByRole("button", { name: `What “${probe.label}” does` });
     const detailId = await info.getAttribute("aria-controls");
@@ -628,6 +831,10 @@ export async function runShowcase({ browser, base, out, check, notes }) {
         ) &&
         tableRows[tableRows.length - 1].includes(signedMoney(advantage.median_dollars)),
       `showcase waterfall: the table twin has a row for the advisor, each of the ${keys.length} strategies and the total, with each change and running total as the API has them`,
+    );
+    check(
+      await withoutRiskAdjusted(page),
+      "showcase waterfall: nor does the table twin, the explanations or the plan in words (folded text included)",
     );
     await page.getByRole("button", { name: "View as chart" }).click();
 
@@ -837,6 +1044,7 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       weak.length === 0,
       `showcase waterfall (light): all text has enough contrast${weak.length ? ` (${weak.join("; ")})` : ""}`,
     );
+    await footerLine(page, "showcase waterfall");
     await audit(page, issues, "showcase 2 strategies", "showcase-2-strategies");
     check(
       (await page.getByRole("link", { name: /Back to the household/ }).getAttribute("href")) === "/showcase",
@@ -862,10 +1070,26 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await context.close();
   }
 
-  // === Screen 3: wealth over time, with what was chosen on screen 2 =====================================================
+  // === Screen 3: wealth over time: the whole plan, whatever was switched on the way =====================================
+  // A direct visit shows the screen as the API's whole plan makes it: the baseline the next checks compare with.
+  let baseline = "";
+  {
+    const { context, page, requests } = await newPage();
+    await page.goto(base + "/showcase/wealth", { waitUntil: "networkidle" });
+    await page.locator(".recharts-wrapper").first().waitFor({ timeout: 90000 });
+    await settleLines(page, 4);
+    baseline = squash(await page.locator("main").innerText());
+    check(
+      requests.showcase === 1 &&
+        requests.analysis.length === 0 &&
+        baseline.includes(`${ratePct(wealth.advantage.median_rate)} a year`),
+      "showcase wealth: opened directly, it loads the household once and shows the whole plan, asking for no analysis",
+    );
+    await context.close();
+  }
   {
     const { context, page, issues, requests } = await newPage();
-    // Go the way a person does: the strategies screen, a strategy off, then on.
+    // Go the way a person does: the strategies screen, two strategies off, then on to the wealth screen.
     await page.goto(base + "/showcase/strategies", { waitUntil: "networkidle" });
     await page
       .locator(keys.length > 0 ? "li[data-key]" : "main h1")
@@ -874,37 +1098,41 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     const offBars = keys.length >= 3 ? [full.bars[1], full.bars[2]] : keys.length >= 1 ? [full.bars[0]] : [];
     for (const bar of offBars) await page.getByRole("switch", { name: bar.label, exact: true }).click();
     const onSet = keys.filter((k) => !offBars.some((b) => b.key === k));
-    const analysis = offBars.length ? await analysisFor(onSet) : full;
     await settled(page);
+    const posted = requests.analysis.length;
     await page.getByRole("link", { name: /See wealth over time/ }).click();
     await page.waitForURL("**/showcase/wealth");
     await page.locator(".recharts-wrapper").first().waitFor({ timeout: 30000 });
     await settleLines(page, 4);
-    const adv = analysis.advantage;
+    await page.mouse.move(2, 2); // the pointer that clicked the link may be over the chart, whose tooltip is not part of the screen
+    await page.waitForTimeout(1200);
     const main = squash(await page.locator("main").innerText());
     check(
       requests.showcase === 1,
       `showcase wealth: moving between the screens does not load the household again (${requests.showcase} request)`,
     );
 
-    // This screen follows what was switched off.
-    if (offBars.length) {
-      check(
-        main.includes(`With ${noun(offBars.length)} off`) &&
-          offBars.every((b) => main.includes(b.label)) &&
-          JSON.stringify(requests.analysis.at(-1)) === JSON.stringify({ enabled: onSet }),
-        `showcase wealth: it says "With ${noun(offBars.length)} off" and names them, and shows what was switched off on the strategies screen (${offBars.map((b) => b.label).join(", ")})`,
-      );
-    } else {
-      check(main.includes(`All ${noun(keys.length)} on`), "showcase wealth: with nothing off it says so");
-    }
-    const changeLink = page.getByRole("link", { name: "Change the strategies" });
+    // It is the whole plan, and says so: nothing about the switches reaches it, and it never asks for anything.
     check(
-      (await changeLink.getAttribute("href")) === "/showcase/strategies",
-      "showcase wealth: a link goes back to change the switches",
+      main === baseline,
+      offBars.length
+        ? `showcase wealth: with ${noun(offBars.length)} switched off on the strategies screen (${offBars.map((b) => b.label).join(", ")}), this screen is exactly what a direct visit shows`
+        : "showcase wealth: this screen is exactly what a direct visit shows",
+    );
+    check(
+      main.includes("The whole plan, with every strategy on") &&
+        !/strategies off|strategy off|Recomputing|Switch every strategy/i.test(main) &&
+        (await page.getByRole("link", { name: "Change the strategies" }).count()) === 0 &&
+        (await page.locator('[data-stale="true"], [aria-busy="true"]').count()) === 0,
+      "showcase wealth: the subtitle says it is the whole plan with every strategy on, and there is no strategy state bar, no 'Change the strategies' link and nothing recomputing or dimmed",
+    );
+    check(
+      requests.analysis.length === posted,
+      `showcase wealth: this screen never asks the API for an analysis (${requests.analysis.length - posted} requests since it opened)`,
     );
 
-    // The headline: median, and the risk-adjusted one explained in a line of its own.
+    // The headline: the median advantage, and the risk-adjusted one once, with the API's line on what it is.
+    const adv = wealth.advantage;
     const medianCell = squash(
       await page.locator("h2", { hasText: "Median advantage" }).locator("xpath=..").innerText(),
     );
@@ -918,17 +1146,23 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       `showcase wealth: the headline is ${ratePct(adv.median_rate)} a year and ${money(Math.abs(adv.median_dollars))} ${adv.median_dollars >= 0 ? "more" : "less"} at ${horizon} (median), as the API has it`,
     );
     const riskCell = squash(
-      await page.locator("h2", { hasText: analysis.risk_adjusted_label }).locator("xpath=..").innerText(),
+      await page.locator("h2", { hasText: wealth.risk_adjusted_label }).locator("xpath=..").innerText(),
     );
     check(
       riskCell.includes(`${ratePct(adv.risk_adjusted_rate)} a year`) &&
-        riskCell.includes(squash(analysis.risk_adjusted_explanation)),
-      `showcase wealth: the "${analysis.risk_adjusted_label}" is ${ratePct(adv.risk_adjusted_rate)} a year with the API's own explanation, word for word`,
+        riskCell.includes(`${signedMoney(adv.risk_adjusted_dollars)} at ${horizon}`) &&
+        riskCell.includes(squash(wealth.risk_adjusted_explanation)),
+      `showcase wealth: the "${wealth.risk_adjusted_label}" is ${ratePct(adv.risk_adjusted_rate)} a year, ${signedMoney(adv.risk_adjusted_dollars)} at ${horizon}, with the API's own explanation, word for word`,
     );
     const explanationLines = await page
-      .locator("p", { hasText: squash(analysis.risk_adjusted_explanation).slice(0, 40) })
+      .locator("p", { hasText: squash(wealth.risk_adjusted_explanation).slice(0, 40) })
       .count();
-    check(explanationLines === 1, "showcase wealth: that explanation is one paragraph of its own, shown once");
+    check(
+      explanationLines === 1 &&
+        main.split(wealth.risk_adjusted_label).length - 1 === 1 &&
+        main.split(squash(wealth.risk_adjusted_explanation)).length - 1 === 1,
+      "showcase wealth: the risk-adjusted advantage is shown once (its label, its figure and its one explanation, each once on the screen)",
+    );
     check(
       /nine in ten/.test(main) && /10th percentile/.test(main),
       "showcase wealth: a line says what the 10th percentile is (a bad-market future: nine in ten do better)",
@@ -954,12 +1188,12 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       legend.length === 4 &&
         legend.some((t) => t === "Donabach, typical (median)") &&
         legend.some((t) => t === "Donabach, bad market (10th percentile)") &&
-        legend.some((t) => t === `${analysis.advisor_label}, typical (median)`) &&
-        legend.some((t) => t === `${analysis.advisor_label}, bad market (10th percentile)`) &&
+        legend.some((t) => t === `${wealth.advisor_label}, typical (median)`) &&
+        legend.some((t) => t === `${wealth.advisor_label}, bad market (10th percentile)`) &&
         (await page.getByRole("list", { name: "Chart legend" }).locator("line[stroke-dasharray]").count()) === 2,
       `showcase wealth: the legend names the four lines and marks the two bad-market lines as dashed (${legend.join("; ")})`,
     );
-    const w = analysis.wealth;
+    const w = wealth.wealth;
     const lastIndex = w.ages.length - 1;
     // The end labels are SVG text: the value and the name are two spans, with a gap but no space character between them.
     const svgText = (await page.locator(".recharts-wrapper svg text").allTextContents()).join("|").replace(/\s+/g, "");
@@ -967,8 +1201,8 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     check(
       svgText.includes(endLabel(w.plan_median[lastIndex], "Donabach, typical")) &&
         svgText.includes(endLabel(w.plan_p10[lastIndex], "Donabach, bad market")) &&
-        svgText.includes(endLabel(w.advisor_median[lastIndex], `${analysis.advisor_label}, typical`)) &&
-        svgText.includes(endLabel(w.advisor_p10[lastIndex], `${analysis.advisor_label}, bad market`)),
+        svgText.includes(endLabel(w.advisor_median[lastIndex], `${wealth.advisor_label}, typical`)) &&
+        svgText.includes(endLabel(w.advisor_p10[lastIndex], `${wealth.advisor_label}, bad market`)),
       `showcase wealth: each line is labelled at its end with its value at ${w.ages[lastIndex]} (${money(w.plan_median[lastIndex])}, ${money(w.plan_p10[lastIndex])}, ${money(w.advisor_median[lastIndex])}, ${money(w.advisor_p10[lastIndex])})`,
     );
     check(
@@ -992,8 +1226,8 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       at >= 0 &&
         tipCompact.includes(tipLine(w.plan_median[at], "Donabach, typical")) &&
         tipCompact.includes(tipLine(w.plan_p10[at], "Donabach, bad market")) &&
-        tipCompact.includes(tipLine(w.advisor_median[at], `${analysis.advisor_label}, typical`)) &&
-        tipCompact.includes(tipLine(w.advisor_p10[at], `${analysis.advisor_label}, bad market`)),
+        tipCompact.includes(tipLine(w.advisor_median[at], `${wealth.advisor_label}, typical`)) &&
+        tipCompact.includes(tipLine(w.advisor_p10[at], `${wealth.advisor_label}, bad market`)),
       `showcase wealth: hovering the chart shows a tooltip with all four values at that age (age ${tipAge}: ${at >= 0 ? [w.plan_median[at], w.plan_p10[at], w.advisor_median[at], w.advisor_p10[at]].map(money).join(", ") : "?"})`,
     );
     await page.mouse.move(2, 2);
@@ -1012,14 +1246,14 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     const bad = squash(await page.locator('section[aria-label^="The 10th percentile"]').innerText());
     check(
       bad.includes(`Donabach ${money(adv.plan_p10_at_horizon)}`) &&
-        bad.includes(`${analysis.advisor_label} ${money(adv.advisor_p10_at_horizon)}`) &&
+        bad.includes(`${wealth.advisor_label} ${money(adv.advisor_p10_at_horizon)}`) &&
         bad.includes("nine in ten do better"),
       `showcase wealth: the 10th percentile at ${horizon} is shown for both (${money(adv.plan_p10_at_horizon)} with Donabach, ${money(adv.advisor_p10_at_horizon)} with the advisor)`,
     );
     const risk = squash(await page.locator('section[aria-label="Chance of running out of money"]').innerText());
     check(
       risk.includes(`Donabach ${pct1(adv.plan_shortfall)}`) &&
-        risk.includes(`${analysis.advisor_label} ${pct1(adv.advisor_shortfall)}`),
+        risk.includes(`${wealth.advisor_label} ${pct1(adv.advisor_shortfall)}`),
       `showcase wealth: the chance of running out of money is shown for both (${pct1(adv.plan_shortfall)} with Donabach, ${pct1(adv.advisor_shortfall)} with the advisor)`,
     );
 
@@ -1046,36 +1280,45 @@ export async function runShowcase({ browser, base, out, check, notes }) {
       weak.length === 0,
       `showcase wealth (light): all text has enough contrast${weak.length ? ` (${weak.join("; ")})` : ""}`,
     );
+    await footerLine(page, "showcase wealth");
     await audit(page, issues, "showcase 3 wealth", "showcase-3-wealth");
-    check(
-      (await page.getByRole("link", { name: /Back to the strategies/ }).getAttribute("href")) ===
-        "/showcase/strategies",
-      "showcase wealth: a back link goes to the strategies",
-    );
     check(
       (await page.getByRole("link", { name: /Explore the full demo/ }).getAttribute("href")) === "/",
       "showcase wealth: the primary button leads on to the full demo",
     );
+    check(
+      requests.analysis.length === posted,
+      `showcase wealth: after hovering, the keyboard and the table it still has asked for no analysis (${requests.analysis.length - posted} requests)`,
+    );
 
-    // The way back: the switches are as they were left.
+    // The way back: the switches are as they were left, and the strategies screen still shows what they came to.
+    const back = page.getByRole("link", { name: /Back to the strategies/ });
+    check(
+      (await back.getAttribute("href")) === "/showcase/strategies",
+      "showcase wealth: a back link goes to the strategies",
+    );
+    await back.click();
+    await page.waitForURL("**/showcase/strategies");
+    await page
+      .locator(keys.length > 0 ? "li[data-key]" : "main h1")
+      .first()
+      .waitFor();
     if (offBars.length) {
-      await changeLink.click();
-      await page.waitForURL("**/showcase/strategies");
-      await page.locator("li[data-key]").first().waitFor();
       let still = true;
       for (const bar of full.bars)
         still &&=
           (await page.getByRole("switch", { name: bar.label, exact: true }).isChecked()) ===
           !offBars.some((b) => b.key === bar.key);
+      const totalNow = squash(await page.locator('section[aria-labelledby="total-title"]').innerText());
       check(
-        still && requests.showcase === 1,
-        `showcase wealth: back on the strategies screen the switches are as they were left (${offBars.map((b) => b.label).join(", ")} off)`,
+        still && requests.showcase === 1 && totalNow.includes(strategiesOn(onSet.length, keys.length)),
+        `showcase wealth: back on the strategies screen the switches and the waterfall are as they were left (${offBars.map((b) => b.label).join(", ")} off)`,
       );
     }
     await context.close();
   }
 
-  // A change still being worked out when the person moves on: the next screen waits for that same answer, and shows it.
+  // A change still being worked out when the person moves on: the wealth screen does not wait for it, show it or follow it.
   if (keys.length >= 1) {
     const { context, page, requests } = await newPage();
     await page.goto(base + "/showcase/strategies", { waitUntil: "networkidle" });
@@ -1093,23 +1336,34 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await page.getByRole("link", { name: /See wealth over time/ }).click();
     await page.waitForURL("**/showcase/wealth");
     await page.locator(".recharts-wrapper").first().waitFor({ timeout: 30000 });
+    await settleLines(page, 4);
+    await page.mouse.move(2, 2);
+    await page.waitForTimeout(500);
     const pending = squash(await page.locator("main").innerText());
     check(
-      /Recomputing/.test(pending) &&
-        pending.includes(`${ratePct(full.advantage.median_rate)} a year`) &&
-        (await page.locator('[data-stale="true"]').count()) > 0,
-      "showcase wealth: opened while a change is still being worked out, it shows the previous numbers dimmed and says it is recomputing",
+      pending === baseline &&
+        !/Recomputing/.test(pending) &&
+        (await page.locator('[data-stale="true"], [aria-busy="true"]').count()) === 0,
+      "showcase wealth: opened while a change is still being worked out, it shows the whole plan at once, nothing dimmed and nothing recomputing: it does not wait for the change",
     );
+    const answered = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/showcase/analysis");
     release();
-    await settled(page);
-    await settleLines(page, 4);
-    const arrived = squash(await page.locator("main").innerText());
+    await answered;
+    await page.waitForTimeout(500);
     check(
-      arrived.includes(`With ${noun(1)} off`) &&
-        arrived.includes(`${ratePct(expected.advantage.median_rate)} a year`) &&
-        requests.analysis.length === 1 &&
-        JSON.stringify(requests.analysis[0]) === JSON.stringify({ enabled: onSet }),
-      `showcase wealth: when the answer arrives the screen shows it for the chosen set (${ratePct(expected.advantage.median_rate)} a year): the same request, not a second one`,
+      squash(await page.locator("main").innerText()) === baseline && requests.analysis.length === 1,
+      "showcase wealth: when the answer arrives the screen is unchanged, and no second request went out",
+    );
+    await page.getByRole("link", { name: /Back to the strategies/ }).click();
+    await page.waitForURL("**/showcase/strategies");
+    await page.locator("li[data-key]").first().waitFor();
+    await settled(page);
+    const shown = squash(await page.locator('section[aria-labelledby="total-title"]').innerText());
+    check(
+      !(await page.getByRole("switch", { name: off.label, exact: true }).isChecked()) &&
+        shown.includes(`${ratePct(expected.advantage.median_rate)} a year`) &&
+        shown.includes(strategiesOn(onSet.length, keys.length)),
+      `showcase wealth: back on the strategies screen the change has landed there (${ratePct(expected.advantage.median_rate)} a year with ${off.label} off)`,
     );
     await context.close();
   }
@@ -1148,17 +1402,93 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     await context.close();
   }
 
-  // A direct visit to the last screen: the household loads, everything is on, and no analysis is asked for.
+  // === Every screen is there at once: Household -> Strategies -> Wealth -> Strategies, once the household has loaded ====
   {
     const { context, page, requests } = await newPage();
-    await page.goto(base + "/showcase/wealth", { waitUntil: "networkidle" });
-    await page.locator(".recharts-wrapper").first().waitFor({ timeout: 90000 });
-    const main = squash(await page.locator("main").innerText());
+    await page.goto(base + "/showcase", { waitUntil: "networkidle" });
+    await page.locator("article").first().waitFor({ timeout: 90000 });
+    await page.waitForTimeout(800); // the way on has been prefetched by now
+    await page.evaluate(watchPlaceholders);
+    const strategiesTarget = keys.length > 0 ? "li[data-key]" : "main h1";
+    const hops = [
+      ["See the strategies", "/showcase/strategies", strategiesTarget],
+      ["See wealth over time", "/showcase/wealth", ".recharts-wrapper"],
+      ["Back to the strategies", "/showcase/strategies", strategiesTarget],
+      ["Back to the household", "/showcase", "article"],
+    ];
+    const taken = [];
+    for (const [name, path, target] of hops) {
+      // Clicked and timed inside the page, so that nothing but the app is in the figure.
+      const ms = await page.evaluate(
+        ({ name, path, target }) =>
+          new Promise((resolve) => {
+            const link = [...document.querySelectorAll("a")].find((a) => (a.textContent ?? "").trim().startsWith(name));
+            if (!link) return resolve(Infinity);
+            const started = performance.now();
+            const giveUp = setTimeout(() => resolve(Infinity), 5000);
+            const look = () => {
+              if (location.pathname === path && document.querySelector(target)) {
+                clearTimeout(giveUp);
+                resolve(performance.now() - started);
+              } else requestAnimationFrame(look);
+            };
+            link.click();
+            look();
+          }),
+        { name, path, target },
+      );
+      taken.push(`${name.toLowerCase()}: ${Math.round(ms)} ms`);
+      await page.waitForTimeout(400);
+    }
+    const placeholder = await page.evaluate(() => window.__placeholder);
     check(
-      main.includes(`All ${noun(keys.length)} on`) &&
-        requests.analysis.length === 0 &&
-        main.includes(`${ratePct(full.advantage.median_rate)} a year`),
-      "showcase wealth: opened directly, it loads the household with every strategy on and asks for no other analysis",
+      taken.every((t) => parseInt(t.split(": ")[1], 10) < 1000),
+      `showcase flow: every screen shows its content within 1,000 ms of the click (${taken.join("; ")})`,
+    );
+    check(
+      !placeholder && requests.showcase === 1 && requests.analysis.length === 0,
+      `showcase flow: going Household, Strategies, Wealth, Strategies and back shows no loading placeholder and asks the API for nothing more (${requests.showcase} household request, ${requests.analysis.length} analyses)`,
+    );
+    await context.close();
+  }
+
+  // === The footer's line is the API's, word for word, and only once the household is in ===================================
+  {
+    const made = "Results for this household. The e2e made this line up (7.7% a year).";
+    const { context, page } = await newPage();
+    let release;
+    const held = new Promise((r) => (release = r));
+    await page.route("**/api/showcase", async (route) => {
+      await held;
+      const response = await route.fetch();
+      await route.fulfill({ response, json: { ...(await response.json()), footer_note: made } });
+    });
+    await page.goto(base + "/showcase", { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { level: 1 }).waitFor({ timeout: 20000 });
+    await page.waitForTimeout(500);
+    check(
+      (await page.locator("footer").count()) === 0 &&
+        !(await page.locator("body").innerText()).includes("Results for this household"),
+      "showcase footer: while the household is still loading there is no footer line",
+    );
+    release();
+    await page.locator("article").first().waitFor({ timeout: 90000 });
+    const firstLine = async () => squash((await page.locator("footer p").first().innerText()) ?? "");
+    const lines = [["household", await firstLine()]];
+    await page.getByRole("link", { name: /See the strategies/ }).click();
+    await page.waitForURL("**/showcase/strategies");
+    await page
+      .locator(keys.length > 0 ? "li[data-key]" : "footer p")
+      .first()
+      .waitFor({ timeout: 30000 });
+    lines.push(["strategies", await firstLine()]);
+    await page.getByRole("link", { name: /See wealth over time/ }).click();
+    await page.waitForURL("**/showcase/wealth");
+    await page.locator(".recharts-wrapper").first().waitFor({ timeout: 30000 });
+    lines.push(["wealth", await firstLine()]);
+    check(
+      lines.every(([, line]) => line === made),
+      `showcase footer: the screens write the API's footer_note as it is, with no number of their own (${lines.map(([name]) => name).join(", ")}: "${made}")`,
     );
     await context.close();
   }

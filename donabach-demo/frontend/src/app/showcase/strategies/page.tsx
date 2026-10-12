@@ -12,11 +12,14 @@ import { Disclosure, PageHeader, Panel, PanelTitle, ResultsFooter } from "@/comp
 import { count } from "@/lib/format";
 import { useShowcase } from "@/lib/showcase";
 
-/** Screen 2: where Donabach's advantage over the advisor comes from, strategy by strategy, with a switch on each. */
+/**
+ * Screen 2: where Donabach's advantage over the advisor comes from, strategy by strategy, with a switch on each. It is
+ * the median advantage and nothing else (the risk-adjusted one is on the wealth screen, once).
+ */
 export default function ShowcaseStrategiesPage() {
-  const { status, data, analysis, enabled, computing, actions } = useShowcase();
+  const { status, data, waterfall, enabled, computing, actions } = useShowcase();
 
-  if (status !== "ready" || !data || !analysis) {
+  if (status !== "ready" || !data || !waterfall) {
     return (
       <>
         <PageHeader title="Where the advantage comes from" />
@@ -25,16 +28,16 @@ export default function ShowcaseStrategiesPage() {
     );
   }
 
-  const horizon = analysis.horizon_age;
-  const total = analysis.bars.length;
-  const on = analysis.bars.filter((bar) => bar.enabled).length;
+  const horizon = waterfall.horizon_age;
+  const total = waterfall.bars.length;
+  const on = waterfall.bars.filter((bar) => bar.enabled).length;
   // Said aloud when the numbers change: that something is being worked out, then what the total came to.
   const announcement = computing
     ? "Recomputing the waterfall."
-    : `Recomputed: ${strategiesOn(on, total)}. Total advantage ${ratePercent(analysis.advantage.median_rate)} a year, ${dollarsText(
-        analysis.advantage.median_dollars,
+    : `Recomputed: ${strategiesOn(on, total)}. Total advantage ${ratePercent(waterfall.advantage.median_rate)} a year, ${dollarsText(
+        waterfall.advantage.median_dollars,
         horizon,
-      )}, median of ${count(analysis.n_paths)} simulated futures.`;
+      )}, median of ${count(waterfall.n_paths)} simulated futures.`;
 
   return (
     <>
@@ -42,9 +45,9 @@ export default function ShowcaseStrategiesPage() {
         title="Where the advantage comes from"
         subtitle={
           <span className={styles.tagline}>
-            Start from a {analysis.advisor_label.toLowerCase()}&apos;s plan and switch Donabach&apos;s strategies on one
-            at a time. Each bar is what that strategy adds to median after-tax wealth at {horizon}, measured on the same{" "}
-            {count(analysis.n_paths)} simulated futures.
+            Start from a {waterfall.advisor_label.toLowerCase()}&apos;s plan and switch Donabach&apos;s strategies on
+            one at a time. Each bar is what that strategy adds to median after-tax wealth at {horizon}, measured on the
+            same {count(waterfall.n_paths)} simulated futures.
           </span>
         }
       />
@@ -55,13 +58,13 @@ export default function ShowcaseStrategiesPage() {
           {announcement}
         </p>
 
-        <TotalPanel analysis={analysis} computing={computing} />
+        <TotalPanel waterfall={waterfall} computing={computing} />
 
         <Panel aria-labelledby="waterfall-title">
           <PanelTitle id="waterfall-title">Strategy by strategy</PanelTitle>
           {total === 0 ? (
             <p className={styles.note}>
-              For this household Donabach&apos;s plan is the {analysis.advisor_label.toLowerCase()}&apos;s own: no
+              For this household Donabach&apos;s plan is the {waterfall.advisor_label.toLowerCase()}&apos;s own: no
               strategy differs, so there is nothing to switch on or off.
             </p>
           ) : (
@@ -71,8 +74,8 @@ export default function ShowcaseStrategiesPage() {
                 before it, so switching one off also changes the bars of the strategies that depend on it.
               </p>
               <Waterfall
-                analysis={analysis}
-                full={data.analysis}
+                waterfall={waterfall}
+                full={data.waterfall}
                 enabled={enabled}
                 computing={computing}
                 onToggle={actions.toggle}
@@ -80,8 +83,8 @@ export default function ShowcaseStrategiesPage() {
               />
               <div className={styles.plan}>
                 <Disclosure title="The whole plan, in words">
-                  <p className={styles.planLabel}>{analysis.plan_label}</p>
-                  <p className={styles.planText}>{analysis.plan_sentence}</p>
+                  <p className={styles.planLabel}>{data.plan_label}</p>
+                  <p className={styles.planText}>{data.plan_sentence}</p>
                 </Disclosure>
               </div>
             </>
@@ -93,7 +96,7 @@ export default function ShowcaseStrategiesPage() {
         back={{ href: "/showcase", label: "Back to the household" }}
         next={{ href: "/showcase/wealth", label: "See wealth over time" }}
       />
-      <ResultsFooter />
+      <ResultsFooter note={data.footer_note} />
     </>
   );
 }

@@ -17,6 +17,8 @@ from app.tax.engine import TaxInputs, compute_return
 
 HORIZON_YEARS = HORIZON_AGE - 38  # the demo household is 38
 
+NO_STOCKS = np.ones(sim.N_STOCKS, dtype=np.float32)  # a year's stock movements, for tests with no direct-indexing book
+
 
 def deterministic(household=None, zero_returns=False, rets=None):
     inp = build_inputs(household or make_demo_household(), deterministic=True)
@@ -131,6 +133,9 @@ def test_log_constants_match_column_names():
         "loan": sim.L_LOAN, "borrowed": sim.L_BORROWED, "loan_interest": sim.L_LOANINT, "forced_sale": sim.L_FORCED,
         "loan_repaid_saving": sim.L_REPAID_SAVING, "loan_repaid_gain": sim.L_REPAID_GAIN, "gain_harvest": sim.L_GAINHARVEST,
         "short_term_gain": sim.L_STGAIN,
+        "fund_distribution": sim.L_FUNDDIST, "fund_distribution_short_term": sim.L_FUNDDIST_ST,
+        "gift_cash": sim.L_GIFTCASH, "gift_stock": sim.L_GIFTSTOCK, "charitable_deduction": sim.L_CHARITY,
+        "deduction": sim.L_DEDUCTION, "itemized": sim.L_ITEMIZED,
     }
     assert set(expected) == set(sim.LOG_COLUMNS)
     for name, index in expected.items():
@@ -246,7 +251,7 @@ def test_private_credit_in_brokerage_is_taxed_each_year_as_interest():
     tv[0, sim.TV_AGE] = 50.0
     ys = np.zeros(sim.NY)
     act = np.zeros(sim.NACT)
-    sim._year_begin(st, ys, tv, 0, np.zeros(sim.NHC), act, 0.0, 0.0, 0.10)
+    sim._year_begin(st, ys, tv, 0, np.zeros(sim.NHC), act, 0.0, 0.0, 0.10, NO_STOCKS)
     taxable_interest = 0.055 * 100_000 + 0.035 * 50_000  # opening balances: private credit 5.5%, bonds 3.5%
     assert ys[sim.Y_INTEREST] == pytest.approx(taxable_interest)
     assert st[sim.S_BP] == pytest.approx(110_000)  # the return is separate from the taxable income
@@ -593,7 +598,7 @@ def test_interest_on_the_loan_is_a_capital_loss():
     tv = np.zeros((1, sim.NTV))
     tv[0, sim.TV_AGE] = 45.0
     ys = np.zeros(sim.NY)
-    sim._year_begin(st, ys, tv, 0, np.zeros(sim.NHC), np.zeros(sim.NACT), 0.0, 0.0, 0.0)
+    sim._year_begin(st, ys, tv, 0, np.zeros(sim.NHC), np.zeros(sim.NACT), 0.0, 0.0, 0.0, NO_STOCKS)
     interest = 100_000 * P.BORROWING_RATE_REAL
     assert ys[sim.Y_LOANINT] == pytest.approx(interest)
     assert ys[sim.Y_REALIZED] == pytest.approx(-interest)  # a loss that offsets gains and carries forward
@@ -1062,7 +1067,9 @@ def test_market_shock_whatif_lowers_wealth():
 def test_search_scale_batch_is_fast_and_finite():
     import time
 
-    policies = [s.policy() for s in menu()][:672]
+    # direct indexing on the account's totals (the aggregate rule): the stock-by-stock book is about thirty times slower and the
+    # search scores only a dozen strategies with it (tests/test_planner.py)
+    policies = [s.policy().replace(di_model="aggregate") for s in menu()][:672]
     inp = build_inputs(make_demo_household(), 400, seed=1)
     run_batch(inp, policies[:2])  # make sure the kernel is compiled
     start = time.perf_counter()
@@ -1113,7 +1120,7 @@ def year_return(log, t):
         wages=log["wages_taxable"][t],
         interest=log["interest"][t],
         qualified_dividends=log["dividends"][t],
-        ordinary_dividends=log["dividends"][t],
+        ordinary_dividends=log["dividends"][t] + log["fund_distribution_short_term"][t],
         net_capital_gain=log["net_gain"][t],
         short_term_gain=log["short_term_gain"][t],
         retirement_distributions=log["ret_dist"][t],
@@ -1124,4 +1131,6 @@ def year_return(log, t):
         dependents=int(log["deps"][t]),
         capital_loss_carryforward=log["cf_in"][t],
         aged_spouses=int(log["aged"][t]),
+        cash_gifts=log["gift_cash"][t],
+        stock_gifts=log["gift_stock"][t],
     ))

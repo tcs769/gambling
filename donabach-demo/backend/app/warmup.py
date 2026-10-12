@@ -51,12 +51,12 @@ def precompute_demo() -> None:
 
 
 def precompute_showcase() -> None:
-    """Search the showcase household's plan and measure it with every strategy on, so the first request for it is instant."""
+    """Work out everything the showcase screens show first, and the waterfall with each one strategy switched off, so that no
+    screen of the demo waits on a simulation. Set DONABACH_NO_PRECOMPUTE=1 to skip it."""
     import os
 
     if os.environ.get("DONABACH_NO_PRECOMPUTE"):
         return
     from app import showcase
 
-    prepared = showcase.prepare()
-    showcase.analyze(prepared)
+    showcase.precompute()

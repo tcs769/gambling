@@ -35,6 +35,7 @@ from app.planner.search import RISK_AVERSION, WEALTH_FLOOR, Outcome, RankedStrat
 from app.planner.strategies import Strategy, menu
 from app.schemas import HORIZON_AGE, Household, MarketShock
 from app.sim import markets
+from app.sim import simulate as sim
 from app.sim.simulate import SimInputs, build_inputs, initial_after_tax_wealth, run_batch, run_detail
 from app.study import metrics
 
@@ -44,6 +45,19 @@ SEARCH_LABEL = "Search planner (model not connected)"
 DEFAULT_STYLE = "equity_first"  # what the app plans with unless asked for "balanced" (see `app.planner.strategies.menu`)
 GUIDED_LABEL = "Model-guided planner (model recommended, engine verified)"
 RIA_SENTENCE = GOOD_RIA_SENTENCE
+LIQUIDATED_LABEL = "Liquidated at 80"
+HEIRS_LABEL = "Passed to heirs at 80"
+
+
+def heirs_note(rate: float = sim.HEIRS_TAX_RATE) -> str:
+    """What "passed to heirs" assumes, and why the rate is what it is."""
+    return (
+        "The taxable account is valued with a step-up in basis, so its unrealized gains are never taxed; the Roth is valued as it stands; "
+        f"the 401(k) and IRA are valued after a flat {rate * 100:.0f}% federal tax. Heirs must empty an inherited retirement account within ten "
+        "years, they are usually in their prime earning years, and a 2026 married couple's income in the 24% bracket runs from "
+        "$211,400 to $403,550: spread over those years, an inheritance of this size lands mostly there (22% to 32%). State tax and estate "
+        "tax are left out, and so is an unused capital-loss carryforward, which ends with the owner."
+    )
 
 
 def resolve_seed(demo_mode: bool, seed: int | None) -> int:
@@ -215,7 +229,9 @@ def build_plan(
     policies = [chosen.policy(), *(b.policy for b in BASELINES)]
     batch = run_batch(evaluation, policies, record_paths=True)
     plan_wealth = batch.wealth[0]
+    plan_wealth_heirs = batch.wealth_heirs[0]
     plan_outcome = Outcome.of(plan_wealth, risk_aversion)
+    plan_outcome_heirs = Outcome.of(plan_wealth_heirs, risk_aversion)
     years = household.horizon_years
     start_wealth = initial_after_tax_wealth(household)
     age = household.primary_age
@@ -223,16 +239,21 @@ def build_plan(
     baselines = []
     for i, baseline in enumerate(BASELINES, start=1):
         outcome = Outcome.of(batch.wealth[i], risk_aversion)
+        outcome_heirs = Outcome.of(batch.wealth_heirs[i], risk_aversion)
         baselines.append(
             BaselineView(
                 key=baseline.key,
                 label=baseline.label,
                 definition=baseline.definition,
                 outcome=outcome_view(outcome),
+                outcome_heirs=outcome_view(outcome_heirs),
                 lifetime_taxes=float(np.median(batch.taxes_paid[i] + batch.pretax_owed[i])),
                 shortfall_chance=float(np.mean(batch.unfunded[i] > 0)),
                 advantage=advantage_view(
                     metrics.compare(plan_wealth, batch.wealth[i], years, risk_aversion, WEALTH_FLOOR, with_range=True)
+                ),
+                advantage_heirs=advantage_view(
+                    metrics.compare(plan_wealth_heirs, batch.wealth_heirs[i], years, risk_aversion, WEALTH_FLOOR, with_range=True)
                 ),
                 fan=fan_series(batch.path_wealth[i], start_wealth, age),
             )
@@ -246,6 +267,8 @@ def build_plan(
     stats = StatCards(
         typical_outcome=outcome_view(plan_outcome),
         ria_typical_outcome=ria.outcome,
+        typical_outcome_heirs=outcome_view(plan_outcome_heirs),
+        ria_typical_outcome_heirs=ria.outcome_heirs,
         advantage_per_year=float(advantage / years),
         advantage_total=float(advantage),
         lifetime_taxes=float(np.median(batch.taxes_paid[0] + batch.pretax_owed[0])),
@@ -253,6 +276,7 @@ def build_plan(
         years=years,
         shortfall_chance=float(np.mean(batch.unfunded[0] > 0)),
         advantage=ria.advantage,
+        advantage_heirs=ria.advantage_heirs,
     )
 
     log = run_detail(det, chosen.policy()).log
@@ -288,5 +312,9 @@ def build_plan(
             wealth_floor=WEALTH_FLOOR,
             market_shock=shock,
             planning_style=style,
+            heirs_rate=sim.HEIRS_TAX_RATE,
+            liquidated_label=LIQUIDATED_LABEL,
+            heirs_label=HEIRS_LABEL,
+            heirs_note=heirs_note(),
         ),
     )

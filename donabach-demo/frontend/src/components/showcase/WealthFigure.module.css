@@ -23,12 +23,7 @@
   font-size: 0.9375rem;
 }
 
-/* The chart holds its previous lines, quieter, while new ones are worked out. */
 .chartBox {
   width: 100%;
   height: 100%;
-  transition: opacity 220ms ease;
-}
-.chartBox[data-stale="true"] {
-  opacity: 0.5;
 }

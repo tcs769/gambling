@@ -13,8 +13,8 @@ import type {
   ParseResponse,
   PlanResponse,
   Preset,
-  ShowcaseAnalysis,
   ShowcaseResponse,
+  ShowcaseWaterfall,
   WhatIfResponse,
   YearDetail,
 } from "./types";
@@ -122,15 +122,19 @@ export const api = {
   yearDetail: (household: Household, choices: Record<string, string>, yearIndex: number, shock: MarketShock | null = null) =>
     post<YearDetail>("/plan/year-detail", { household, choices, year_index: yearIndex, shock }),
 
-  /** The showcase household: its card and its analysis with every strategy switched on (/showcase). */
+  /**
+   * The showcase household (/showcase): its card, the waterfall with every strategy switched on, the whole plan's wealth over
+   * time with both measures of the advantage, and the footer's note. All of it is worked out once; none of it changes when
+   * strategies are switched off.
+   */
   showcase: (signal?: AbortSignal) => request<ShowcaseResponse>("/showcase", { signal }),
 
   /**
-   * The waterfall, headline and wealth lines with only the strategies in `enabled` switched on (null: all of them).
+   * The waterfall (median advantage only) with only the strategies in `enabled` switched on (null: all of them).
    * About half a second for a combination the API has not measured yet. Pass a signal to drop an answer nobody wants.
    */
   showcaseAnalysis: (enabled: readonly string[] | null, signal?: AbortSignal) =>
-    post<ShowcaseAnalysis>("/showcase/analysis", { enabled }, signal),
+    post<ShowcaseWaterfall>("/showcase/analysis", { enabled }, signal),
 
   whatIf: (
     household: Household,

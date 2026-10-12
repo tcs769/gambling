@@ -345,6 +345,8 @@ FEATURE_NAMES = (
     "college_annual_cost_to_wages",
     "social_security_annual",
     "years_to_social_security",
+    "charitable_giving",
+    "charitable_giving_to_wages",
     # this year's tax picture
     "agi_now",
     "marginal_federal_rate_now",
@@ -401,6 +403,8 @@ def household_features(household: Household) -> dict[str, float]:
         "college_annual_cost_to_wages": g.college_annual_cost / wages if g.college_starts_in_years is not None else 0.0,
         "social_security_annual": ss.annual_benefit,
         "years_to_social_security": float(max(0, ss.start_age - primary.age)),
+        "charitable_giving": g.charitable_giving,
+        "charitable_giving_to_wages": g.charitable_giving / wages,
         "agi_now": tax.agi,
         "marginal_federal_rate_now": tax.marginal_federal_rate,
         "effective_total_rate_now": tax.effective_total_rate,

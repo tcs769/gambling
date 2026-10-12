@@ -4,8 +4,8 @@ Every constant lives here, with its source. Federal values are from IRS Rev. Pro
 unless noted otherwise. The simulator runs in real (inflation-adjusted) terms, so these
 2026 dollar amounts are held constant for the whole projection.
 
-Simplifications (also stated in the UI footer): income tax only (no payroll taxes), standard
-deduction only (no itemizing), no AMT, no state tax credits.
+Simplifications (also stated in the UI footer): income tax only (no payroll taxes), the standard
+deduction (itemizing only for charitable gifts), no AMT, no state tax credits.
 """
 
 from __future__ import annotations
@@ -90,6 +90,23 @@ EARLY_WITHDRAWAL_AGE = 59.5
 # inclusion, IRC section 86). Illinois does not tax Social Security benefits.
 SS_TAXABLE_SHARE = 0.85
 
+# --- Charitable gifts ---------------------------------------------------------------------
+# Rules for tax year 2026 as the One Big Beautiful Bill Act (Pub. L. 119-21, sections 70424-70425) left them, read from IRS
+# Publications 505 and 526 (2026) and IRS Topic 506 (see reports/final_report.md, "Update 4", for what was and was not read):
+# * A household that does not itemize deducts up to $2,000 (married filing jointly) of cash gifts on top of the standard
+#   deduction. Gifts of stock do not count.
+# * One that itemizes deducts gifts only above 0.5% of its adjusted gross income. Cash gifts to public charities are limited
+#   to 60% of AGI and gifts of long-term stock to 30%; both together to 60%. The excess carries forward five years, which the
+#   model does not follow (it is lost): gifts that large are outside what it is for.
+# * Long-term stock is deducted at its market value and no gain is recognized on giving it (IRC 170(e)); stock held a year or
+#   less is deducted at its cost, which is why the simulator only ever gives lots held longer than a year.
+# * The 35% cap on the benefit of itemized deductions for the 37% bracket (IRC 68, as rewritten) is not modelled, nor are
+#   other itemized deductions: a household is treated as itemizing only if its gifts alone beat the standard deduction.
+CHARITY_CASH_LIMIT = 0.60
+CHARITY_STOCK_LIMIT = 0.30
+CHARITY_ITEMIZER_FLOOR = 0.005
+CHARITY_NON_ITEMIZER_MFJ = 2_000.0
+
 # --- Retirement plan limits ---------------------------------------------------------------
 # Source: IRS Notice 2025-67. Employee elective deferral limit under IRC section 402(g), 2026.
 LIMIT_401K_EMPLOYEE = 24_500.0
@@ -173,7 +190,7 @@ UNREALIZED_GAIN_TAX_RATE = 0.15
 
 SIMPLIFICATIONS = (
     "Income tax only (no payroll taxes)",
-    "Standard deduction only (no itemizing)",
+    "Standard deduction (itemized only for charitable gifts)",
     "No AMT",
     "No state tax credits",
 )

@@ -14,6 +14,9 @@ Conventions
 * `capital_loss_carryforward` is a positive number of dollars of loss brought in.
 * `aged_spouses` is how many of the two spouses are 65 or older (0, 1 or 2); each adds the
   additional standard deduction of $1,650 (IRS Rev. Proc. 2025-32).
+* `cash_gift` and `stock_gift` are charitable gifts of the year (cash, and long-term stock at its market value). The
+  household takes the larger of the standard deduction plus the cash allowance for those who do not itemize, and gifts
+  alone as itemized deductions (see `params_2026`).
 * Amounts are real 2026 dollars; brackets are never indexed.
 """
 
@@ -57,6 +60,9 @@ CoreReturn = namedtuple(
         "total_tax",
         "marginal_federal_rate",
         "short_term_ordinary",
+        "deduction",
+        "charitable_deduction",
+        "itemized",
     ],
 )
 
@@ -123,6 +129,8 @@ def tax_core(
     capital_loss_carryforward: float,
     aged_spouses: float = 0.0,
     short_term_gain: float = 0.0,
+    cash_gift: float = 0.0,
+    stock_gift: float = 0.0,
 ):
     qualified = min(qualified_dividends, ordinary_dividends)
     taxable_ss = P.SS_TAXABLE_SHARE * social_security
@@ -148,7 +156,27 @@ def tax_core(
         + taxable_ss
     )
     agi = total_income  # no above-the-line adjustments are modelled
-    taxable_income = max(0.0, agi - standard_deduction(aged_spouses))
+
+    # The deduction: the standard one, plus the cash-gift allowance for a household that does not itemize, or its charitable
+    # gifts alone when they come to more (no other itemized deductions are modelled).
+    std = standard_deduction(aged_spouses)
+    deduction = std
+    charitable = 0.0
+    itemized = 0.0
+    if cash_gift > 0.0 or stock_gift > 0.0:
+        base = max(0.0, agi)
+        cash_allowed = min(cash_gift, P.CHARITY_CASH_LIMIT * base)
+        stock_allowed = min(stock_gift, P.CHARITY_STOCK_LIMIT * base, max(0.0, P.CHARITY_CASH_LIMIT * base - cash_allowed))
+        gifts = max(0.0, cash_allowed + stock_allowed - P.CHARITY_ITEMIZER_FLOOR * base)
+        allowance = min(cash_gift, P.CHARITY_NON_ITEMIZER_MFJ)
+        if gifts > std + allowance:
+            deduction = gifts
+            charitable = gifts
+            itemized = 1.0
+        else:
+            deduction = std + allowance
+            charitable = allowance
+    taxable_income = max(0.0, agi - deduction)
 
     # The short-term part of a net gain is ordinary income. A net short-term loss and a long-term loss absorb
     # each other first, so what stays short-term is at most the net gain (`short_term_gain` is a part of
@@ -216,6 +244,9 @@ def tax_core(
         federal_total + il_tax,
         marginal_rate(ordinary_taxable),
         short_term_ordinary,
+        deduction,
+        charitable,
+        itemized,
     )
 
 
@@ -249,6 +280,8 @@ class TaxInputs(BaseModel):
     aged_spouses: int = Field(
         0, ge=0, le=2, description="Spouses aged 65 or older; each adds the additional standard deduction"
     )
+    cash_gifts: float = Field(0.0, ge=0, description="Charitable gifts of cash this year")
+    stock_gifts: float = Field(0.0, ge=0, description="Charitable gifts of stock held over a year, at market value")
 
 
 class TaxLine(BaseModel):
@@ -277,6 +310,9 @@ class TaxReturn(BaseModel):
     agi: float
     # Federal
     standard_deduction: float
+    deduction_used: float = 0.0  # what was subtracted from AGI: the standard deduction, or the itemized gifts when they are more
+    charitable_deduction: float = 0.0  # the part of it that is for charitable gifts
+    itemized: bool = False
     taxable_income: float
     preferential_income: float
     ordinary_taxable_income: float
@@ -302,6 +338,14 @@ class TaxReturn(BaseModel):
     capital_loss_deducted: float
     capital_loss_carryforward_out: float
 
+    def _deduction_lines(self) -> list[TaxLine]:
+        if self.itemized:
+            return [TaxLine(label="Itemized deductions (charitable gifts)", amount=-self.deduction_used)]
+        lines = [TaxLine(label="Standard deduction", amount=-self.standard_deduction)]
+        if self.charitable_deduction > 0:
+            lines.append(TaxLine(label="Charitable gifts of cash (without itemizing)", amount=-self.charitable_deduction))
+        return lines
+
     def lines(self) -> list[TaxLine]:
         """The return as ordered display lines (used by the year-detail side panel)."""
         out = [
@@ -318,7 +362,7 @@ class TaxReturn(BaseModel):
             TaxLine(label="Roth conversions", amount=self.roth_conversions),
             TaxLine(label="Taxable Social Security (85%)", amount=self.taxable_social_security),
             TaxLine(label="Adjusted gross income", amount=self.agi, kind="subtotal"),
-            TaxLine(label="Standard deduction", amount=-self.standard_deduction),
+            *self._deduction_lines(),
             TaxLine(label="Taxable income", amount=self.taxable_income, kind="subtotal"),
             TaxLine(label="Tax on ordinary income", amount=self.ordinary_tax),
             TaxLine(label="Tax on dividends and gains", amount=self.capital_gains_tax),
@@ -356,6 +400,8 @@ def compute_return(inputs: TaxInputs) -> TaxReturn:
         float(inputs.capital_loss_carryforward),
         float(inputs.aged_spouses),
         float(inputs.short_term_gain),
+        float(inputs.cash_gifts),
+        float(inputs.stock_gifts),
     )
     agi = r.agi
     return TaxReturn(
@@ -373,6 +419,9 @@ def compute_return(inputs: TaxInputs) -> TaxReturn:
         total_income=r.total_income,
         agi=agi,
         standard_deduction=float(standard_deduction(float(inputs.aged_spouses))),
+        deduction_used=r.deduction,
+        charitable_deduction=r.charitable_deduction,
+        itemized=bool(r.itemized),
         taxable_income=r.taxable_income,
         preferential_income=r.preferential_income,
         ordinary_taxable_income=r.ordinary_taxable_income,

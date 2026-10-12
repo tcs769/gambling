@@ -149,6 +149,7 @@ class Strategy:
             reserve_years=self.reserve_years,
             lot_method=DONABACH_LOT_METHOD,
             short_term_ordinary=True,
+            donate_lots=True,
         )
 
     def short_label(self) -> str:

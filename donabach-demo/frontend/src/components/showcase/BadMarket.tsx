@@ -1,5 +1,5 @@
 import { money, percentTrim } from "@/lib/format";
-import type { ShowcaseAnalysis } from "@/lib/types";
+import type { ShowcaseWealth } from "@/lib/types";
 import styles from "./BadMarket.module.css";
 
 /**
@@ -7,8 +7,8 @@ import styles from "./BadMarket.module.css";
  * the horizon is the floor most households stay above, and the share of futures in which the money runs out is the
  * risk the plan takes on. Both are written for Donabach and for the advisor, side by side, as the API measured them.
  */
-export function BadMarket({ analysis, computing }: { analysis: ShowcaseAnalysis; computing: boolean }) {
-  const { advantage, horizon_age: horizon, advisor_label: advisor } = analysis;
+export function BadMarket({ wealth }: { wealth: ShowcaseWealth }) {
+  const { advantage, horizon_age: horizon, advisor_label: advisor } = wealth;
   const pairs = [
     {
       title: `The 10th percentile at ${horizon}`,
@@ -25,7 +25,7 @@ export function BadMarket({ analysis, computing }: { analysis: ShowcaseAnalysis;
   ];
   return (
     <div className={styles.frame}>
-      <div className={styles.grid} data-stale={computing}>
+      <div className={styles.grid}>
         {pairs.map((pair) => (
           <section key={pair.title} className={styles.card} aria-label={pair.title}>
             <h3 className={styles.title}>{pair.title}</h3>

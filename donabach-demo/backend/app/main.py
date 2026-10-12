@@ -28,9 +28,9 @@ from app.api_models import (
     ParseResponse,
     PlanRequest,
     PlanResponse,
-    ShowcaseAnalysis,
     ShowcaseRequest,
     ShowcaseResponse,
+    ShowcaseWaterfall,
     WhatIfRequest,
     WhatIfResponse,
     YearDetailRequest,
@@ -228,13 +228,14 @@ def plan_whatif(request: WhatIfRequest) -> WhatIfResponse:
 
 @app.get("/showcase", response_model=ShowcaseResponse)
 def get_showcase() -> ShowcaseResponse:
-    """The showcase household: its summary card, and its plan measured against the advisor with every strategy on."""
+    """The showcase household: its summary card, the waterfall with every strategy on, and the whole plan over time against the
+    advisor (both measures of the advantage). All of it is worked out once and kept."""
     return showcase.showcase()
 
 
-@app.post("/showcase/analysis", response_model=ShowcaseAnalysis)
-def showcase_analysis(request: ShowcaseRequest) -> ShowcaseAnalysis:
-    """The strategy waterfall, headline and wealth lines with only the strategies in `enabled` switched on."""
+@app.post("/showcase/analysis", response_model=ShowcaseWaterfall)
+def showcase_analysis(request: ShowcaseRequest) -> ShowcaseWaterfall:
+    """The strategy waterfall, median advantage only, with only the strategies in `enabled` switched on."""
     prepared = showcase.prepare()
     if request.enabled is not None:
         known = {step.key for step in showcase.waterfall_strategies(prepared.strategy)}

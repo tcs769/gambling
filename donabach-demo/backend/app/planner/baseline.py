@@ -20,6 +20,7 @@
 * every account managed separately with the same mix
 * no Roth conversions; withdrawals taken proportionally
 * the same first-in-first-out tax lots
+* actively managed funds in the taxable account, which distribute capital gains every year (see below)
 
 The mechanics live in `app.sim.simulate`; this module only fixes the parameters.
 """
@@ -34,6 +35,19 @@ GLIDE_START_SHARE = 0.80
 GLIDE_END_SHARE = 0.50
 TYPICAL_ADVISOR_FEE = 0.010
 BASELINE_LOT_METHOD = "fifo"  # the advisors sell the oldest lots first
+
+# The typical advisor puts the taxable account in actively managed US equity funds, which pass capital gains through to their
+# holders every year whether or not the holder sold anything. Morningstar's median ten-year tax cost ratio (the return the
+# top federal rate takes from distributions) for US stock funds is 1.79% (all funds, index funds and ETFs below 0.50%; large
+# blend 1.26% over the last three years). The model's dividends (a yield of 1.8%, taxed at 23.8%) account for 0.43 points of it;
+# the rest is capital gain distributions taxed at a blend of 23.8% (88%, long-term) and 40.8% (12%, short-term): they come to
+# 5.3% of the funds' value a year, or 6.5% on 20% and 37% rates without the 3.8% surtax. 5.5% is used (4% to 7% in the
+# sensitivity). The 12% short-term share is Lipper's, for all open-end funds in 2006 (cited by Johnson and Poterba, 2016).
+# The short-term part is paid out as ordinary dividends. The good RIA holds tax-efficient index funds, whose distributions
+# are close to nothing (tax cost ratios under 0.5%, nearly all of it the dividends), so it has none. Sources and what was
+# read of them: reports/final_report.md, Update 4.
+ACTIVE_FUND_DISTRIBUTION = 0.055
+ACTIVE_FUND_SHORT_TERM_SHARE = 0.12
 
 RIA_BASELINE = Policy(
     stock_share=GLIDE_START_SHARE,
@@ -65,6 +79,8 @@ TYPICAL_ADVISOR = Policy(
     flat_fee=TYPICAL_ADVISOR_FEE,
     lot_method=BASELINE_LOT_METHOD,
     short_term_ordinary=True,
+    fund_distribution=ACTIVE_FUND_DISTRIBUTION,
+    fund_distribution_short_term=ACTIVE_FUND_SHORT_TERM_SHARE,
 )
 
 # (up to, fee rate) rows, for display next to results.
@@ -79,7 +95,8 @@ GOOD_RIA_SENTENCE = (
 TYPICAL_ADVISOR_SENTENCE = (
     "A typical advisor: a flat 1.0% fee at every balance, no tax-loss harvesting, every account managed "
     "separately with the same mix, an age-based glide path from 80% to 50% stocks, no Roth conversions, "
-    "withdrawals taken proportionally and the oldest tax lots sold first."
+    "withdrawals taken proportionally and the oldest tax lots sold first. Its taxable funds are actively managed, so they "
+    "pay out capital gains every year."
 )
 
 

@@ -49,39 +49,131 @@ import numpy as np
 from app.jit import jit, prange
 from app.schemas import Household, MarketShock
 from app.sim import income, markets
-from app.tax import params_2026 as P
-from app.tax.engine import marginal_rate, pretax_withdrawal_rate, tax_core
+from app.sim.diag import (
+    D_CARRY_FEE,
+    D_CARRY_TAX,
+    D_CASHGIFT,
+    D_DONATED,
+    D_DONATED_GAIN,
+    D_EARLY,
+    D_END_BASIS,
+    D_END_BE,
+    D_FUNDDIST,
+    D_FUNDDIST_ST,
+    D_GAIN,
+    D_PENALTY,
+    D_PTW,
+    D_RES0_BROKERAGE,
+    D_RES0_PRETAX,
+    D_RES0_ROTH,
+    D_RES0_SET,
+    D_RES_BROKERAGE,
+    D_RES_PRETAX,
+    D_RES_ROTH,
+    D_RES_YEARS,
+    D_SOLD,
+    D_TAPE,
+    D_TAX,
+    D_TYPE,
+    D_WAGETAX,
+    D_YG,
+    DG_SIZE,
+    N_PURPOSES,
+    NK,
+    P_DISTRIBUTIONS,
+    P_FEES,
+    P_GIFTS,
+    P_GOALS,
+    P_HARVEST,
+    P_OTHER,
+    P_REBALANCING,
+    P_RESERVE,
+    P_SPENDING,
+    P_TAXES,
+    T_CHARITY,
+    T_CONVERSIONS,
+    T_DIVIDENDS,
+    T_LONG_TERM,
+    T_OTHER,
+    T_REQUIRED,
+    T_SHORT_TERM,
+    T_WITHDRAWALS,
+    TAPE_BUCKET,
+    TAPE_DONATE,
+    TAPE_FEES,
+    TAPE_FORCED,
+    TAPE_GOALS,
+    TAPE_LOAN,
+    TAPE_REBALANCE,
+    TAPE_SAVING,
+    TAPE_SPENDING,
+    TAPE_TAXES,
+    TAPE_TAXGAP,
+    W_GIFTS,
+    W_GOALS,
+    W_REQUIRED,
+    W_SPENDING,
+    W_TAXES,
+)
 
 # --------------------------------------------------------------------------------------------
 # Layout constants shared by the kernel and the Python wrappers
 # --------------------------------------------------------------------------------------------
-
-# State vector. Indices 0..10 are balances that scale together when a fee is charged (the brokerage
-# basis, a memo item, is skipped). Account letters: P pre-tax, R Roth, B brokerage; asset letters:
-# E equity, B bonds, P private credit (the brokerage bonds also hold cash); GB is the goal bucket.
-(S_PE, S_PB, S_PP, S_RE, S_RB, S_RP, S_BE, S_BBASIS, S_BB, S_BP, S_GB) = range(11)
-S_CF, S_DGAIN, S_DDIST, S_UNFUNDED, S_LOAN = 11, 12, 13, 14, 15
-# Tax lots. The path's lot method and short-term switch (set from the policy at the start), the year being simulated,
-# the short-term gains realized so far by sales that are not yet in a year's tax return, and the short-term part of
-# the deferred gains (S_DGAIN is the whole of them). The brokerage stock is a number of units at a price that moves
-# with the market (S_PRICE, 1 at the start; S_UNITS is the total), so a year's growth touches no lot. Lot i holds
-# S_LOTU + i units bought at S_LOTC + i per unit: lot 0 is the opening position and lot 1 + t takes year t's purchases.
-# The account's value S_BE is S_PRICE x S_UNITS and its basis S_BBASIS is the sum of cost x units over the lots.
-# S_BEST remembers which live lot has the highest cost per unit (-1: not known), so a sale need not look for it.
-S_LOTS, S_STCG, S_YEAR, S_STACC, S_DGAIN_ST, S_PRICE, S_UNITS, S_BEST = 16, 17, 18, 19, 20, 21, 22, 23
-N_SCALARS = 24
-MAX_LOTS = 64  # a household can be as young as 18, so the horizon is at most 62 years: lots 0 to 63
-S_LOTU = N_SCALARS
-S_LOTC = S_LOTU + MAX_LOTS
-NSTATE = S_LOTC + MAX_LOTS
-N_BALANCES = 11
-
-# Lot methods (S_LOTS, SP_LOTS) and the order a sale takes lots in.
-LOTS_AVERAGE, LOTS_FIFO, LOTS_HIFO = 0.0, 1.0, 2.0
+# State vector and tax-lot layout: see app/sim/state.py (names are re-exported here for the modules that import them
+# from the simulator).
+from app.sim.state import (  # noqa: E402, F401
+    D_LOTC,
+    D_LOTU,
+    D_MAXC,
+    D_PRICE,
+    D_UNITS,
+    DI_BUCKETS,
+    DI_GMIN,
+    LOTS_AVERAGE,
+    LOTS_FIFO,
+    LOTS_HIFO,
+    LOTS_STOCK,
+    MAX_LOTS,
+    N_BALANCES,
+    N_SCALARS,
+    N_STOCKS,
+    NSTATE,
+    NSTATE_DI,
+    S_BB,
+    S_BBASIS,
+    S_BE,
+    S_BEST,
+    S_BP,
+    S_CF,
+    S_DDIST,
+    S_DGAIN,
+    S_DGAIN_ST,
+    S_GB,
+    S_LOAN,
+    S_LOTC,
+    S_LOTS,
+    S_LOTU,
+    S_PB,
+    S_PE,
+    S_PP,
+    S_PRICE,
+    S_RB,
+    S_RE,
+    S_RP,
+    S_STACC,
+    S_STCG,
+    S_UNFUNDED,
+    S_UNITS,
+    S_YEAR,
+)
+from app.sim.stocks import di_buy, di_donate, di_realize, di_sell, di_start, di_year_begin
+from app.sim.stocks import lot_short_share as _lot_short_share
+from app.tax import params_2026 as P
+from app.tax.engine import marginal_rate, pretax_withdrawal_rate, tax_core
 
 # Time-varying inputs, one row per simulated year.
-(TV_AGE, TV_RETIRED, TV_SS, TV_NEED, TV_GOAL, TV_BUCKET, TV_EXPWAGE, TV_KIDS, TV_DEPS, TV_NEARN, TV_AGED, TV_SPEND) = range(12)
-NTV = 12
+(TV_AGE, TV_RETIRED, TV_SS, TV_NEED, TV_GOAL, TV_BUCKET, TV_EXPWAGE, TV_KIDS, TV_DEPS, TV_NEARN, TV_AGED, TV_SPEND, TV_GIFT) = range(13)
+NTV = 13
 
 # Policy columns.
 (
@@ -105,8 +197,12 @@ NTV = 12
     SP_REFILL,
     SP_LOTS,
     SP_STCG,
-) = range(20)
-NSP = 20
+    SP_DIMODEL,
+    SP_DONATE,
+    SP_DIST,
+    SP_DISTST,
+) = range(24)
+NSP = 24
 
 # 401(k) contribution type (SP_K401).
 K401_PRETAX, K401_ROTH, K401_ROTH_LOW = 0.0, 1.0, 2.0
@@ -131,23 +227,45 @@ GATE_NAMES = ("conversion", "harvest", "bucket", "location", "withdraw", "k401",
     A_WDBRACKET,  # 1.0 = withdraw pre-tax up to the bracket target first
     A_RESERVE,  # spending reserve: years of expenses held in bonds and private credit, the rest in stocks (0 = none)
     A_REFILL,  # 1.0 = do not sell stocks to refill the reserve in a year stocks fell
-) = range(12)
-NACT = 12
+    A_DIST,  # capital gains the funds in the brokerage account distribute each year, as a share of its equity
+    A_DISTST,  # the short-term share of those distributions
+) = range(14)
+NACT = 14
 
 # Scratch carried from the start of a year to its end (what the household saw, then did).
-(Y_REALIZED, Y_RETDIST, Y_EARLYBASE, Y_CFIN, Y_DIVIDENDS, Y_INTEREST, Y_HARVEST, Y_PRETAX_OPEN, Y_LOANINT, Y_FORCED, Y_EQRET, Y_REALIZED_ST) = range(12)
-NY = 12
+(
+    Y_REALIZED,
+    Y_RETDIST,
+    Y_EARLYBASE,
+    Y_CFIN,
+    Y_DIVIDENDS,
+    Y_INTEREST,
+    Y_HARVEST,
+    Y_PRETAX_OPEN,
+    Y_LOANINT,
+    Y_FORCED,
+    Y_EQRET,
+    Y_REALIZED_ST,
+    Y_DIST,
+    Y_DISTST,
+    Y_FORCEDEQ,
+    Y_FORCEDGAIN,
+    Y_HARVESTST,
+) = range(17)
+NY = 17
 
 # Household constants.
 HC_SS = 0
 HC_RMD_START = 1  # age at which required minimum distributions begin
-HC_HARVEST_MODEL = 2  # 0: the specification's direct-indexing harvest rule; 1: the evidence-based alternative
+HC_HARVEST_MODEL = 2  # the aggregate direct-indexing harvest rule: 0 the specification's, 1 the evidence-based alternative, 2 calibrated
 HC_DI_FEE_PREMIUM = 3  # extra yearly fee on direct-indexed equity (0 in the specification)
-NHC = 4
+HC_HARVEST_THRESHOLD = 4  # stock by stock: a lot is harvested when its cost is this far above the price (a fraction)
+HC_HEIRS_RATE = 5  # the flat tax rate the heirs pay on the pre-tax balance they inherit (the "passed to heirs" valuation)
+NHC = 6
 
 # Kernel result columns.
-R_WEALTH, R_TAXES, R_PRETAX_OWED, R_UNFUNDED = range(4)
-NRESULT = 4
+R_WEALTH, R_TAXES, R_PRETAX_OWED, R_UNFUNDED, R_WEALTH_HEIRS = range(5)
+NRESULT = 5
 
 # Detailed year-log columns (deterministic path).
 LOG_COLUMNS = (
@@ -204,6 +322,13 @@ LOG_COLUMNS = (
     "loan_repaid_gain",
     "gain_harvest",
     "short_term_gain",
+    "fund_distribution",
+    "fund_distribution_short_term",
+    "gift_cash",
+    "gift_stock",
+    "charitable_deduction",
+    "deduction",
+    "itemized",
 )
 NLOG = len(LOG_COLUMNS)
 (
@@ -260,6 +385,13 @@ NLOG = len(LOG_COLUMNS)
     L_REPAID_GAIN,
     L_GAINHARVEST,
     L_STGAIN,
+    L_FUNDDIST,
+    L_FUNDDIST_ST,
+    L_GIFTCASH,
+    L_GIFTSTOCK,
+    L_CHARITY,
+    L_DEDUCTION,
+    L_ITEMIZED,
 ) = range(NLOG)
 
 # --------------------------------------------------------------------------------------------
@@ -273,6 +405,13 @@ BUCKET_YEARS_AHEAD = 4  # goal-matched bonds fully fund each goal four years ahe
 HARVEST_DECLINE_SHARE = 0.85  # direct indexing harvests 85% of an equity decline ...
 HARVEST_DISPERSION = 0.03  # ... plus 3% "dispersion" harvest scaled by basis ratio
 HARVEST_CAP_OF_VALUE = 0.35  # ... capped at 35% of value (and at basis)
+# The aggregate rule with the dispersion measured on the stock-level book instead of assumed (HC_HARVEST_MODEL 2):
+# decline share, dispersion share of value a year, and the power of the basis ratio it is scaled by.
+HARVEST_CAL_DECLINE = 0.85
+HARVEST_CAL_DISPERSION = 0.03
+HARVEST_CAL_POWER = 1.0
+HARVEST_THRESHOLD = 0.01  # the stock-level book harvests a lot whose cost is more than 1% above its stock's price
+HEIRS_TAX_RATE = 0.24  # see `heirs_wealth`
 FUND_HARVEST_TRIGGER = -0.10  # fund-level harvesting only when equities fall more than 10%
 GLIDE_END_AGE = 70.0  # glide paths end here, as before the horizon moved from 70 to 80
 
@@ -296,13 +435,23 @@ def _shortfall(amount):
     return amount if amount > 0.005 else 0.0
 
 
+@jit(inline="always")
+def wants_book(row):
+    """Does this policy's brokerage equity live in the direct-indexing book (100 stocks with lots)? Direct indexing, with
+    the stock-level model, and tax lots (a policy on average cost keeps no lots, so its direct indexing is the aggregate rule)."""
+    return row[SP_DI] > 0.5 and row[SP_DIMODEL] > 0.5 and row[SP_LOTS] > 0.5
+
+
 @jit
 def _lots_start(st, row):
     """Start a path: the policy's lot method and short-term switch go into the state, and with lots the whole opening
-    brokerage stock position is lot 0 (long-term), at a price of 1 a unit."""
+    brokerage stock position is lot 0 (long-term), at a price of 1 a unit. A path that has the direct-indexing book (its
+    state vector is `NSTATE_DI` long, see `wants_book`) spreads the position over the book's stocks instead."""
     st[S_LOTS] = row[SP_LOTS]
     st[S_STCG] = row[SP_STCG]
-    if row[SP_LOTS] > 0.5:
+    if wants_book(row):
+        di_start(st)
+    elif row[SP_LOTS] > 0.5:
         be = st[S_BE]
         st[S_PRICE] = 1.0
         st[S_UNITS] = be
@@ -312,25 +461,12 @@ def _lots_start(st, row):
 
 
 @jit(inline="always")
-def _lot_short_share(lot, year):
-    """The share of a gain on `lot` that is short-term when it is sold in `year`: none for the opening position, all of
-    it in the year the lot was bought, half the year after (purchases and sales are spread through a year, so a lot
-    sold the next year has been held more than a year half the time), none after that."""
-    if lot == 0:
-        return 0.0
-    age = year - (lot - 1)
-    if age <= 0:
-        return 1.0
-    if age == 1:
-        return 0.5
-    return 0.0
-
-
-@jit(inline="always")
 def _lots_sell(st, amount, order):
     """Sell `amount` of brokerage stock from its lots, `order` LOTS_FIFO (oldest lot first) or LOTS_HIFO (the lot bought at
     the highest price first, which is the one with the highest cost per dollar of value). Returns the realized gain; its
     short-term part, when short-term gains are taxed as ordinary income, is added to `st[S_STACC]`."""
+    if order > 2.5:
+        return di_sell(st, amount)
     year = int(st[S_YEAR])
     n = min(year + 2, MAX_LOTS)
     price = st[S_PRICE]
@@ -392,6 +528,9 @@ def _lots_buy(st, amount):
     """Buy `amount` of brokerage stock at cost: it goes into this year's lot (every purchase in a year is at the same price)."""
     if amount <= 0.0:
         return
+    if st[S_LOTS] > 2.5:
+        di_buy(st, amount)
+        return
     k = min(int(st[S_YEAR]) + 1, MAX_LOTS - 1)
     price = st[S_PRICE]
     units = amount / price
@@ -423,6 +562,8 @@ def _lots_realize(st, room):
     """Realize up to `room` of gain in lots held more than a year (so the gain is long-term): sell the lots bought at the
     lowest prices (the most gain per dollar) and buy the same shares back at once. Only their basis steps up, and the shares
     become part of this year's lot. Returns the gain realized."""
+    if st[S_LOTS] > 2.5:
+        return di_realize(st, room)
     year = int(st[S_YEAR])
     n = min(year + 2, MAX_LOTS)
     price = st[S_PRICE]
@@ -458,6 +599,65 @@ def _lots_realize(st, room):
         st[S_BBASIS] += realized
         st[S_BEST] = -1.0
     return realized
+
+
+@jit(inline="always")
+def _lots_donate(st, amount):
+    """Give away `amount` of brokerage stock held more than a year, the lots with the most gain per dollar first (the lowest
+    cost per unit): nothing is sold, so no gain is realized, and the lot's cost leaves with it. Only lots with a gain are given
+    (a lot with a loss is worth more sold). Returns the value given, which is less than `amount` when there is not enough."""
+    if amount <= 0.0 or st[S_BE] <= 0.0:
+        return 0.0
+    if st[S_LOTS] > 2.5:
+        return di_donate(st, amount)
+    if st[S_LOTS] < 0.5:
+        # no lots: the account is one position at its average cost, so a gift is pro rata
+        if st[S_BE] <= st[S_BBASIS]:
+            return 0.0
+        h = min(1.0, amount / st[S_BE])
+        given = h * st[S_BE]
+        st[S_BBASIS] *= 1.0 - h
+        st[S_BE] -= given
+        return given
+    year = int(st[S_YEAR])
+    n = min(year + 2, MAX_LOTS)
+    price = st[S_PRICE]
+    given = 0.0
+    units_given = 0.0
+    basis_given = 0.0
+    while given < amount - 1e-9:
+        best = -1
+        best_u = 0.0
+        best_c = 0.0
+        for i in range(n):
+            if _lot_short_share(i, year) > 0.0:
+                continue
+            u = st[S_LOTU + i]
+            c = st[S_LOTC + i]
+            if u <= 1e-9 or price - c <= 1e-12:
+                continue
+            if best < 0 or c < best_c:
+                best = i
+                best_u = u
+                best_c = c
+        if best < 0:
+            break
+        take = min(best_u, (amount - given) / price)
+        st[S_LOTU + best] = best_u - take
+        given += take * price
+        units_given += take
+        basis_given += take * best_c
+    if units_given > 0.0:
+        units = st[S_UNITS] - units_given
+        if units <= 1e-9:
+            units = 0.0
+            st[S_BBASIS] = 0.0
+        else:
+            st[S_BBASIS] -= basis_given
+        st[S_UNITS] = units
+        st[S_BE] = price * units
+        st[S_BEST] = -1.0
+    return given
 
 
 @jit
@@ -772,11 +972,14 @@ def _policy_action(row, gates_row, tv, t, w, act):
     act[A_WDBRACKET] = 1.0 if (row[SP_WD_BRACKET] > 0.5 and gates_row[G_WITHDRAW] > 0.5) else 0.0
     act[A_RESERVE] = row[SP_RESERVE]
     act[A_REFILL] = row[SP_REFILL]
+    act[A_DIST] = row[SP_DIST]
+    act[A_DISTST] = row[SP_DISTST]
 
 
 @jit(inline="always")
-def _year_begin(st, ys, tv, t, hhc, act, r_e, r_b, r_c):
-    """Steps 1-2: apply this year's returns, then harvest losses. Fills the year scratch `ys`."""
+def _year_begin(st, ys, tv, t, hhc, act, r_e, r_b, r_c, g):
+    """Steps 1-2: apply this year's returns, then harvest losses. Fills the year scratch `ys`. `g` is the year's movement of
+    each stock of the direct-indexing book (used only by a path that has one)."""
     age = tv[t, TV_AGE]
     early = age < _EARLY_AGE
     equity_open = st[S_BE]
@@ -805,7 +1008,17 @@ def _year_begin(st, ys, tv, t, hhc, act, r_e, r_b, r_c):
     st[S_RE] *= 1.0 + r_e
     st[S_RB] *= 1.0 + r_b
     st[S_RP] *= 1.0 + r_c
-    if st[S_LOTS] > 0.5:
+    book = st[S_LOTS] > 2.5
+    book_loss = 0.0
+    book_loss_short = 0.0
+    if book:
+        # The sleeve's stocks move with the market and with their own movements, which net to nothing across the sleeve;
+        # every stock pays the dividend, bought back at the new price; losses are harvested lot by lot.
+        book_loss, book_loss_short = di_year_begin(
+            st, t, 1.0 + r_e - markets.DIVIDEND_YIELD, g, markets.DIVIDEND_YIELD, hhc[HC_HARVEST_THRESHOLD], act[A_HARVEST] > 1.5
+        )
+        st[S_BBASIS] += dividends
+    elif st[S_LOTS] > 0.5:
         # The price earns the price return; the dividends are paid out of the total return and bought back at the new
         # price, which makes them this year's lot (a fresh lot: nothing was bought in it earlier this year).
         price = st[S_PRICE] * (1.0 + r_e - markets.DIVIDEND_YIELD)
@@ -826,15 +1039,41 @@ def _year_begin(st, ys, tv, t, hhc, act, r_e, r_b, r_c):
     st[S_BP] *= 1.0 + r_c
     st[S_GB] *= 1.0 + r_b
 
+    # 1b. Capital gain distributions by the funds the account holds: `act[A_DIST]` of its value a year, a share `act[A_DISTST]`
+    # of it short-term (paid as ordinary dividends). The household is taxed on them though it sold nothing, and the distribution
+    # is reinvested, so every lot's cost rises by its share of it. (The direct-indexing book holds stocks, which distribute none.)
+    dist = 0.0
+    dist_st = 0.0
+    if act[A_DIST] > 0.0 and not book and st[S_BE] > 0.0:
+        dist = act[A_DIST] * st[S_BE]
+        dist_st = act[A_DISTST] * dist
+        if st[S_LOTS] > 0.5:
+            bump = act[A_DIST] * st[S_PRICE]
+            for i in range(min(t + 2, MAX_LOTS)):
+                if st[S_LOTU + i] > 1e-9:
+                    st[S_LOTC + i] += bump
+        st[S_BBASIS] += dist
+        realized += dist - dist_st
+
     # 2. Harvest losses (0 = none, 1 = fund level, 2 = stock by stock).
     harvest = 0.0
     be = st[S_BE]
     basis = st[S_BBASIS]
     mode = act[A_HARVEST]
-    if mode > 0.5 and be > 0.0:
+    if book:
+        # Already harvested, lot by lot, as the prices moved; the short-term part of the loss joins this year's short-term gains.
+        harvest = book_loss
+        realized -= harvest
+        st[S_STACC] -= book_loss_short
+    elif mode > 0.5 and be > 0.0:
         if mode > 1.5:
             decline = max(0.0, -r_e) * be / (1.0 + r_e)
-            if hhc[HC_HARVEST_MODEL] > 0.5:
+            model = hhc[HC_HARVEST_MODEL]
+            if model > 1.5:
+                # The aggregate rule with the dispersion measured on the stock-level book (see app.study.harvest_calibration).
+                b_now = min(1.0, basis / be)
+                wanted = HARVEST_CAL_DECLINE * decline + HARVEST_CAL_DISPERSION * be * b_now**HARVEST_CAL_POWER
+            elif model > 0.5:
                 # Sensitivity only (reports/assumption_review.md): harvesting shrinks steeply as the basis rises to
                 # the value, and only a part of a decline is harvestable once lots have gains.
                 b_open = min(1.0, basis_open / equity_open) if equity_open > 0.0 else 1.0
@@ -856,7 +1095,10 @@ def _year_begin(st, ys, tv, t, hhc, act, r_e, r_b, r_c):
 
     # 2b. The box-spread loan: interest accrues (and is booked as a capital loss), and if a market
     # drop pushes the loan above 40% of the taxable account, assets are sold to bring it back to 30%.
+    be_before_forced = st[S_BE]
     loan_interest, forced, forced_gain = _accrue_and_deleverage(st)
+    ys[Y_FORCEDEQ] = be_before_forced - st[S_BE]
+    ys[Y_FORCEDGAIN] = forced_gain
     realized += forced_gain - loan_interest
     realized_st += st[S_STACC]
     st[S_STACC] = 0.0
@@ -870,11 +1112,76 @@ def _year_begin(st, ys, tv, t, hhc, act, r_e, r_b, r_c):
     ys[Y_DIVIDENDS] = dividends
     ys[Y_INTEREST] = interest
     ys[Y_HARVEST] = harvest
+    ys[Y_DIST] = dist
+    ys[Y_DISTST] = dist_st
+    ys[Y_HARVESTST] = book_loss_short
+
+
+@jit
+def _diag_tax_year(diag, wages_taxable, interest, dividends, dist_st, realized, realized_st, ret_dist, rmd, conv, ss, early_base, kids, deps, cf_in, aged, harvest, harvest_st, total_tax):
+    """Split the year's income tax by the kind of income (`app.sim.diag`): the income is stacked in the order the tax is worked
+    out and each kind's share is what it added. Then share the tax on capital gains out among the purposes of the year's sales in
+    proportion to their gains (loss harvesting, a negative gain, gets the tax its losses saved)."""
+    none = 0.0
+    optional = ret_dist - rmd
+    c0 = tax_core(wages_taxable, interest, none, none, none, none, none, ss, none, kids, deps, none, aged).total_tax
+    c1 = tax_core(wages_taxable, interest, none, none, none, optional, none, ss, early_base, kids, deps, none, aged).total_tax
+    c2 = tax_core(wages_taxable, interest, none, none, none, ret_dist, none, ss, early_base, kids, deps, none, aged).total_tax
+    c3 = tax_core(wages_taxable, interest, none, none, none, ret_dist, conv, ss, early_base, kids, deps, none, aged).total_tax
+    short = _short_in_net(realized, realized_st, cf_in)
+    c4 = tax_core(wages_taxable, interest, none, none, short, ret_dist, conv, ss, early_base, kids, deps, none, aged, short).total_tax
+    c5 = tax_core(wages_taxable, interest, dividends, dividends + dist_st, short, ret_dist, conv, ss, early_base, kids, deps, none, aged, short).total_tax
+    c6 = tax_core(wages_taxable, interest, dividends, dividends + dist_st, realized, ret_dist, conv, ss, early_base, kids, deps, cf_in, aged, realized_st).total_tax
+    diag[D_TYPE + T_OTHER] += c0
+    diag[D_TYPE + T_WITHDRAWALS] += c1 - c0
+    diag[D_TYPE + T_REQUIRED] += c2 - c1
+    diag[D_TYPE + T_CONVERSIONS] += c3 - c2
+    diag[D_TYPE + T_SHORT_TERM] += c4 - c3
+    diag[D_TYPE + T_DIVIDENDS] += c5 - c4
+    diag[D_TYPE + T_LONG_TERM] += c6 - c5
+    diag[D_TYPE + T_CHARITY] += total_tax - c6
+    # what the year's harvested losses saved: the tax with them minus the tax without them
+    without = tax_core(wages_taxable, interest, dividends, dividends + dist_st, realized + harvest, ret_dist, conv, ss, early_base, kids, deps, cf_in, aged, realized_st + harvest_st).total_tax
+    saved = c6 - without
+    diag[D_TAX + P_HARVEST] += saved
+    # The rest of the tax on gains is the tax on the year's sales and distributions as they stand: shared out in proportion to
+    # their gains when it is a tax, and (a net loss, so a tax saved) in proportion to their losses.
+    rest = (c4 - c3) + (c6 - c5) - saved
+    positive = 0.0
+    negative = 0.0
+    for q in range(N_PURPOSES):
+        if q != P_HARVEST:
+            positive += max(0.0, diag[D_YG + q])
+            negative += max(0.0, -diag[D_YG + q])
+    if rest >= 0.0:
+        if positive > 0.0:
+            for q in range(N_PURPOSES):
+                if q != P_HARVEST and diag[D_YG + q] > 0.0:
+                    diag[D_TAX + q] += rest * diag[D_YG + q] / positive
+        else:
+            diag[D_TAX + P_OTHER] += rest
+    else:
+        if negative > 0.0:
+            for q in range(N_PURPOSES):
+                if q != P_HARVEST and diag[D_YG + q] < 0.0:
+                    diag[D_TAX + q] += rest * (-diag[D_YG + q]) / negative
+        else:
+            diag[D_TAX + P_HARVEST] += rest
 
 
 @jit(inline="always")
-def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth, do_log, log):
-    """Steps 3-11 for the action `act`. Returns (after-tax wealth if `want_wealth`, total income tax)."""
+def _diag_step(diag, t, purpose, tape_slot, sold, gain, change):
+    """Book one step's sale of brokerage stock: `sold` and `gain` under `purpose`, and the signed `change` in equity on the tape."""
+    diag[D_SOLD + purpose] += sold
+    diag[D_GAIN + purpose] += gain
+    diag[D_YG + purpose] += gain
+    diag[D_TAPE + t * NK + tape_slot] += change
+
+
+@jit(inline="always")
+def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth, do_log, log, diag, do_diag):
+    """Steps 3-11 for the action `act`. Returns (after-tax wealth if `want_wealth`, total income tax). With `do_diag` the
+    step also fills the path's diagnostic row `diag` (see `app.sim.diag`; without it `diag` is never touched)."""
     age = tv[t, TV_AGE]
     ss = tv[t, TV_SS]
     taxable_ss = P.SS_TAXABLE_SHARE * ss
@@ -891,6 +1198,9 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     saved_net = max(0.0, saved - extra_tax)
     uncovered = extra_tax - (saved - saved_net)  # extra tax that brokerage saving does not cover
     spare = max(0.0, w - wt_pre - k - saved - tv[t, TV_SPEND])  # spare wages before any Roth extra tax
+    gift = tv[t, TV_GIFT]
+    gift_wages = min(gift, spare)  # a charitable gift is paid out of spare wages first (step 3c)
+    spare -= gift_wages
     free_cash = max(0.0, spare - uncovered)
     roth_gap = max(0.0, uncovered - spare)  # extra tax even spare wages cannot cover: paid from the portfolio
     early = age < _EARLY_AGE
@@ -908,6 +1218,35 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     wd_bracket = act[A_WDBRACKET] > 0.5
     wd_top = row[SP_WD_TOP]
     conv_top = act[A_CONV_TOP]
+    dist_st = ys[Y_DISTST]  # the short-term part of fund distributions is paid as ordinary dividends
+    interest_o = interest + dist_st  # ordinary income other than wages, for the bracket rooms below
+
+    track = do_diag
+    be_mark = st[S_BE]
+    realized_mark = realized
+    carry_tax = 0.0
+    carry_fee = 0.0
+    if track:
+        carry_tax = diag[D_CARRY_TAX]  # gains realized selling for last year's tax and fee are reported this year
+        carry_fee = diag[D_CARRY_FEE]
+        diag[D_CARRY_TAX] = 0.0
+        diag[D_CARRY_FEE] = 0.0
+        for q in range(N_PURPOSES):
+            diag[D_YG + q] = 0.0
+        diag[D_YG + P_TAXES] = carry_tax
+        diag[D_YG + P_FEES] = carry_fee
+        distributed = ys[Y_DIST] - dist_st
+        other_gain = ys[Y_FORCEDGAIN] - ys[Y_LOANINT]
+        diag[D_YG + P_DISTRIBUTIONS] = distributed
+        diag[D_GAIN + P_DISTRIBUTIONS] += distributed
+        diag[D_YG + P_OTHER] = other_gain
+        diag[D_GAIN + P_OTHER] += other_gain
+        diag[D_SOLD + P_OTHER] += ys[Y_FORCEDEQ]
+        diag[D_GAIN + P_HARVEST] -= harvest
+        diag[D_FUNDDIST] += ys[Y_DIST]
+        diag[D_FUNDDIST_ST] += dist_st
+        diag[D_TAPE + t * NK + TAPE_FORCED] -= ys[Y_FORCEDEQ]
+        diag[D_WAGETAX] += wage_tax_t
 
     # 3a. Required minimum distribution: the prior year-end pre-tax balance over the Uniform
     # Lifetime Table period, withdrawn from pre-tax (taxable income) and spent first on goals
@@ -917,6 +1256,9 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         rmd = _sell_pretax(st, ys[Y_PRETAX_OPEN] / _ult_period(age), ne)
         ret_dist += rmd
     rmd_cash = rmd
+    if track:
+        diag[D_PTW + W_REQUIRED] += rmd
+    pt_mark = ret_dist
 
     # 3b. Pay goals that are due: RMD cash, bucket, then brokerage pro rata, then Roth, then pre-tax.
     goal = tv[t, TV_GOAL]
@@ -946,9 +1288,36 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
                 early_base += taken
             due -= taken
         st[S_UNFUNDED] += _shortfall(due)
+    if track:
+        _diag_step(diag, t, P_GOALS, TAPE_GOALS, max(0.0, be_mark - st[S_BE]), realized - realized_mark, st[S_BE] - be_mark)
+        diag[D_PTW + W_GOALS] += ret_dist - pt_mark
+        be_mark = st[S_BE]
+        realized_mark = realized
+        pt_mark = ret_dist
 
-    # 4. Withdraw retirement spending (net of Social Security).
-    need = tv[t, TV_NEED]
+    # 3c. Charitable gifts. Spare wages paid what they could (above); the rest is paid out of the portfolio with the retirement
+    # spending (step 4). A policy that gives lots gives stock held over a year with the most gain per dollar instead of cash:
+    # nothing is sold, so no gain is realized, and the cash it would have given out of wages is saved (step 11) so that the
+    # household's spending is the same either way.
+    gift_stock = 0.0
+    unrealized_mark = st[S_BE] - st[S_BBASIS]
+    if gift > 0.0 and row[SP_DONATE] > 0.5:
+        gift_stock = _lots_donate(st, gift)
+    gift_cash = gift - gift_stock
+    from_wages = min(gift_cash, gift_wages)
+    gift_portfolio = gift_cash - from_wages
+    reinvest = gift_wages - from_wages
+    if track:
+        diag[D_DONATED] += gift_stock
+        diag[D_DONATED_GAIN] += unrealized_mark - (st[S_BE] - st[S_BBASIS])
+        diag[D_CASHGIFT] += gift_cash
+        diag[D_TAPE + t * NK + TAPE_DONATE] += st[S_BE] - be_mark
+        be_mark = st[S_BE]
+
+    # 4. Withdraw retirement spending (net of Social Security) and the part of the gift that spare wages did not pay.
+    need_spend = tv[t, TV_NEED]
+    need = need_spend + gift_portfolio
+    spend_share = need_spend / need if need > 0.0 else 1.0
     if need > 0.0:
         from_rmd = min(rmd_cash, need)
         rmd_cash -= from_rmd
@@ -969,7 +1338,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
                 remaining -= taken
         elif wd_bracket:
             # Pre-tax up to the bracket target, then brokerage, then Roth.
-            ordinary = _ordinary_income(wages_taxable, interest, taxable_ss, ret_dist, 0.0, realized, ys[Y_REALIZED_ST] + st[S_STACC], cf_in)
+            ordinary = _ordinary_income(wages_taxable, interest_o, taxable_ss, ret_dist, 0.0, realized, ys[Y_REALIZED_ST] + st[S_STACC], cf_in)
             room = max(0.0, wd_top + std - ordinary)
             taken = _sell_pretax(st, min(remaining, room), ne)
             ret_dist += taken
@@ -1001,6 +1370,16 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         st[S_UNFUNDED] += _shortfall(remaining)
     if rmd_cash > 0.0:
         st[S_BB] += rmd_cash  # an RMD that exceeds spending is reinvested in the taxable account
+    if track:
+        dg_sold = max(0.0, be_mark - st[S_BE])
+        dg_gain = realized - realized_mark
+        dg_pt = ret_dist - pt_mark
+        _diag_step(diag, t, P_SPENDING, TAPE_SPENDING, dg_sold * spend_share, dg_gain * spend_share, st[S_BE] - be_mark)
+        _diag_step(diag, t, P_GIFTS, TAPE_SPENDING, dg_sold * (1.0 - spend_share), dg_gain * (1.0 - spend_share), 0.0)
+        diag[D_PTW + W_SPENDING] += dg_pt * spend_share
+        diag[D_PTW + W_GIFTS] += dg_pt * (1.0 - spend_share)
+        be_mark = st[S_BE]
+        realized_mark = realized
 
     # 5. Roth conversion: fill the chosen bracket, if the action asks for it. The tax on it can be
     # paid from the taxable account (cash included) and from this year's wages once taxes, 401(k),
@@ -1009,7 +1388,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     # retirement; the documents do not say what it spends today.
     conv = 0.0
     if conv_top > 0.0:
-        ordinary = _ordinary_income(wages_taxable, interest, taxable_ss, ret_dist, 0.0, realized, ys[Y_REALIZED_ST] + st[S_STACC], cf_in)
+        ordinary = _ordinary_income(wages_taxable, interest_o, taxable_ss, ret_dist, 0.0, realized, ys[Y_REALIZED_ST] + st[S_STACC], cf_in)
         room = max(0.0, conv_top + std - ordinary)
         pre = st[S_PE] + st[S_PB] + st[S_PP]
         funds = st[S_BE] + st[S_BB] + st[S_BP] + free_cash
@@ -1024,7 +1403,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     if act[A_REALIZE] > 0.5:
         unrealized = st[S_BE] - st[S_BBASIS]
         if unrealized > 0.0:
-            room = _zero_gain_room(wages_taxable, interest, dividends, taxable_ss, ret_dist, conv, realized, ys[Y_REALIZED_ST] + st[S_STACC], cf_in, std)
+            room = _zero_gain_room(wages_taxable, interest_o, dividends, taxable_ss, ret_dist, conv, realized, ys[Y_REALIZED_ST] + st[S_STACC], cf_in, std)
             if st[S_LOTS] > 0.5:
                 gain_harvest = _lots_realize(st, min(room, unrealized))
             else:
@@ -1056,12 +1435,16 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
             st[S_GB] = target
             st[S_BB] += held - target
             bucket_flow = target - held
+    if track:
+        _diag_step(diag, t, P_RESERVE, TAPE_BUCKET, max(0.0, be_mark - st[S_BE]), realized - realized_mark, st[S_BE] - be_mark)
+        be_mark = st[S_BE]
+        realized_mark = realized
 
     # 6b. Repay the loan in a low-tax year by selling appreciated holdings: realize gains only up to
     # the top of the 0% capital-gain bracket (nothing to realize means the sale is tax-free anyway).
     repaid_gain = 0.0
     if st[S_LOAN] > 0.0 and borrowed <= 0.0:  # not in the year it was borrowed
-        room = _zero_gain_room(wages_taxable, interest, dividends, taxable_ss, ret_dist, conv, realized, ys[Y_REALIZED_ST] + st[S_STACC], cf_in, std)
+        room = _zero_gain_room(wages_taxable, interest_o, dividends, taxable_ss, ret_dist, conv, realized, ys[Y_REALIZED_ST] + st[S_STACC], cf_in, std)
         if room > 0.0:
             value = st[S_BE] + st[S_BB] + st[S_BP]
             embedded = (st[S_BE] - st[S_BBASIS]) / value if value > 0.0 else 0.0
@@ -1069,6 +1452,10 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
             repaid_gain, gain = _sell_brokerage(st, amount, 0.0)
             realized += gain
             st[S_LOAN] -= repaid_gain
+    if track:
+        _diag_step(diag, t, P_OTHER, TAPE_LOAN, max(0.0, be_mark - st[S_BE]), realized - realized_mark, st[S_BE] - be_mark)
+        be_mark = st[S_BE]
+        realized_mark = realized
 
     # 7. Rebalance to the target allocation and asset location.
     share = act[A_STOCK]
@@ -1100,12 +1487,28 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         realized += _rebalance(st, share * (1.0 - pc_share), pc_share, False)
     else:
         realized += _rebalance(st, share, 0.0, True)
+    if track:
+        # (in the reserve policy the rebalance is what refills the reserve)
+        _diag_step(
+            diag, t, P_RESERVE if act[A_RESERVE] > 0.5 else P_REBALANCING, TAPE_REBALANCE,
+            max(0.0, be_mark - st[S_BE]), realized - realized_mark, st[S_BE] - be_mark,
+        )
+        be_mark = st[S_BE]
+        realized_mark = realized
 
-    # 8. Taxes. `realized` is the net gain; `realized_st` is the short-term part of it, taxed as ordinary income.
+    # 8. Taxes. `realized` is the net gain; `realized_st` is the short-term part of it, taxed as ordinary income. The short-term
+    # part of fund distributions is ordinary dividends, and a gift is a deduction (`tax_core`).
     realized_st = ys[Y_REALIZED_ST] + st[S_STACC]
     st[S_STACC] = 0.0
-    r = tax_core(wages_taxable, interest, dividends, dividends, realized, ret_dist, conv, ss, early_base, kids, deps, cf_in, aged, realized_st)
+    r = tax_core(wages_taxable, interest, dividends, dividends + dist_st, realized, ret_dist, conv, ss, early_base, kids, deps, cf_in, aged, realized_st, gift_cash, gift_stock)
     total_tax = r.total_tax
+    if track:
+        diag[D_PENALTY] += r.early_withdrawal_penalty
+        diag[D_EARLY] += early_base
+        _diag_tax_year(
+            diag, wages_taxable, interest, dividends, dist_st, realized, realized_st, ret_dist, rmd, conv, ss, early_base, kids,
+            deps, cf_in, aged, ys[Y_HARVEST], ys[Y_HARVESTST], total_tax,
+        )
     portfolio_tax = total_tax - wage_tax_t
     st[S_CF] = r.cap_loss_carryforward_out
 
@@ -1115,13 +1518,23 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     conv_cash = 0.0
     if conv > 0.0 and due > 0.0 and free_cash > 0.0:
         # The part of the bill caused by the conversion comes out of this year's spare wages first.
-        no_conversion = tax_core(wages_taxable, interest, dividends, dividends, realized, ret_dist, 0.0, ss, early_base, kids, deps, cf_in, aged, realized_st)
+        no_conversion = tax_core(wages_taxable, interest, dividends, dividends + dist_st, realized, ret_dist, 0.0, ss, early_base, kids, deps, cf_in, aged, realized_st, gift_cash, gift_stock)
         conv_cash = min(max(0.0, total_tax - no_conversion.total_tax), free_cash, due)
         due -= conv_cash
+    dgain_mark = st[S_DGAIN]
+    ddist_mark = st[S_DDIST]
     if due > 0.0:
         _pay_tax(st, due, conv, ne)
     elif due < 0.0:
         st[S_BB] -= due
+    if track:
+        paid_gain = st[S_DGAIN] - dgain_mark
+        diag[D_SOLD + P_TAXES] += max(0.0, be_mark - st[S_BE])
+        diag[D_GAIN + P_TAXES] += paid_gain
+        diag[D_CARRY_TAX] += paid_gain
+        diag[D_PTW + W_TAXES] += st[S_DDIST] - ddist_mark
+        diag[D_TAPE + t * NK + TAPE_TAXES] += st[S_BE] - be_mark
+        be_mark = st[S_BE]
 
     # 10. Advisory fee, charged pro rata to every account. Gains realized on the slice sold
     # from brokerage equity are taxed next year.
@@ -1132,6 +1545,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
     fee = _advisory_fee(total_assets, row[SP_FEE_BREAKPOINTS], row[SP_FEE_FLAT])
     if act[A_HARVEST] > 1.5:
         fee += hhc[HC_DI_FEE_PREMIUM] * st[S_BE]  # zero unless a sensitivity run charges a direct-indexing premium
+    dgain_mark = st[S_DGAIN]
     if fee > 0.0 and total_assets > 0.0:
         f = min(1.0, fee / total_assets)
         if st[S_LOTS] > 0.5:
@@ -1143,6 +1557,13 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
             st[S_DGAIN] += f * (st[S_BE] - st[S_BBASIS])
             for i in range(N_BALANCES):
                 st[i] *= 1.0 - f
+    if track:
+        fee_gain = st[S_DGAIN] - dgain_mark
+        diag[D_SOLD + P_FEES] += max(0.0, be_mark - st[S_BE])
+        diag[D_GAIN + P_FEES] += fee_gain
+        diag[D_CARRY_FEE] += fee_gain
+        diag[D_TAPE + t * NK + TAPE_FEES] += st[S_BE] - be_mark
+        be_mark = st[S_BE]
 
     # 11. Contributions: 401(k) to the pre-tax (or Roth) account, savings to the brokerage account.
     if k > 0.0:
@@ -1162,6 +1583,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
                 st[S_PP] += k * st[S_PP] / pre
             else:
                 st[S_PE] += k
+    saved_net += reinvest  # the cash a gift of stock saved the household (step 3c)
     repaid_saving = min(saved_net, st[S_LOAN])  # the loan is repaid from this year's savings first
     st[S_LOAN] -= repaid_saving
     saved_net -= repaid_saving
@@ -1176,11 +1598,36 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
             st[S_BBASIS] += to_equity
         st[S_BP] += to_pc
         st[S_BB] += saved_net - to_equity - to_pc
+    if track:
+        diag[D_TAPE + t * NK + TAPE_SAVING] += st[S_BE] - be_mark
+        be_mark = st[S_BE]
+    dgain_mark = st[S_DGAIN]
     if roth_gap > 0.0:
         _pay_tax(st, roth_gap, 0.0, ne)
+    if track:
+        gap_gain = st[S_DGAIN] - dgain_mark
+        diag[D_SOLD + P_TAXES] += max(0.0, be_mark - st[S_BE])
+        diag[D_GAIN + P_TAXES] += gap_gain
+        diag[D_CARRY_TAX] += gap_gain
+        diag[D_TAPE + t * NK + TAPE_TAXGAP] += st[S_BE] - be_mark
     # The short-term part of the gains those sales realized is reported next year, like the rest of them (`S_DGAIN`).
     st[S_DGAIN_ST] += st[S_STACC]
     st[S_STACC] = 0.0
+
+    if track and tv[t, TV_RETIRED] > 0.5:
+        # where the spending reserve (the safe assets) sits at the end of a retired year
+        held_pretax = st[S_PB] + st[S_PP]
+        held_roth = st[S_RB] + st[S_RP]
+        held_brokerage = st[S_BB] + st[S_BP] + st[S_GB]
+        diag[D_RES_PRETAX] += held_pretax
+        diag[D_RES_ROTH] += held_roth
+        diag[D_RES_BROKERAGE] += held_brokerage
+        diag[D_RES_YEARS] += 1.0
+        if diag[D_RES0_SET] < 0.5:
+            diag[D_RES0_PRETAX] = held_pretax
+            diag[D_RES0_ROTH] = held_roth
+            diag[D_RES0_BROKERAGE] = held_brokerage
+            diag[D_RES0_SET] = 1.0
 
     # After-tax wealth at the end of the year.
     wealth = 0.0
@@ -1213,7 +1660,7 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         log[t, L_WAGES] = w
         log[t, L_K401] = k
         log[t, L_SS] = ss
-        log[t, L_NEED] = need
+        log[t, L_NEED] = need_spend
         log[t, L_GOAL] = goal
         log[t, L_INTEREST] = interest
         log[t, L_DIVIDENDS] = dividends
@@ -1262,6 +1709,13 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, want_wealth,
         log[t, L_REPAID_GAIN] = repaid_gain
         log[t, L_GAINHARVEST] = gain_harvest
         log[t, L_STGAIN] = realized_st
+        log[t, L_FUNDDIST] = ys[Y_DIST]
+        log[t, L_FUNDDIST_ST] = dist_st
+        log[t, L_GIFTCASH] = gift_cash
+        log[t, L_GIFTSTOCK] = gift_stock
+        log[t, L_CHARITY] = r.charitable_deduction
+        log[t, L_DEDUCTION] = r.deduction
+        log[t, L_ITEMIZED] = r.itemized
     return wealth, total_tax
 
 
@@ -1270,7 +1724,7 @@ RUN_FULL, RUN_BEGIN, RUN_REST = 0, 1, 2
 
 
 @jit
-def _run_years(st, ys, act, tv, hhc, row, gates, rets, wages, k401, wt, t0, t1, mode, want_last, record, path_wealth, do_log, log):
+def _run_years(st, ys, act, tv, hhc, row, gates, rets, wages, k401, wt, zg, t0, t1, mode, want_last, record, path_wealth, do_log, log, diag, do_diag):
     """Simulate years t0 .. t1-1 of one household on one future, mutating the state `st`.
 
     `mode` says how the first year goes (every later year always goes in full):
@@ -1283,8 +1737,9 @@ def _run_years(st, ys, act, tv, hhc, row, gates, rets, wages, k401, wt, t0, t1, 
     go through this one function, so a forced action reproduces a fixed strategy exactly.
 
     `rets` is (years, 3); `wages`, `k401` are (years,); `wt` is (years, 2) (the tax on wages alone with
-    a pre-tax and with a Roth 401(k)). Returns (after-tax wealth after the last year if `want_last`,
-    income tax paid over the years run).
+    a pre-tax and with a Roth 401(k)); `zg` is (years, N_STOCKS), each stock's own movement of the direct-indexing book (any
+    array with a row to spare when the path has no book). `diag` is the path's diagnostic row, written only with `do_diag`
+    (`app.sim.diag`). Returns (after-tax wealth after the last year if `want_last`, income tax paid over the years run).
     """
     taxes_paid = 0.0
     wealth = 0.0
@@ -1292,11 +1747,11 @@ def _run_years(st, ys, act, tv, hhc, row, gates, rets, wages, k401, wt, t0, t1, 
         w = wages[t]
         if not (mode == RUN_REST and t == t0):
             _policy_action(row, gates[t], tv, t, w, act)
-            _year_begin(st, ys, tv, t, hhc, act, rets[t, 0], rets[t, 1], rets[t, 2])
+            _year_begin(st, ys, tv, t, hhc, act, rets[t, 0], rets[t, 1], rets[t, 2], zg[t if t < zg.shape[0] else 0])
             if mode == RUN_BEGIN:
                 return 0.0, 0.0
         want = record or do_log or (want_last and t == t1 - 1)
-        res = _year_rest(st, ys, tv, t, hhc, row, act, w, k401[t], wt[t, 0], wt[t, 1], want, do_log, log)
+        res = _year_rest(st, ys, tv, t, hhc, row, act, w, k401[t], wt[t, 0], wt[t, 1], want, do_log, log, diag, do_diag)
         taxes_paid += res[1]
         if want:
             wealth = res[0]
@@ -1305,35 +1760,70 @@ def _run_years(st, ys, act, tv, hhc, row, gates, rets, wages, k401, wt, t0, t1, 
     return wealth, taxes_paid
 
 
+@jit(inline="always")
+def heirs_wealth(st, rate):
+    """After-tax wealth if the household dies with what it has and its heirs inherit it (the second valuation at the horizon;
+    `_year_rest` has the first, liquidating everything). Taxable assets pass with a step-up in basis (IRC 1014), so the
+    unrealized gain is never taxed; the Roth is theirs untaxed; the pre-tax accounts are taxed at the heirs' flat rate `rate`
+    (`HEIRS_TAX_RATE`: they must be emptied within ten years, and the heirs are at their prime earning years). A loan is
+    still owed, gains already realized to pay tax or fees are still taxed, and an unused capital-loss carryforward is worth
+    nothing to them (it ends with the owner's last return)."""
+    pretax = st[S_PE] + st[S_PB] + st[S_PP]
+    return (
+        st[S_BE]
+        + st[S_BB]
+        + st[S_BP]
+        + st[S_GB]
+        + st[S_RE]
+        + st[S_RB]
+        + st[S_RP]
+        + pretax * (1.0 - rate)
+        - st[S_LOAN]
+        - _LTCG_RATE * max(0.0, st[S_DGAIN])
+        - st[S_UNFUNDED]
+    )
+
+
 @jit
-def _simulate_path(s, p, strat, gates, tv, init, hhc, rets, wages, k401, wage_tax, path_wealth, record, log, do_log):
+def _simulate_path(s, p, strat, gates, tv, init, hhc, rets, wages, k401, wage_tax, zs, path_wealth, record, log, do_log, diag, do_diag):
     n_years = tv.shape[0]
-    st = init.copy()
+    if wants_book(strat[s]):
+        st = np.zeros(NSTATE_DI)  # the direct-indexing book follows the base state
+        st[:NSTATE] = init[:NSTATE]
+    else:
+        st = init.copy()
     _lots_start(st, strat[s])
     ys = np.zeros(NY)
     act = np.zeros(NACT)
     wealth, taxes_paid = _run_years(
-        st, ys, act, tv, hhc, strat[s], gates[s], rets[p], wages[p], k401[p], wage_tax[p], 0, n_years, RUN_FULL,
-        True, record, path_wealth, do_log, log,
+        st, ys, act, tv, hhc, strat[s], gates[s], rets[p], wages[p], k401[p], wage_tax[p], zs[p], 0, n_years, RUN_FULL,
+        True, record, path_wealth, do_log, log, diag, do_diag,
     )
     pretax = st[S_PE] + st[S_PB] + st[S_PP]
     owed = pretax * pretax_withdrawal_rate(pretax, hhc[HC_SS], tv[n_years - 1, TV_AGED])
-    return wealth, taxes_paid, owed, st[S_UNFUNDED]
+    if do_diag:
+        diag[D_END_BE] = st[S_BE]
+        diag[D_END_BASIS] = st[S_BBASIS]
+    return wealth, taxes_paid, owed, st[S_UNFUNDED], heirs_wealth(st, hhc[HC_HEIRS_RATE])
 
 
 @jit(parallel=True, nogil=True)
-def _simulate_batch(strat, gates, tv, init, hhc, rets, wages, k401, wage_tax, out, path_wealth, record, log, log_index):
+def _simulate_batch(strat, gates, tv, init, hhc, rets, wages, k401, wage_tax, zs, out, path_wealth, record, log, log_index, diag, want_diag):
     n_policies = strat.shape[0]
     n_paths = rets.shape[0]
+    # Path-major: a stretch of consecutive iterations visits every policy, so a thread's share has its direct-indexing
+    # policies (about thirty times the work of the others) in proportion, wherever they sit in the list.
     for i in prange(n_policies * n_paths):
-        s = i // n_paths
-        p = i - s * n_paths
+        p = i // n_policies
+        s = i - p * n_policies
         pw = path_wealth[s, p] if record else path_wealth[0, 0]
-        res = _simulate_path(s, p, strat, gates, tv, init, hhc, rets, wages, k401, wage_tax, pw, record, log, i == log_index)
+        dg = diag[s, p] if want_diag else diag[0, 0]
+        res = _simulate_path(s, p, strat, gates, tv, init, hhc, rets, wages, k401, wage_tax, zs, pw, record, log, i == log_index, dg, want_diag)
         out[s, p, R_WEALTH] = res[0]
         out[s, p, R_TAXES] = res[1]
         out[s, p, R_PRETAX_OWED] = res[2]
         out[s, p, R_UNFUNDED] = res[3]
+        out[s, p, R_WEALTH_HEIRS] = res[4]
 
 
 @jit(parallel=True, nogil=True)
@@ -1437,6 +1927,10 @@ class Policy:
     reserve_refill_after_gains: bool = True  # with a reserve: do not sell stocks to refill it in a year stocks fell
     lot_method: str = "average"  # which tax lots a sale of brokerage stock takes: "average" (no lots), "fifo" or "hifo"
     short_term_ordinary: bool = False  # with lots: gains on lots held a year or less are taxed as ordinary income
+    di_model: str = "stock"  # with direct indexing: "stock" (100 stocks with their own lots) or "aggregate" (the rule on the account's totals)
+    donate_lots: bool = False  # charitable gifts: give the lots with the most gain per dollar (held over a year) instead of cash
+    fund_distribution: float = 0.0  # capital gains the funds in the brokerage account distribute each year, as a share of their value
+    fund_distribution_short_term: float = 0.0  # the share of those distributions that is short-term (paid as ordinary dividends)
 
     def row(self, current_age: float) -> np.ndarray:
         r = np.zeros(NSP)
@@ -1460,6 +1954,10 @@ class Policy:
         r[SP_REFILL] = float(self.reserve_refill_after_gains)
         r[SP_LOTS] = {"average": LOTS_AVERAGE, "fifo": LOTS_FIFO, "hifo": LOTS_HIFO}[self.lot_method]
         r[SP_STCG] = float(self.short_term_ordinary and self.lot_method != "average")
+        r[SP_DIMODEL] = {"aggregate": 0.0, "stock": 1.0}[self.di_model]
+        r[SP_DONATE] = float(self.donate_lots)
+        r[SP_DIST] = self.fund_distribution
+        r[SP_DISTST] = self.fund_distribution_short_term
         return r
 
     def replace(self, **changes) -> Policy:
@@ -1471,9 +1969,12 @@ class ModelOptions:
     """Alternative assumptions for sensitivity runs (`app.study.sensitivity`). The defaults are exactly the
     specification, and the app never passes anything else."""
 
-    harvest_model: str = "spec"  # "spec" or "evidence": the direct-indexing harvest rule
+    harvest_model: str = "calibrated"  # the aggregate direct-indexing harvest rule: "spec" (3% dispersion), "evidence" or "calibrated"
     di_fee_premium: float = 0.0  # extra yearly fee on direct-indexed equity
     market: markets.Assumptions | None = None
+    idio_vol: float = markets.STOCK_IDIO_VOL  # a stock's own volatility a year, beside the market's (the direct-indexing book)
+    harvest_threshold: float = HARVEST_THRESHOLD  # the direct-indexing book harvests a lot whose cost is this far above its price
+    heirs_rate: float = HEIRS_TAX_RATE  # the flat rate heirs pay on the pre-tax balance (the "passed to heirs" valuation)
 
 
 @dataclass
@@ -1497,6 +1998,7 @@ class SimInputs:
     n_earners: int = 1
     market: markets.Assumptions | None = None  # the return assumptions the futures were drawn from
     seed: int = 0  # the seed the futures were drawn with (rollouts use a stream disjoint from it)
+    stock_g: np.ndarray = None  # (paths, years, N_STOCKS) float32: each stock's own yearly movement (mean 1), for the direct-indexing book
 
     @property
     def ages(self) -> np.ndarray:
@@ -1542,6 +2044,7 @@ def _time_table(household: Household, n_years: int, expected_wages: np.ndarray) 
         tv[t, TV_NEARN] = 0.0 if retired else sum(1 for person in household.people if person.wages > 0)
         tv[t, TV_AGED] = sum(1 for person in household.people if person.age + t >= P.AGED_AGE)
         tv[t, TV_SPEND] = 0.0 if retired else g.retirement_spending
+        tv[t, TV_GIFT] = g.charitable_giving
     return tv
 
 
@@ -1598,8 +2101,15 @@ def build_inputs(
     hhc = np.zeros(NHC)
     hhc[HC_SS] = household.social_security.annual_benefit
     hhc[HC_RMD_START] = P.rmd_start_age(P.TAX_YEAR - household.primary_age)
-    hhc[HC_HARVEST_MODEL] = {"spec": 0.0, "evidence": 1.0}[options.harvest_model]
+    hhc[HC_HARVEST_MODEL] = {"spec": 0.0, "evidence": 1.0, "calibrated": 2.0}[options.harvest_model]
     hhc[HC_DI_FEE_PREMIUM] = options.di_fee_premium
+    hhc[HC_HARVEST_THRESHOLD] = options.harvest_threshold
+    hhc[HC_HEIRS_RATE] = options.heirs_rate
+    n_draw = wages.shape[0]
+    stock_z = np.random.default_rng(np.random.SeedSequence(seed).spawn(4)[3]).standard_normal(
+        (n_draw, n_years, N_STOCKS), dtype=np.float32
+    )
+    stock_g = np.exp(np.float32(options.idio_vol) * stock_z - np.float32(0.5 * options.idio_vol**2))  # lognormal with mean 1
     return SimInputs(
         n_years=n_years,
         n_paths=wages.shape[0],
@@ -1620,6 +2130,7 @@ def build_inputs(
         n_earners=n_earners,
         market=options.market,
         seed=seed,
+        stock_g=np.ascontiguousarray(stock_g, dtype=np.float32),
     )
 
 
@@ -1631,6 +2142,8 @@ class BatchResult:
     unfunded: np.ndarray  # (policies, paths) obligations that could not be funded
     path_wealth: np.ndarray | None = None  # (policies, paths, years) when recorded
     log: dict[str, np.ndarray] | None = None  # year log of the requested (policy, path)
+    wealth_heirs: np.ndarray | None = None  # (policies, paths) the second valuation at the horizon: passed to heirs (`heirs_wealth`)
+    diag: np.ndarray | None = None  # (policies, paths, DG_SIZE) diagnostics, when asked for (`app.sim.diag`)
 
 
 def run_batch(
@@ -1639,8 +2152,10 @@ def run_batch(
     gates: np.ndarray | None = None,
     record_paths: bool = False,
     log_for: tuple[int, int] | None = None,
+    diagnostics: bool = False,
 ) -> BatchResult:
-    """Simulate every policy on every path. `gates` has shape (policies, years, NGATE)."""
+    """Simulate every policy on every path. `gates` has shape (policies, years, NGATE). `diagnostics` also fills
+    `BatchResult.diag`, what each path sold, realized and paid in tax (`app.sim.diag`)."""
     s_count = len(policies)
     strat = np.ascontiguousarray([p.row(inputs.current_age) for p in policies], dtype=np.float64)
     if gates is None:
@@ -1655,11 +2170,12 @@ def run_batch(
         log, log_index = np.zeros((1, 1)), -1
     else:
         log = np.zeros((inputs.n_years, NLOG))
-        log_index = log_for[0] * inputs.n_paths + log_for[1]
+        log_index = log_for[1] * s_count + log_for[0]
+    diag = np.zeros((s_count, inputs.n_paths, DG_SIZE)) if diagnostics else np.zeros((1, 1, 1))
     with _KERNEL_LOCK:
         _simulate_batch(
             strat, gates, inputs.tv, inputs.init, inputs.hhc, inputs.rets, inputs.wages,
-            inputs.k401, inputs.wage_tax, out, path_wealth, record_paths, log, log_index,
+            inputs.k401, inputs.wage_tax, inputs.stock_g, out, path_wealth, record_paths, log, log_index, diag, diagnostics,
         )
     return BatchResult(
         wealth=out[:, :, R_WEALTH],
@@ -1668,6 +2184,8 @@ def run_batch(
         unfunded=out[:, :, R_UNFUNDED],
         path_wealth=path_wealth if record_paths else None,
         log={name: log[:, i].copy() for i, name in enumerate(LOG_COLUMNS)} if log_for else None,
+        wealth_heirs=out[:, :, R_WEALTH_HEIRS],
+        diag=diag if diagnostics else None,
     )
 
 
@@ -1684,11 +2202,15 @@ def run_forced(
     """
     overrides = overrides or {}
     n_years = inputs.n_years
-    st = inputs.init.copy()
+    row = policy.row(inputs.current_age)
+    if wants_book(row):
+        st = np.zeros(NSTATE_DI)
+        st[:NSTATE] = inputs.init[:NSTATE]
+    else:
+        st = inputs.init.copy()
     ys = np.zeros(NY)
     act = np.zeros(NACT)
     gates = np.ones((n_years, NGATE))
-    row = policy.row(inputs.current_age)
     _lots_start(st, row)
     log = np.zeros((n_years, NLOG))
     scratch = np.zeros(n_years)
@@ -1696,13 +2218,15 @@ def run_forced(
     wages = np.ascontiguousarray(inputs.wages[path])
     k401 = np.ascontiguousarray(inputs.k401[path])
     wt = np.ascontiguousarray(inputs.wage_tax[path])
+    zg = np.ascontiguousarray(inputs.stock_g[path])
+    no_diag = np.zeros(1)
     wealth = taxes = 0.0
     for t in range(n_years):
-        common = (inputs.tv, inputs.hhc, row, gates, rets, wages, k401, wt)
-        _run_years(st, ys, act, *common, t, t + 1, RUN_BEGIN, False, False, scratch, False, log)
+        common = (inputs.tv, inputs.hhc, row, gates, rets, wages, k401, wt, zg)
+        _run_years(st, ys, act, *common, t, t + 1, RUN_BEGIN, False, False, scratch, False, log, no_diag, False)
         for dim, value in overrides.get(t, {}).items():
             act[dim] = value
-        w, tax = _run_years(st, ys, act, *common, t, t + 1, RUN_REST, t == n_years - 1, False, scratch, True, log)
+        w, tax = _run_years(st, ys, act, *common, t, t + 1, RUN_REST, t == n_years - 1, False, scratch, True, log, no_diag, False)
         taxes += tax
         wealth = w if t == n_years - 1 else wealth
     pretax = st[S_PE] + st[S_PB] + st[S_PP]
@@ -1713,6 +2237,7 @@ def run_forced(
         pretax_owed=np.array([[owed]]),
         unfunded=np.array([[st[S_UNFUNDED]]]),
         log={name: log[:, i].copy() for i, name in enumerate(LOG_COLUMNS)},
+        wealth_heirs=np.array([[float(heirs_wealth(st, float(inputs.hhc[HC_HEIRS_RATE])))]]),
     )
 
 

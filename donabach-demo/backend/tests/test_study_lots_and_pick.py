@@ -107,15 +107,15 @@ def test_the_list_keeps_the_study_s_order_whatever_the_fresh_futures_say(study, 
     frame, built = study
     passed, _ = pick.screen(frame, built)
     fresh = iter([0.010, 0.030, 0.020])  # the fresh futures would rank the three the other way round
-    real = showcase.analyze
+    real = showcase.whole_plan
 
-    def analyze(prepared, enabled=None):
-        out = real(prepared, enabled)
-        return out.model_copy(update={"advantage": out.advantage.model_copy(update={"median_rate": next(fresh)})})
+    def whole_plan(prepared):
+        waterfall, wealth = real(prepared)
+        return waterfall, wealth.model_copy(update={"advantage": wealth.advantage.model_copy(update={"median_rate": next(fresh)})})
 
-    monkeypatch.setattr(showcase, "analyze", analyze)
+    monkeypatch.setattr(showcase, "whole_plan", whole_plan)
     candidates = pick.remeasure(passed, built, count=3)
-    assert [c.analysis.advantage.median_rate for c in candidates] == [0.010, 0.030, 0.020]  # not re-sorted
+    assert [c.wealth.advantage.median_rate for c in candidates] == [0.010, 0.030, 0.020]  # not re-sorted
     in_the_study = [c.row["adv_median_vs_good_ria"] for c in candidates]
     assert in_the_study == sorted(in_the_study, reverse=True) and [c.rank for c in candidates] == [1, 2, 3]
     assert [c.name for c in candidates] == [n[0] for n in pick.NAMES[:3]]

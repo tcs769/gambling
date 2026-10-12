@@ -1,6 +1,6 @@
 import { MEASURES } from "@/components/compare/AdvantagePanel";
 import { count, money, signedMoney } from "@/lib/format";
-import type { ShowcaseAnalysis } from "@/lib/types";
+import type { ShowcaseWealth } from "@/lib/types";
 import { ratePercent } from "./waterfall";
 import styles from "./WealthHeadline.module.css";
 
@@ -11,17 +11,20 @@ function moreOrLess(dollars: number, horizon: number): string {
 }
 
 /**
- * The advantage in two measures, side by side above the chart. The median advantage is the difference between the typical
- * futures; the risk-adjusted one counts bad futures for more, so a plan that takes more risk is credited less for what it
- * earns. Each is a yearly rate, what it comes to in dollars at the horizon, and one line that says what it is (the risk-adjusted
- * label and line are the API's own words).
+ * The whole plan's advantage in two measures, side by side above the chart: the one place the risk-adjusted advantage is
+ * shown. The median advantage is the difference between the typical futures; the risk-adjusted one counts bad futures for
+ * more, so a plan that takes more risk is credited less for what it earns. Each is a yearly rate, what it comes to in
+ * dollars at the horizon, and one line that says what it is (the risk-adjusted label and line are the API's own words).
  */
-export function WealthHeadline({ analysis, computing }: { analysis: ShowcaseAnalysis; computing: boolean }) {
-  const { advantage, horizon_age: horizon } = analysis;
+export function WealthHeadline({ wealth }: { wealth: ShowcaseWealth }) {
+  const { advantage, horizon_age: horizon } = wealth;
   const range = advantage.median_low !== 0 || advantage.median_high !== 0;
   return (
     <div className={styles.frame}>
-      <section className={styles.headline} aria-label="Donabach's advantage over a good advisor" data-stale={computing}>
+      <section
+        className={styles.headline}
+        aria-label={`Donabach's advantage over a ${wealth.advisor_label.toLowerCase()}`}
+      >
         <div className={styles.cell}>
           <h2 className={styles.label}>Median advantage</h2>
           <p className={styles.figures}>
@@ -31,16 +34,16 @@ export function WealthHeadline({ analysis, computing }: { analysis: ShowcaseAnal
           <p className={styles.dollars}>
             <strong>{moreOrLess(advantage.median_dollars, horizon)}</strong>
           </p>
-          <p className={styles.line}>{MEASURES[0].definition(horizon, analysis.risk_aversion)}</p>
+          <p className={styles.line}>{MEASURES[0].definition(horizon, wealth.risk_aversion)}</p>
           {range && (
             <p className={styles.range}>
-              90% range when the {count(analysis.n_paths)} futures are resampled: {ratePercent(advantage.median_low)} to{" "}
+              90% range when the {count(wealth.n_paths)} futures are resampled: {ratePercent(advantage.median_low)} to{" "}
               {ratePercent(advantage.median_high)} a year
             </p>
           )}
         </div>
         <div className={styles.cell}>
-          <h2 className={styles.label}>{analysis.risk_adjusted_label}</h2>
+          <h2 className={styles.label}>{wealth.risk_adjusted_label}</h2>
           <p className={styles.figures}>
             <span className={styles.big}>{ratePercent(advantage.risk_adjusted_rate)}</span>
             <span className={styles.unit}> a year</span>
@@ -51,7 +54,7 @@ export function WealthHeadline({ analysis, computing }: { analysis: ShowcaseAnal
             </strong>{" "}
             on the wealth you can count on
           </p>
-          <p className={styles.line}>{analysis.risk_adjusted_explanation}</p>
+          <p className={styles.line}>{wealth.risk_adjusted_explanation}</p>
         </div>
       </section>
     </div>

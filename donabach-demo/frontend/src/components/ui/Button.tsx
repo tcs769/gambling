@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 import { Icon } from "./Icon";
 import styles from "./Button.module.css";
 
@@ -31,15 +31,14 @@ export function Button({
   );
 }
 
-export function ButtonLink({
-  variant = "primary",
-  arrow,
-  children,
-  href,
-  className = "",
-}: Common & { href: string; className?: string }) {
+type LinkProps = Common & { href: string; className?: string } & Omit<
+    AnchorHTMLAttributes<HTMLAnchorElement>,
+    "href" | "className" | "children"
+  >;
+
+export function ButtonLink({ variant = "primary", arrow, children, href, className = "", ...rest }: LinkProps) {
   return (
-    <Link href={href} className={`${styles.button} ${styles[variant]} ${className}`}>
+    <Link href={href} className={`${styles.button} ${styles[variant]} ${className}`} {...rest}>
       {children}
       {arrow && <Icon name="arrow" size={18} />}
     </Link>

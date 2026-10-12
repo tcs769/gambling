@@ -1,7 +1,7 @@
 // The four lines of the wealth chart, and the rows they are drawn from. Nothing here is computed: every value is the API's.
 
 import { SERIES_DONABACH, SERIES_RIA, type LineStyle } from "@/components/charts/chartTheme";
-import type { ShowcaseAnalysis } from "@/lib/types";
+import type { ShowcaseWealth } from "@/lib/types";
 
 export type WealthKey = "planMedian" | "planP10" | "advisorMedian" | "advisorP10";
 
@@ -70,13 +70,13 @@ export interface WealthRow {
 }
 
 /** One row per age, today's age first, from the API's parallel lists. */
-export function wealthRows(analysis: ShowcaseAnalysis): WealthRow[] {
-  const w = analysis.wealth;
-  return w.ages.map((age, i) => ({
+export function wealthRows(wealth: ShowcaseWealth): WealthRow[] {
+  const lines = wealth.wealth;
+  return lines.ages.map((age, i) => ({
     age,
-    planMedian: w.plan_median[i],
-    planP10: w.plan_p10[i],
-    advisorMedian: w.advisor_median[i],
-    advisorP10: w.advisor_p10[i],
+    planMedian: lines.plan_median[i],
+    planP10: lines.plan_p10[i],
+    advisorMedian: lines.advisor_median[i],
+    advisorP10: lines.advisor_p10[i],
   }));
 }

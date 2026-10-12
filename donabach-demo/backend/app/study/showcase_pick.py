@@ -79,7 +79,8 @@ class Candidate:
     study: StudyHousehold
     name: str
     fixture: showcase.Fixture
-    analysis: showcase.ShowcaseAnalysis
+    waterfall: showcase.ShowcaseWaterfall  # the strategies switched on in sequence, median advantage
+    wealth: showcase.ShowcaseWealth  # the whole plan: both measures, 10th percentile, chance of running out of money
     strategy_sentence: str
 
 
@@ -146,8 +147,8 @@ def remeasure(frame: pd.DataFrame, built, count: int) -> list[Candidate]:
             id=f"{row['type']}-{int(row['index'])}", name="", type_label=TYPES[row["type"]], tagline="", household=study.household
         )
         prepared = showcase.prepare(fixture)
-        analysis = showcase.analyze(prepared)
-        measured.append(Candidate(0, row, study, "", fixture, analysis, prepared.strategy.short_label()))
+        waterfall, wealth = showcase.whole_plan(prepared)
+        measured.append(Candidate(0, row, study, "", fixture, waterfall, wealth, prepared.strategy.short_label()))
     # `measured` keeps the study's order: the rank is the study's, never the fresh futures' (see the module's note on picking twice).
     for rank, c in enumerate(measured, start=1):
         # Names go by rank, so the list reads the same however the pool was drawn (they play no part in the simulation).
@@ -188,15 +189,15 @@ def render(frame_all: pd.DataFrame, passed: pd.DataFrame, removed, candidates: l
     ]
     top = candidates[:5]
     for c in top:
-        a = c.analysis.advantage
+        a = c.wealth.advantage
         lines.append(
             f"| {c.rank} | The {c.name} family | {TYPES[c.row['type']]} | **{_pct(a.median_rate)}** | {_pct(c.row['adv_median_vs_good_ria'])} | "
             f"{_pct(a.risk_adjusted_rate)} | ${a.median_dollars:,.0f} | {a.plan_shortfall:.1%} / {a.advisor_shortfall:.1%} |"
         )
     lines.append("")
     for c in top:
-        a = c.analysis.advantage
-        biggest = sorted(c.analysis.bars, key=lambda b: b.delta_rate, reverse=True)[:3]
+        a = c.wealth.advantage
+        biggest = sorted(c.waterfall.bars, key=lambda b: b.delta_rate, reverse=True)[:3]
         lines += [
             f"## {c.rank}. The {c.name} family: {TYPE_BLURB[c.row['type']]}",
             "",
@@ -209,7 +210,7 @@ def render(frame_all: pd.DataFrame, passed: pd.DataFrame, removed, candidates: l
             "* **Where it comes from:** " + "; ".join(f"{b.label} {_pct(b.delta_rate)} a year ({_usd(b.delta_dollars)})" for b in biggest) + ".",
             "* **Tax lots:** " + (
                 f"selling the highest-cost lots first is worth {_pct(lots.delta_rate)} a year ({_usd(lots.delta_dollars)}) of that."
-                if (lots := next((b for b in c.analysis.bars if b.key == "lots"), None)) is not None
+                if (lots := next((b for b in c.waterfall.bars if b.key == "lots"), None)) is not None
                 else "not used."
             ),
             "",
@@ -219,7 +220,7 @@ def render(frame_all: pd.DataFrame, passed: pd.DataFrame, removed, candidates: l
             "Next in the study's order, also measured on the fresh futures (study / fresh): "
             + ", ".join(
                 f"The {c.name} family ({TYPES[c.row['type']].split(' (')[0].lower()}, {_pct(c.row['adv_median_vs_good_ria'])} / "
-                f"{_pct(c.analysis.advantage.median_rate)})"
+                f"{_pct(c.wealth.advantage.median_rate)})"
                 for c in candidates[5:]
             )
             + ".",

@@ -28,7 +28,7 @@
   color: var(--cream);
 }
 .primary:not(:disabled):hover {
-  background: var(--brown-hover);
+  background: #473617;
 }
 
 .secondary {

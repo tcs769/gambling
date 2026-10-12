@@ -10,11 +10,6 @@
   border-radius: var(--radius);
   background: linear-gradient(0deg, var(--gold-wash), var(--gold-wash)), var(--panel);
   box-shadow: var(--shadow);
-  transition: opacity 220ms ease;
-}
-.headline[data-stale="true"] .figures,
-.headline[data-stale="true"] .dollars {
-  opacity: 0.5;
 }
 
 .cell {
@@ -38,7 +33,6 @@
 /* The figure the screen is about: proportional figures, not tabular ones, at this size. */
 .figures {
   line-height: 1.1;
-  transition: opacity 220ms ease;
 }
 
 .big {
@@ -58,7 +52,6 @@
   color: var(--espresso);
   font-size: 1.0625rem;
   line-height: 1.4;
-  transition: opacity 220ms ease;
 }
 .dollars strong {
   font-weight: 700;

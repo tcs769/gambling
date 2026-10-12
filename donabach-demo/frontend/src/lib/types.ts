@@ -57,10 +57,14 @@ export type YearDecisionView = S["YearDecisionView"];
 export type StrategyOutcome = S["StrategyOutcome"];
 export type StrategyKey = StrategyOutcome["key"];
 
-// The showcase flow (/showcase): a household card, the waterfall from the advisor to Donabach, and wealth over time.
+// The showcase flow (/showcase): a household card, the waterfall from the advisor to Donabach (median advantage only, and
+// the only part that changes with the switches), and the whole plan's wealth over time (both measures of the advantage,
+// worked out once).
 export type ShowcaseResponse = S["ShowcaseResponse"];
-export type ShowcaseAnalysis = S["ShowcaseAnalysis"];
+export type ShowcaseWaterfall = S["ShowcaseWaterfall"];
+export type ShowcaseMedian = S["ShowcaseMedian"];
 export type ShowcaseBar = S["ShowcaseBar"];
+export type ShowcaseWealth = S["ShowcaseWealth"];
 export type ShowcaseAdvantage = S["ShowcaseAdvantage"];
 export type WealthLines = S["WealthLines"];
 export type HouseholdCard = S["HouseholdCard"];

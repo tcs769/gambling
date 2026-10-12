@@ -49,7 +49,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       typeof detail === "string"
         ? detail
         : Array.isArray(detail)
-          ? detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join("; ")
+          ? detail
+              .map((d: { msg?: string }) => d.msg)
+              .filter(Boolean)
+              .join("; ")
           : `Request failed (${response.status})`;
     throw new ApiError(response.status, message || `Request failed (${response.status})`);
   }
@@ -139,8 +142,12 @@ export const api = {
       () => undefined,
     ),
 
-  yearDetail: (household: Household, choices: Record<string, string>, yearIndex: number, shock: MarketShock | null = null) =>
-    post<YearDetail>("/plan/year-detail", { household, choices, year_index: yearIndex, shock }),
+  yearDetail: (
+    household: Household,
+    choices: Record<string, string>,
+    yearIndex: number,
+    shock: MarketShock | null = null,
+  ) => post<YearDetail>("/plan/year-detail", { household, choices, year_index: yearIndex, shock }),
 
   /**
    * The showcase household (/showcase): its card, the waterfall with every strategy switched on, the whole plan's wealth over
@@ -156,13 +163,7 @@ export const api = {
   showcaseAnalysis: (enabled: readonly string[] | null, signal?: AbortSignal) =>
     post<ShowcaseWaterfall>("/showcase/analysis", { enabled }, signal),
 
-  whatIf: (
-    household: Household,
-    presets: Preset[],
-    edits: Partial<HouseholdEdits>,
-    demoMode: boolean,
-    nPaths = 400,
-  ) =>
+  whatIf: (household: Household, presets: Preset[], edits: Partial<HouseholdEdits>, demoMode: boolean, nPaths = 400) =>
     post<WhatIfResponse>("/plan/whatif", {
       household,
       presets,

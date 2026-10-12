@@ -34,7 +34,7 @@ def test_strategies_without_a_reserve_give_exactly_the_results_they_gave_before_
     # Pinned to what every result was computed with before tax lots, stock-level direct indexing and the typical advisor's fund
     # distributions existed: the average-cost lot method, the specification's aggregate harvest rule, funds that distribute nothing
     # and the flat 15% end valuation.
-    inputs = build_inputs(make_demo_household(), n_paths=150, seed=77, options=ModelOptions(harvest_model="spec", valuation="flat"))
+    inputs = build_inputs(make_demo_household(), n_paths=150, seed=77, options=ModelOptions(harvest_model="spec", valuation="flat", survivor=False))
     typical = TYPICAL_ADVISOR.replace(
         fund_distribution=0.0, fund_distribution_short_term=0.0, typical_fee_schedule=False, fund_expense_equity=0.0, fund_expense_bond=0.0, cash_share=0.0
     )
@@ -183,8 +183,8 @@ def test_a_strategy_with_a_reserve_has_everything_outside_it_in_stocks_and_no_go
     with pytest.raises(ValueError):
         Strategy(1.0, "none", 0.0, False, True, reserve_years=4)  # the reserve already covers goals
     with pytest.raises(ValueError):
-        Strategy(1.0, "none", 0.0, False, False, reserve_years=9)  # not one of the lengths on the menu
-    assert CHOICES[-1] == "reserve" and CHOICE_OPTIONS["reserve"] == ("off", "1", "2", "3", "4", "5", "6", "7", "8", "10") and RESERVE_YEARS == (0, 2, 4, 6)
+        Strategy(1.0, "none", 0.0, False, False, reserve_years=11)  # not one of the lengths on the menu
+    assert CHOICES[-1] == "reserve" and CHOICE_OPTIONS["reserve"] == ("off", "2", "3", "4", "5", "6", "7", "8", "9", "10", "12") and RESERVE_YEARS == (0, 2, 4, 6)
     assert "6-year spending reserve, the rest in stocks" in Strategy(1.0, "none", 0.0, False, False, reserve_years=6).short_label()
     text = st.describe()
     assert "next 4 years" in text and "bonds and private credit" in text and "everything else in stocks" in text and "counts toward the reserve" in text

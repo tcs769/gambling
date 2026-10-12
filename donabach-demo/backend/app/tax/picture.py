@@ -51,5 +51,6 @@ def current_tax_return(household: Household) -> TaxReturn:
             children_under_17=children_under_17(household),
             dependents=dependents(household),
             aged_spouses=aged_spouses(household),
+            cash_gifts=household.goals.charitable_giving,  # the return as filed gives cash (the plan gives shares instead)
         )
     )

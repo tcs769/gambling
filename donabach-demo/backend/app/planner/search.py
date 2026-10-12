@@ -34,13 +34,13 @@ RISK_AVERSION = 3.0
 WEALTH_FLOOR = 50_000.0
 
 SCREEN_PATHS = 100  # futures used to screen the whole menu (at 64 or 80 the staged search missed the exhaustive winner on the demo household)
-SCREEN_KEEP = 110  # strategies that go on to be scored on every future
+SCREEN_KEEP = 150  # strategies that go on to be scored on every future
 SCREEN_MIN_STRATEGIES = 400  # smaller menus are scored exhaustively
 REFINE_DIRECT_INDEXING = 8  # direct-indexing strategies scored on every future with the stock-level book
 DI_PER_GROUP_POOL = 6  # with groups: direct-indexing strategies of each group the screen passes on, ranked on every future with the aggregate rule
 DI_PER_GROUP = 2  # and the best of them that go on to be scored with the stock-level book
 DI_SCREEN_PATHS = 100  # futures the direct-indexing strategies are screened on
-DI_POOL = 30  # direct-indexing strategies the screen passes on, to be ranked on every future with the aggregate rule
+DI_POOL = 64  # direct-indexing strategies the screen passes on, to be ranked on every future with the aggregate rule
 
 
 def certainty_equivalent(

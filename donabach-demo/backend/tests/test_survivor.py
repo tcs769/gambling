@@ -103,12 +103,12 @@ def test_a_year_filed_single_uses_the_single_deduction_and_the_survivors_spendin
 
 def test_the_survivor_option_changes_results_only_when_asked_and_the_horizon_can_run_to_ninety():
     household = make_demo_household()
-    base = run_batch(build_inputs(household, n_paths=60, seed=4), [RIA_BASELINE])
-    again = run_batch(build_inputs(household, n_paths=60, seed=4, options=ModelOptions(survivor=False)), [RIA_BASELINE])
-    assert np.array_equal(base.wealth, again.wealth)
-    assert np.allclose(base.wealth_at_80, base.wealth)  # at the default horizon the wealth at 80 is the wealth at the end
-    survivor = run_batch(build_inputs(household, n_paths=60, seed=4, options=ModelOptions(survivor=True)), [RIA_BASELINE])
+    survivor = run_batch(build_inputs(household, n_paths=60, seed=4), [RIA_BASELINE])  # the default is the survivor phase
+    explicit = run_batch(build_inputs(household, n_paths=60, seed=4, options=ModelOptions(survivor=True)), [RIA_BASELINE])
+    assert np.array_equal(survivor.wealth, explicit.wealth)
+    base = run_batch(build_inputs(household, n_paths=60, seed=4, options=ModelOptions(survivor=False)), [RIA_BASELINE])
     assert not np.array_equal(survivor.wealth, base.wealth)
+    assert np.allclose(base.wealth_at_80, base.wealth)  # at the default horizon the wealth at 80 is the wealth at the end
     ninety = run_batch(build_inputs(household, n_paths=60, seed=4, options=ModelOptions(survivor=True, horizon_age=90)), [RIA_BASELINE])
     assert ninety.wealth.shape == base.wealth.shape and np.isfinite(ninety.wealth).all()
     assert ninety.wealth_at_80.shape == base.wealth.shape and (ninety.wealth_at_80 > 0).all()

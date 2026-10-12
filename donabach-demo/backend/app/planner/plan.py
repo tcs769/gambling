@@ -45,6 +45,7 @@ from app.planner.search import (
 )
 from app.planner.strategies import Strategy, menu
 from app.schemas import HORIZON_AGE, Household, MarketShock
+from app.tax import params_2026 as P
 from app.sim import markets
 from app.sim import simulate as sim
 from app.sim.simulate import SimInputs, build_inputs, initial_after_tax_wealth, run_batch, run_detail
@@ -58,17 +59,20 @@ VALIDATION_SEED_OFFSET = 2_000_003
 DEFAULT_STYLE = "equity_first"  # what the app plans with unless asked for "balanced" (see `app.planner.strategies.menu`)
 GUIDED_LABEL = "Model-guided planner (model recommended, engine verified)"
 RIA_SENTENCE = GOOD_RIA_SENTENCE
-LIQUIDATED_LABEL = "Liquidated at 80"
-HEIRS_LABEL = "Passed to heirs at 80"
+LIQUIDATED_LABEL = f"Liquidated at {HORIZON_AGE}"
+HEIRS_LABEL = f"Passed to heirs at {HORIZON_AGE}"
 
 
 def heirs_note(rate: float = sim.HEIRS_TAX_RATE) -> str:
     """What "passed to heirs" assumes, and why the rate is what it is."""
+    tops = [(top, r) for top, r in P.FED_BRACKETS_MFJ if top != float("inf")]
+    index = min(range(len(tops)), key=lambda i: abs(tops[i][1] - rate))
+    bracket = (tops[index][0], tops[index][1], tops[index - 1][0] if index > 0 else 0.0)
     return (
         "The taxable account is valued with a step-up in basis, so its unrealized gains are never taxed; the Roth is valued as it stands; "
         f"the 401(k) and IRA are valued after a flat {rate * 100:.0f}% federal tax. Heirs must empty an inherited retirement account within ten "
-        "years, they are usually in their prime earning years, and a 2026 married couple's income in the 24% bracket runs from "
-        "$211,400 to $403,550: spread over those years, an inheritance of this size lands mostly there (22% to 32%). State tax and estate "
+        f"years, they are usually in their prime earning years, and a 2026 married couple's income in the {bracket[1] * 100:.0f}% bracket runs from "
+        f"${bracket[2]:,.0f} to ${bracket[0]:,.0f}: spread over those years, an inheritance of this size lands mostly there (22% to 32%). State tax and estate "
         "tax are left out, and so is an unused capital-loss carryforward, which ends with the owner."
     )
 
@@ -273,6 +277,7 @@ def build_plan(
                 outcome_heirs=outcome_view(outcome_heirs),
                 lifetime_taxes=float(np.median(batch.taxes_paid[i] + batch.pretax_owed[i])),
                 shortfall_chance=float(np.mean(batch.unfunded[i] > 0)),
+                forced_sale_chance=float(np.mean(batch.forced_years[i] > 0)),
                 advantage=advantage_view(
                     metrics.compare(plan_wealth, batch.wealth[i], years, risk_aversion, WEALTH_FLOOR, with_range=True)
                 ),

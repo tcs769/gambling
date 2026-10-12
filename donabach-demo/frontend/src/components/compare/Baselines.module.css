@@ -11,6 +11,7 @@
 
 .card {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   align-content: start;
   padding: 18px 20px 12px;
@@ -42,10 +43,34 @@
   font-size: 0.9375rem;
   line-height: 1.5;
 }
+/* The planner's label (a pill that does not wrap) may take two lines on a phone rather than reach past the card. */
+.definition > span {
+  max-width: 100%;
+  white-space: normal;
+}
 
 .metrics {
   display: grid;
   margin: 0;
+}
+
+/* Wealth at the horizon, once for each way of valuing it: its label, then its figures. */
+.valuation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+.valuationTitle {
+  margin: 6px 0 -2px;
+  padding-top: 10px;
+  color: var(--brown);
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+.card[data-tone="accent"] .valuationTitle {
+  border-top: 0;
 }
 
 .metric {
@@ -85,17 +110,21 @@
 @container (min-width: 900px) {
   .cards {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    /* head, definition, and the four figures */
-    grid-template-rows: auto auto repeat(4, auto);
+    /* head, definition, then three groups of figures (a title and two figures each): the two valuations, and taxes and risks */
+    grid-template-rows: auto auto repeat(3, auto auto auto);
     column-gap: 16px;
     row-gap: 0;
   }
   .card {
-    grid-row: span 6;
+    grid-row: span 11;
+    grid-template-rows: subgrid;
+  }
+  .valuation {
+    grid-row: span 3;
     grid-template-rows: subgrid;
   }
   .metrics {
-    grid-row: span 4;
+    grid-row: span 2;
     grid-template-rows: subgrid;
   }
 }

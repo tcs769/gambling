@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from app.docs.models import DocKind, ParsedDocument
 from app.ml.interfaces import Factor, IncomeForecast, Recommendation
 from app.planner.explain import AdvantageStep, YearDetail
-from app.schemas import Household, MarketShock
+from app.schemas import HORIZON_AGE, Household, MarketShock
 from app.tax.engine import TaxLine, TaxReturn
 
 # --------------------------------------------------------------------------------------------
@@ -149,7 +149,8 @@ class PlanRequest(BaseModel):
     risk_aversion: float = Field(3.0, ge=0.5, le=10.0, description="CRRA coefficient behind the score")
     planning_style: Literal["balanced", "equity_first", "liability_matched"] = Field(
         "equity_first",
-        description="equity_first: a spending reserve of bonds and private credit, everything else in stocks; balanced: a stock share with a glide path",
+        description="equity_first: a spending reserve of 2, 4 or 6 years of bonds and private credit, everything else in stocks; balanced: a stock share with a glide path; "
+        "liability_matched: the reserve chosen from 2 to 12 years (liability.reserve_years) so that the chance of selling stocks in a falling year stays at 2% or less and ruin is no likelier than the good advisor's (slower: several seconds)",
     )
     adaptive: bool = Field(True, description="Also compute the year-by-year adaptive plan (in the background)")
     adaptive_rollouts: int = Field(32, ge=4, le=128, description="Rollouts (fresh futures) scored per candidate action")
@@ -251,6 +252,7 @@ class BaselineView(BaseModel):
     key: Literal["good_ria", "typical_advisor"]
     label: str
     definition: str
+    forced_sale_chance: float = 0.0  # share of futures in which it sold stocks in a falling year to pay for goals or spending
     outcome: OutcomeView  # liquidated at the horizon
     outcome_heirs: OutcomeView  # the same futures with the estate passed to heirs at the horizon
     lifetime_taxes: float  # median income tax paid plus tax still owed on pre-tax accounts
@@ -263,17 +265,17 @@ class BaselineView(BaseModel):
 class LiabilityView(BaseModel):
     """The liability-matched plan against its two limits, measured on the futures it was chosen on (`chosen_on`) and on fresh ones."""
 
-    reserve_years: int
+    reserve_years: int  # years of upcoming withdrawals held in bonds and private credit (2 to 12)
     forced_sale_limit: float  # the most futures in which stocks may be sold in a falling year to pay for goals or spending
-    forced_sale_chance: float  # on fresh futures
+    forced_sale_chance: float  # on the fresh evaluation futures (`settings.n_eval_paths` of them)
     advisor_forced_sale_chance: float
     ruin_chance: float
     advisor_ruin_chance: float
-    chosen_on_forced_sale_chance: float
+    chosen_on_forced_sale_chance: float  # the same on the futures the plan was chosen on (the search's and a validation set of 1,200 more)
     chosen_on_ruin_chance: float
     chosen_on_advisor_ruin_chance: float
-    feasible: bool  # False: nothing in the menu met both limits and this plan came closest
-    stock_share_by_age: list[tuple[int, float]]  # share of long-term money in stocks, year by year (the expected path)
+    feasible: bool  # judged on those `chosen_on` futures: False means nothing in the menu met both limits there and this plan came closest
+    stock_share_by_age: list[tuple[int, float]]  # the stocks actually held as a share of long-term money, year by year on the expected path (a plan row's `stock_share` is the target)
 
 
 class StatCards(BaseModel):
@@ -308,8 +310,8 @@ class PlanSettings(BaseModel):
     market_shock: MarketShock | None = None
     planning_style: Literal["balanced", "equity_first", "liability_matched"] = "equity_first"  # which family of strategies was searched
     heirs_rate: float = 0.24  # the flat tax rate on pre-tax accounts in the "passed to heirs" valuation
-    liquidated_label: str = "Liquidated at 80"
-    heirs_label: str = "Passed to heirs at 80"
+    liquidated_label: str = f"Liquidated at {HORIZON_AGE}"
+    heirs_label: str = f"Passed to heirs at {HORIZON_AGE}"
     heirs_note: str = ""  # what the "passed to heirs" valuation assumes and why
 
 

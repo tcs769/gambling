@@ -1,7 +1,9 @@
 # Donabach demo: frontend
 
 Next.js (App Router) + TypeScript + Recharts. It talks to the Python API through a same-origin proxy
-(`/api/*` -> `http://localhost:8000/*`, see `next.config.ts`; override with `BACKEND_URL`).
+(`/api/*` -> `http://localhost:8000/*`, see `next.config.ts`; override with `BACKEND_URL`). The proxy waits up to five
+minutes for the API (`experimental.proxyTimeout`; Next's default of 30 s cut off the liability-matched plan, which takes 6 to 8
+seconds on an idle machine and several times that on a busy one).
 
     npm install        # also copies the pdf.js worker into public/
     npm run dev        # http://localhost:3000
@@ -107,6 +109,71 @@ changes nothing there: it shows the whole plan at once, and the change lands on 
 contrast of every piece of text, what spills out of its panel) and at 1280 with the system asking for dark (still light:
 same colour scheme, page colour and tokens).
 
+## Two valuations of wealth at 80
+
+The API values wealth at the horizon two ways, each with its own label (`settings.liquidated_label` "Liquidated at 80" and
+`settings.heirs_label` "Passed to heirs at 80"; the screens show the labels as they come). **Liquidated** is the app's
+valuation, what the planner searches and scores on; **passed to heirs** values the estate with a step-up on the taxable account
+and the pre-tax accounts at the heirs' rate (`settings.heirs_rate`, with `settings.heirs_note` saying what it assumes and why).
+
+* **Comparison.** One line and a disclosure, "How these are valued" (the API's heirs note word for word, with the rate), open the
+  screen. In "Donabach's advantage" every cell (two measures x two advisors) holds both valuations, each with its figure, its
+  90% range and its dollars, on one axis per measure; in the cards (the plan's and both advisors') the typical outcome and the
+  bad case are given under each label, and lifetime taxes and the chance of a shortfall (which have one value) follow under
+  "Taxes and risks". Both valuations are on the screen at first sight, none behind a click. With a what-if on screen every
+  figure of both valuations says how far it moved. The fan chart, "Where the advantage comes from", the four-way table and
+  "What judgment over time adds" are liquidated by construction (the API has no heirs figure for them) and say so beside
+  their titles.
+* **Showcase wealth.** The headline and the lines are "Liquidated at 80" (said on the headline and the chart). Under the headline
+  a compact "Passed to heirs at 80" block gives the two medians at the horizon and the median advantage a year and in dollars;
+  the first sentence of the API's note (it states the rate) is on the screen, the rest behind "Why 24%, and what is left out".
+  The API's heirs figures are the median only, so the risk-adjusted advantage is still shown once, on the headline. The waterfall
+  is not touched.
+* The footer's simplifications now read "the standard deduction (itemizing only for charitable gifts)".
+
+## Charitable giving
+
+`Answers.charitable_giving` (default 0) is a question on the Questions screen ("Charitable giving a year", with the preset
+amounts $0, $2k, $5k and $10k and a custom amount that must be at least zero, and one line of help). It goes in the household
+request beside `retirement_spending`. The Profile's goals list adds "Charitable giving" with "$X a year" only when the
+household's `goals.charitable_giving` is above zero (the API's own goal lines leave it out), and the what-if panel has an edit
+for it under retirement spending (`edits.charitable_giving`). The Profile's tax picture words its deduction note from
+`itemized`, `deduction_used` and `charitable_deduction`, though the API's profile return never carries giving (see below).
+
+## Planning styles (the Plan screen's switch)
+
+`planning_style` is a `/plan` parameter: `equity_first` (the default and what the app plans with), `balanced` and
+`liability_matched`. The Plan screen has a radio group, "Planning style": **Equity-first | Balanced | Liability-matched | All
+three side by side**, with a line under it on what the chosen style is.
+
+* **Equity-first** is the Plan screen as it was. **Balanced** and **Liability-matched** show that style's plan: the strategy card,
+  a "How this plan does" panel (wealth, the advantage over the good RIA in both measures and both valuations, taxes and risks;
+  for the liability-matched plan also its two limits), the fixed strategy's year table (the year-by-year planner runs for the
+  equity-first plan only: the other styles are asked for with `adaptive: false`, so no background job starts for them) and the
+  year drawer. The liability-matched plan has no model recommendation panel: the API says it does not consult the recommender.
+* **All three side by side** puts the three plans in columns (one `/plan` call per style, the same household, shock and seed: the
+  other two are asked for with the equity-first plan's `settings.seed`, so all three are measured on the same futures): the
+  plan's label and its reserve and stock choices in words, the whole sentence behind a fold, median and 10th-percentile wealth
+  (liquidated), the advantage over the good RIA (median and risk-adjusted, liquidated and passed to heirs, each with its 90% range
+  and a dagger where the range includes zero), lifetime taxes, the chance of running out of money and of selling stocks in a
+  falling year to pay for goals or spending (`stats.forced_sale_chance`) each beside the good RIA's. The liability-matched column
+  adds the two limits it was chosen under: stocks sold in a falling year against `forced_sale_limit`, running out of money against
+  the good RIA's, both on fresh futures and on the futures it was chosen on (which is what `feasible` is judged on), `feasible`
+  in words, the reserve in years and the stock share by age. The sections line up across the columns where there is room (the
+  columns are laid out by the room the panel has, 900px of it, and stack below that).
+* **Loading and failure belong to the column.** The balanced search takes a few seconds and the liability-matched one longer: the
+  column that is waiting says so (a spinner, `aria-busy`), the others are complete and usable, and a refusal is shown in its
+  column with the API's message and a "Try again" for that column only.
+* **Caching.** `src/lib/state.tsx` keeps the other styles' plans per equity-first plan (`stylePlans`), so toggling back is
+  instant and asks for nothing. A what-if (or its reset) changes the household on screen: the other styles are asked for again
+  on that household (a reset brings back the ones kept for the first household). The switch keeps its place while other screens
+  are visited. The Comparison screen and the what-if edits stay on the equity-first plan (the Plan screen says so under a
+  single style).
+
+`e2e/valuations.mjs`, `e2e/giving.mjs` and `e2e/styles.mjs` hold the checks for all three, called at the end of `walkthrough.mjs`
+(each runs alone too: `BASE_URL=... CHROMIUM_PATH=... node e2e/styles.mjs`; `e2e/lib.mjs` has what they share). They read every
+expectation from what the API sent the browser.
+
 ## Known limits
 
 * A failed year-by-year job is reported with the API's error text and the fixed plan stays fully usable, but there is
@@ -120,3 +187,7 @@ same colour scheme, page colour and tokens).
   navigation overflows the page below about 720px wide.
 * In the showcase, a bad-market (10th percentile) future that runs out of money is a negative wealth in the API's lines, and
   the wealth chart's axis reaches below zero to show it (the API does not floor it).
+* The liability-matched plan is judged on two sets of futures (`feasible` on the ones it was chosen on, the other figures on
+  fresh ones), so a plan can be inside a limit on fresh futures and still be marked as not having met it; the screen says which
+  figure is which. The Profile's "This year's tax picture" does not apply charitable giving (the API's `current_tax_return`
+  passes no gifts), whereas the year drawer's returns do.

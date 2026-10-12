@@ -12,6 +12,16 @@
   box-shadow: var(--shadow);
 }
 
+/* The valuation the headline is in, along the top of the box. */
+.valuation {
+  grid-column: 1 / -1;
+  padding: 12px 26px;
+  border-bottom: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  color: var(--brown);
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
 .cell {
   display: grid;
   align-content: start;
@@ -81,6 +91,9 @@
   }
 }
 @container (max-width: 420px) {
+  .valuation {
+    padding: 10px 18px;
+  }
   .cell {
     padding: 18px 18px;
   }

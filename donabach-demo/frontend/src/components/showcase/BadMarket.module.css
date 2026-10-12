@@ -19,6 +19,13 @@
   box-shadow: var(--shadow);
 }
 
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
 .title {
   font-size: 1.15rem;
 }

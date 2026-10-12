@@ -5,7 +5,7 @@ import { ratePercent } from "./waterfall";
 import styles from "./WealthHeadline.module.css";
 
 /** "$2.8M more at 80", "$12k less at 80", or that there is no difference. */
-function moreOrLess(dollars: number, horizon: number): string {
+export function moreOrLess(dollars: number, horizon: number): string {
   if (Math.abs(dollars) < 0.5) return `no difference at ${horizon}`;
   return `${money(Math.abs(dollars))} ${dollars > 0 ? "more" : "less"} at ${horizon}`;
 }
@@ -25,6 +25,8 @@ export function WealthHeadline({ wealth }: { wealth: ShowcaseWealth }) {
         className={styles.headline}
         aria-label={`Donabach's advantage over a ${wealth.advisor_label.toLowerCase()}`}
       >
+        {/* Which valuation of wealth at the horizon these figures are (the API's label; the heirs' valuation follows below). */}
+        <p className={styles.valuation}>{wealth.liquidated_label}</p>
         <div className={styles.cell}>
           <h2 className={styles.label}>Median advantage</h2>
           <p className={styles.figures}>

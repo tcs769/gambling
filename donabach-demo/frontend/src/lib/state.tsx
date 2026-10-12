@@ -4,15 +4,7 @@
 // them. Screens read state with `useApp()` and call `actions`; nothing here invents a number, it
 // only stores what the API returned.
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { ApiError, api } from "./api";
 import { errorMessage } from "./showcase";
 import type {
@@ -227,7 +219,10 @@ class Store {
     if (typeof window === "undefined") return;
     const { answers, overrides, acknowledged } = this.state;
     try {
-      window.sessionStorage.setItem(SESSION_KEY, JSON.stringify({ answers, overrides, acknowledged } satisfies SavedSession));
+      window.sessionStorage.setItem(
+        SESSION_KEY,
+        JSON.stringify({ answers, overrides, acknowledged } satisfies SavedSession),
+      );
     } catch {
       /* storage unavailable: the demo still works, it just forgets on reload */
     }
@@ -465,7 +460,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           await Promise.all(
             files.map(async (file) => {
               const pendingId = `pending-${++pendingCounter}`;
-              const placeholder: DocumentInfo = { id: pendingId, name: file.name, size_bytes: file.size, pages: 0, kind: null };
+              const placeholder: DocumentInfo = {
+                id: pendingId,
+                name: file.name,
+                size_bytes: file.size,
+                pages: 0,
+                kind: null,
+              };
               patch((s) => ({ docs: [...s.docs, { info: placeholder, status: "uploading" }] }));
               try {
                 const started = performance.now();

@@ -331,6 +331,8 @@ def pretax_projection(inputs_det: SimInputs, policy: Policy) -> PretaxProjection
 def _compact(x: float) -> str:
     if abs(x) >= 1e6:
         return f"${x / 1e6:.2f}M".replace(".00M", "M")
+    if abs(x) < 500:
+        return "$0"
     return f"${x / 1e3:,.0f}k"
 
 

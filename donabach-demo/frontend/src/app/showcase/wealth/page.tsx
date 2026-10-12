@@ -5,6 +5,7 @@ import { FlowNav } from "@/components/showcase/FlowNav";
 import { ShowcasePending } from "@/components/showcase/ShowcasePending";
 import { WealthFigure } from "@/components/showcase/WealthFigure";
 import { WealthHeadline } from "@/components/showcase/WealthHeadline";
+import { WealthHeirs } from "@/components/showcase/WealthHeirs";
 import styles from "@/components/showcase/Showcase.module.css";
 import { PageHeader, Panel, PanelTitle, ResultsFooter } from "@/components/ui";
 import { count } from "@/lib/format";
@@ -45,8 +46,12 @@ export default function ShowcaseWealthPage() {
       <div className={styles.stack}>
         <WealthHeadline wealth={wealth} />
 
+        <WealthHeirs wealth={wealth} />
+
         <Panel aria-labelledby="wealth-title">
-          <PanelTitle id="wealth-title">Donabach and a {advisor} over time</PanelTitle>
+          <PanelTitle id="wealth-title" aside={wealth.liquidated_label}>
+            Donabach and a {advisor} over time
+          </PanelTitle>
           <WealthFigure wealth={wealth} />
         </Panel>
 

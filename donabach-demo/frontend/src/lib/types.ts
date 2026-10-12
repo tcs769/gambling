@@ -137,13 +137,18 @@ export function optionLabel(choice: string, option: string): string {
  * reserve is in stocks (the API sends "100"), so the chip says that instead of "100% stocks".
  */
 export function chipValue(choices: Record<string, string>, choice: string): string {
-  if (choice === "stock_share" && choices.reserve !== undefined && choices.reserve !== "off") return "Everything outside the reserve";
+  if (choice === "stock_share" && choices.reserve !== undefined && choices.reserve !== "off")
+    return "Everything outside the reserve";
   return optionLabel(choice, choices[choice]);
 }
 
 /** True for values that mean the lever is not used ("off", no conversions, a 0% sleeve). */
 export function optionIsOff(choice: string, option: string): boolean {
-  return option === "off" || (choice === "conversion" && option === "none") || (choice === "private_credit" && option === "0");
+  return (
+    option === "off" ||
+    (choice === "conversion" && option === "none") ||
+    (choice === "private_credit" && option === "0")
+  );
 }
 
 /** The baseline with this key (the API sends the good RIA first, then the typical advisor). */

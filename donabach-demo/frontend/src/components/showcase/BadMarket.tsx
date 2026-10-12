@@ -1,3 +1,4 @@
+import { Tag } from "@/components/ui";
 import { money, percentTrim } from "@/lib/format";
 import type { ShowcaseWealth } from "@/lib/types";
 import styles from "./BadMarket.module.css";
@@ -12,12 +13,15 @@ export function BadMarket({ wealth }: { wealth: ShowcaseWealth }) {
   const pairs = [
     {
       title: `The 10th percentile at ${horizon}`,
+      // A wealth at the horizon says which valuation it is (the chance of running out of money is not a valuation).
+      valuation: wealth.liquidated_label,
       note: "After-tax wealth in a bad-market future: nine in ten do better.",
       plan: money(advantage.plan_p10_at_horizon),
       advisor: money(advantage.advisor_p10_at_horizon),
     },
     {
       title: "Chance of running out of money",
+      valuation: null,
       note: "The share of simulated futures in which savings cannot cover spending or a goal.",
       plan: percentTrim(advantage.plan_shortfall),
       advisor: percentTrim(advantage.advisor_shortfall),
@@ -28,7 +32,10 @@ export function BadMarket({ wealth }: { wealth: ShowcaseWealth }) {
       <div className={styles.grid}>
         {pairs.map((pair) => (
           <section key={pair.title} className={styles.card} aria-label={pair.title}>
-            <h3 className={styles.title}>{pair.title}</h3>
+            <div className={styles.head}>
+              <h3 className={styles.title}>{pair.title}</h3>
+              {pair.valuation && <Tag>{pair.valuation}</Tag>}
+            </div>
             <p className={styles.note}>{pair.note}</p>
             <dl className={styles.values}>
               <div className={styles.value} data-entity="plan">

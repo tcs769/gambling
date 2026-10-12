@@ -1,0 +1,33 @@
+.loading {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.loading p {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.failure {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  color: var(--espresso);
+}
+.failure p {
+  margin: 4px 0 12px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--bad);
+}
+.title {
+  color: var(--brown);
+  font-weight: 650;
+}

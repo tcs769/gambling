@@ -14,10 +14,22 @@ interface Props {
   onOpenChange?: (open: boolean) => void;
   children: ReactNode;
   className?: string;
+  /** The heading level the button sits in (3 unless it is inside a section of its own that has a heading of level 4). */
+  level?: 3 | 4 | 5;
 }
 
 /** A collapsible section: a real button with aria-expanded, and content that animates open. */
-export function Disclosure({ title, aside, defaultOpen = false, open, onOpenChange, children, className = "" }: Props) {
+export function Disclosure({
+  title,
+  aside,
+  defaultOpen = false,
+  open,
+  onOpenChange,
+  children,
+  className = "",
+  level = 3,
+}: Props) {
+  const Heading = `h${level}` as const;
   const regionId = useId();
   const [innerOpen, setInnerOpen] = useState(defaultOpen);
   const isOpen = open ?? innerOpen;
@@ -30,7 +42,7 @@ export function Disclosure({ title, aside, defaultOpen = false, open, onOpenChan
 
   return (
     <div className={`${styles.root} ${className}`} data-open={isOpen}>
-      <h3 className={styles.heading}>
+      <Heading className={styles.heading}>
         <button
           type="button"
           className={styles.trigger}
@@ -42,7 +54,7 @@ export function Disclosure({ title, aside, defaultOpen = false, open, onOpenChan
           <span className={styles.title}>{title}</span>
           {aside && <span className={styles.aside}>{aside}</span>}
         </button>
-      </h3>
+      </Heading>
       <div id={regionId} className={styles.region}>
         <div className={styles.inner}>{children}</div>
       </div>

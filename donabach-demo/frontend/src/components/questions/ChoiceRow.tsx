@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { useId, useState, type KeyboardEvent } from "react";
 import { Chip, ChipGroup, NumberInput, Tag } from "@/components/ui";
 import styles from "./Questions.module.css";
 
@@ -14,6 +14,8 @@ interface Props<T extends number | null> {
   label: string;
   /** A line under it. */
   hint?: string;
+  /** A sentence of help under the whole row: what the answer is used for. */
+  help?: string;
   choices: Choice<T>[];
   value: T;
   onChange: (value: T) => void;
@@ -32,6 +34,7 @@ interface Props<T extends number | null> {
 export function ChoiceRow<T extends number | null>({
   label,
   hint,
+  help,
   choices,
   value,
   onChange,
@@ -39,6 +42,7 @@ export function ChoiceRow<T extends number | null>({
   estimated,
   disabled,
 }: Props<T>) {
+  const helpId = useId();
   const [customOpen, setCustomOpen] = useState(false);
   const [focusBox, setFocusBox] = useState(false);
 
@@ -83,7 +87,7 @@ export function ChoiceRow<T extends number | null>({
         {hint && <span className={styles.hint}>{hint}</span>}
       </div>
       <div className={styles.choices} onKeyDown={onKeyDown}>
-        <ChipGroup label={label}>
+        <ChipGroup label={label} describedBy={help ? helpId : undefined}>
           {choices.map((choice, i) => (
             <Chip
               key={String(choice.value)}
@@ -122,6 +126,11 @@ export function ChoiceRow<T extends number | null>({
           />
         )}
       </div>
+      {help && (
+        <p id={helpId} className={styles.help}>
+          {help}
+        </p>
+      )}
     </div>
   );
 }

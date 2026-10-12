@@ -108,3 +108,42 @@
 .anchor {
   scroll-margin-top: 88px;
 }
+
+/* ---- How wealth at the horizon is valued ---- */
+.valuationNote {
+  display: grid;
+  gap: 8px;
+  padding: 16px 22px 0;
+}
+
+.valuationIntro {
+  max-width: 100ch;
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.valuationIntro strong {
+  color: var(--brown);
+}
+
+.valued {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 14px;
+  padding: 0 4px;
+  max-width: 100ch;
+}
+.valued dt {
+  color: var(--brown);
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+.valued dd {
+  margin: 2px 0 0;
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+.valued strong {
+  color: var(--brown);
+}

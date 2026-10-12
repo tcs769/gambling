@@ -47,6 +47,13 @@ export const MEASURES: Measure[] = [
   },
 ];
 
+/** One way of valuing wealth at the horizon: its label (the API's) and where its advantage is on a baseline. */
+interface Valuation {
+  id: "liquidated" | "heirs";
+  label: string;
+  of: (baseline: BaselineView) => AdvantageView;
+}
+
 /** Two decimals of a percent is the figure's precision; a smaller move than half a step is no move. */
 const PERCENT_EPSILON = 0.00005;
 
@@ -57,9 +64,20 @@ const PERCENT_EPSILON = 0.00005;
  * With a what-if on screen each also shows its move against the base plan.
  */
 export function AdvantagePanel({ plan, base }: { plan: PlanResponse; base?: PlanResponse }) {
-  const { horizon_age: horizon, risk_aversion: riskAversion, n_eval_paths: evalPaths } = plan.settings;
+  const {
+    horizon_age: horizon,
+    risk_aversion: riskAversion,
+    n_eval_paths: evalPaths,
+    liquidated_label: liquidated,
+    heirs_label: heirs,
+  } = plan.settings;
   const advisors = plan.baselines;
   if (advisors.length === 0) return null;
+  // Every figure is given for both valuations of wealth at the horizon, each under the API's own label.
+  const valuations: Valuation[] = [
+    { id: "liquidated", label: liquidated, of: (advisor) => advisor.advantage },
+    { id: "heirs", label: heirs, of: (advisor) => advisor.advantage_heirs },
+  ];
 
   return (
     <Panel aria-labelledby="advantage-title">
@@ -67,12 +85,14 @@ export function AdvantagePanel({ plan, base }: { plan: PlanResponse; base?: Plan
         Donabach&apos;s advantage
       </PanelTitle>
       <p className={styles.intro}>
-        How far ahead the plan ends against each advisor, measured two ways. Positive means the plan ends ahead; each
+        How far ahead the plan ends against each advisor, measured two ways and valued two ways ({liquidated} and{" "}
+        {heirs}, explained under &ldquo;How these are valued&rdquo; above). Positive means the plan ends ahead; each
         figure comes with the 90% range it would fall in if the simulated futures were resampled.
       </p>
       <div className={styles.measures}>
         {MEASURES.map((measure) => {
-          const scale = scaleFor(advisors.map((advisor) => measure.pick(advisor.advantage)));
+          // One axis for every range of this measure, so the bars of both valuations can be compared by eye.
+          const scale = scaleFor(advisors.flatMap((advisor) => valuations.map((v) => measure.pick(v.of(advisor)))));
           return (
             <section key={measure.id} className={styles.measure} aria-labelledby={`measure-${measure.id}`}>
               <div className={styles.what}>
@@ -81,7 +101,6 @@ export function AdvantagePanel({ plan, base }: { plan: PlanResponse; base?: Plan
               </div>
               <div className={styles.cells}>
                 {advisors.map((advisor) => {
-                  const now = measure.pick(advisor.advantage);
                   const before = base?.baselines.find((b) => b.key === advisor.key);
                   return (
                     <div
@@ -91,25 +110,34 @@ export function AdvantagePanel({ plan, base }: { plan: PlanResponse; base?: Plan
                       aria-label={`${measure.label} against ${against(advisor)}`}
                     >
                       <div className={styles.against}>Against {against(advisor)}</div>
-                      <div className={styles.value}>
-                        <span className={styles.figure}>{signedPercent(now.value)}</span>
-                        <span className={styles.unit}> a year</span>
-                      </div>
-                      <RangeBar value={now.value} low={now.low} high={now.high} scale={scale} />
-                      <p className={styles.range}>
-                        90% range: {signedPercent(now.low)} to {signedPercent(now.high)} when the futures are resampled
-                      </p>
-                      <p className={styles.dollars}>
-                        <strong>{signedMoney(now.dollars)}</strong> {measure.dollarsOf(horizon)}
-                      </p>
-                      {before && (
-                        <Delta
-                          change={now.value - measure.pick(before.advantage).value}
-                          goodWhen="up"
-                          epsilon={PERCENT_EPSILON}
-                          format={percentagePoints}
-                        />
-                      )}
+                      {valuations.map((valuation) => {
+                        const now = measure.pick(valuation.of(advisor));
+                        return (
+                          <div key={valuation.id} className={styles.valuation} data-valuation={valuation.id}>
+                            <div className={styles.valuationLabel}>{valuation.label}</div>
+                            <div className={styles.value}>
+                              <span className={styles.figure}>{signedPercent(now.value)}</span>
+                              <span className={styles.unit}> a year</span>
+                            </div>
+                            <RangeBar value={now.value} low={now.low} high={now.high} scale={scale} />
+                            <p className={styles.range}>
+                              90% range: {signedPercent(now.low)} to {signedPercent(now.high)} when the futures are
+                              resampled
+                            </p>
+                            <p className={styles.dollars}>
+                              <strong>{signedMoney(now.dollars)}</strong> {measure.dollarsOf(horizon)}
+                            </p>
+                            {before && (
+                              <Delta
+                                change={now.value - measure.pick(valuation.of(before)).value}
+                                goodWhen="up"
+                                epsilon={PERCENT_EPSILON}
+                                format={percentagePoints}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}

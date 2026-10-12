@@ -47,3 +47,11 @@
   gap: 12px;
   flex-shrink: 0;
 }
+
+/* A phone: the page's own actions go under the title rather than reach past the window. */
+@media (max-width: 520px) {
+  .header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+}

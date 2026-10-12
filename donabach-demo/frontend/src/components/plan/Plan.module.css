@@ -55,6 +55,13 @@
   line-height: 1.3;
 }
 
+/* In a narrow column the label and value may take two lines: a rounded box rather than a pill. */
+.choices[data-compact="true"] .choice {
+  flex-wrap: wrap;
+  gap: 0 8px;
+  border-radius: 18px;
+}
+
 .choiceLabel {
   color: var(--muted-text);
 }
@@ -89,7 +96,17 @@
 
 .next {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
+  gap: 12px 24px;
+}
+
+/* On a style other than the default one: where the way on leads. */
+.nextNote {
+  flex: 1 1 280px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
 }
 
 /* ---- Year-by-year table ---- */

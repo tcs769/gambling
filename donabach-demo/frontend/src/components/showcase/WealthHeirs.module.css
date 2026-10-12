@@ -1,0 +1,94 @@
+.frame {
+  container-type: inline-size;
+}
+
+.block {
+  display: grid;
+  gap: 10px;
+  padding: 18px 26px 4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.title {
+  color: var(--muted-text);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* The two medians and the advantage between them, in one row: one above the other where a row would be too narrow. */
+.figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 10px 24px;
+  margin: 0;
+}
+
+.figure dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.35;
+}
+
+.figure dd {
+  margin: 2px 0 0;
+  color: var(--espresso);
+  font-size: 1.625rem;
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.unit {
+  color: var(--muted-text);
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.figure dd.dollars {
+  margin-top: 4px;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+/* The same short stroke in each entity's colour that the chart's legend and the bad-market cards use. */
+.key {
+  flex-shrink: 0;
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+}
+.figure[data-entity="plan"] .key {
+  background: var(--series-donabach);
+}
+.figure[data-entity="advisor"] .key {
+  background: var(--series-ria);
+}
+
+.note {
+  max-width: 100ch;
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.fold {
+  margin-inline: -4px;
+}
+
+.rest {
+  max-width: 100ch;
+  padding: 0 4px 14px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}

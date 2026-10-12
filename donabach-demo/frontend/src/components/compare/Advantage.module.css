@@ -69,6 +69,25 @@
   font-weight: 600;
 }
 
+/* A cell holds one block for each way of valuing wealth at the horizon, the first (liquidated) as it always was. */
+.valuation {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.valuation + .valuation {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.valuationLabel {
+  margin-top: 2px;
+  color: var(--brown);
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
 /* Proportional figures: tabular digits look loose at display sizes. */
 .value {
   line-height: 1.15;

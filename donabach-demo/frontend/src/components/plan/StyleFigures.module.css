@@ -1,0 +1,121 @@
+/* The sections of a plan's figures (see StyleFigures): the same in a column of the side-by-side view and in a single style's view. */
+.section {
+  /* Each section lays out its figures by the room it has: a column of a phone is narrower than a figure and its name side by side. */
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.title {
+  margin-bottom: 2px;
+  color: var(--brown);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+/* The valuations inside "Advantage over a good RIA". */
+.valuation + .valuation {
+  margin-top: 6px;
+}
+.sub {
+  margin-top: 6px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.metrics {
+  display: grid;
+  margin: 0;
+}
+
+.metric {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 14px;
+  padding: 8px 0;
+}
+.metric + .metric {
+  border-top: 1px dotted var(--line);
+}
+
+.metric dt {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.35;
+}
+
+.figure {
+  margin: 0;
+  color: var(--espresso);
+  font-size: 1.25rem;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.line {
+  display: block;
+}
+
+.detail {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+/* Whether the plan met its limits: an icon and a sentence, never colour alone. */
+.verdict {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 4px 0 4px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.verdict svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.verdict[data-tone="good"] {
+  color: color-mix(in srgb, var(--good) 60%, var(--espresso));
+  background: var(--good-wash);
+  border-color: rgba(46, 112, 72, 0.35);
+}
+.verdict[data-tone="warn"] {
+  color: color-mix(in srgb, var(--warn) 60%, var(--espresso));
+  background: var(--warn-wash);
+  border-color: rgba(154, 82, 0, 0.35);
+}
+
+/* A narrow section: the figure's name above the figure, which then has the whole width. */
+@container (max-width: 280px) {
+  .metric {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .figure {
+    text-align: left;
+  }
+}

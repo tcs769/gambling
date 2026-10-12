@@ -1,0 +1,16 @@
+/* The sections side by side where there is room for them, one above the other where there is not. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr));
+  gap: 16px 28px;
+  align-items: start;
+}
+
+.note {
+  margin-top: 14px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+.note strong {
+  color: var(--brown);
+}

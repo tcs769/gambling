@@ -43,7 +43,7 @@ const strategiesOn = (on, total) => (on === total ? `All ${noun(on)} on` : `${on
 
 // --- Contrast: WCAG, for the text on the showcase screens -------------------------------------------------------
 /** Every visible piece of text on the page against the surface behind it: under 4.5:1 (3:1 for large text) is listed. */
-async function lowContrast(page) {
+export async function lowContrast(page) {
   return page.evaluate(() => {
     const parse = (css) => {
       const m = css.match(/rgba?\(([^)]+)\)/);

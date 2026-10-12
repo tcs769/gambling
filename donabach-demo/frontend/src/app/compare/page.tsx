@@ -11,6 +11,7 @@ import { FourWayPanel } from "@/components/compare/FourWayPanel";
 import { HowWeMeasure } from "@/components/compare/HowWeMeasure";
 import { JudgmentPanel } from "@/components/compare/JudgmentPanel";
 import { SearchedTable } from "@/components/compare/SearchedTable";
+import { ValuationNote } from "@/components/compare/ValuationNote";
 import { Pending } from "@/components/plan/Pending";
 import { RefiningPill } from "@/components/plan/Refining";
 import { useEnsure } from "@/components/plan/useEnsure";
@@ -70,12 +71,16 @@ export default function ComparePage() {
         <div className={styles.stack}>
           <WhatChangedPanel />
 
+          <ValuationNote settings={plan.settings} />
+
           <AdvantagePanel plan={plan} base={base} />
 
           <BaselinesPanel plan={plan} base={base} />
 
           <Panel>
-            <PanelTitle aside="After-tax wealth, in 2026 dollars">Donabach and both advisors over time</PanelTitle>
+            <PanelTitle aside={`After-tax wealth, in 2026 dollars · ${plan.settings.liquidated_label}`}>
+              Donabach and both advisors over time
+            </PanelTitle>
             <FanCompare plan={plan} adaptive={adaptive} />
           </Panel>
 
@@ -89,16 +94,16 @@ export default function ComparePage() {
           )}
 
           <Panel>
-            <PanelTitle>Where the advantage comes from</PanelTitle>
+            <PanelTitle aside={plan.settings.liquidated_label}>Where the advantage comes from</PanelTitle>
             <p className={styles.sectionNote}>
               Start from the good RIA and switch on Donabach&apos;s decisions one at a time. Each bar is the change in
               typical wealth at {horizon} from that decision.
             </p>
             <AdvantageBars steps={plan.advantage} horizon={horizon} />
             <p className={styles.total}>
-              <strong>Total: {signedMoney(stats.advantage_total)}</strong> in typical wealth at {horizon} compared with a good
-              RIA ({money(stats.typical_outcome.median)} against {money(stats.ria_typical_outcome.median)}). It is the
-              same dollar gap as the median advantage above.
+              <strong>Total: {signedMoney(stats.advantage_total)}</strong> in typical wealth at {horizon} compared with
+              a good RIA ({money(stats.typical_outcome.median)} against {money(stats.ria_typical_outcome.median)}). It
+              is the same dollar gap as the median advantage above under &ldquo;{plan.settings.liquidated_label}&rdquo;.
             </p>
           </Panel>
 

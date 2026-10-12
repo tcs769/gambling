@@ -23,14 +23,17 @@ export function JudgmentPanel({ plan, section }: { plan: PlanResponse; section: 
 
   return (
     <Panel aria-labelledby="judgment-title">
-      <PanelTitle id="judgment-title" aside={`Measured on ${count(section.n_eval_paths)} fresh futures`}>
+      <PanelTitle
+        id="judgment-title"
+        aside={`Measured on ${count(section.n_eval_paths)} fresh futures · ${plan.settings.liquidated_label}`}
+      >
         What judgment over time adds
       </PanelTitle>
       <p className={advantage.intro}>
         The adaptive planner against the best fixed strategy, on the same futures: what it adds to re-choose each
-        year&apos;s decisions after that year&apos;s returns are known, instead of following the best fixed strategy all the way.
-        Positive means the adaptive planner ends ahead. Each figure comes with the 90% range it would fall in if the
-        simulated futures were resampled.
+        year&apos;s decisions after that year&apos;s returns are known, instead of following the best fixed strategy all
+        the way. Positive means the adaptive planner ends ahead. Each figure comes with the 90% range it would fall in
+        if the simulated futures were resampled.
       </p>
       <div className={styles.cells}>
         {MEASURES.map((measure) => {
@@ -52,7 +55,8 @@ export function JudgmentPanel({ plan, section }: { plan: PlanResponse; section: 
               </div>
               <RangeBar value={now.value} low={now.low} high={now.high} scale={scale} />
               <p className={advantage.range}>
-                90% range: {signedPercent(now.low, digits)} to {signedPercent(now.high, digits)} when the futures are resampled
+                90% range: {signedPercent(now.low, digits)} to {signedPercent(now.high, digits)} when the futures are
+                resampled
               </p>
               <p className={advantage.dollars}>
                 <strong>{signedMoney(now.dollars)}</strong> {measure.dollarsOf(horizon)}

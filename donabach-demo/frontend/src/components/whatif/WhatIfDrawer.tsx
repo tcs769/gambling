@@ -17,6 +17,7 @@ const PRESETS: { id: Preset; label: string }[] = [
 type NumberField =
   | "retirement_age"
   | "retirement_spending"
+  | "charitable_giving"
   | "home_purchase_in_years"
   | "home_down_payment"
   | "spouse_wages"
@@ -25,6 +26,7 @@ type NumberField =
 const FIELD_LABELS: Record<NumberField, string> = {
   retirement_age: "Retirement age",
   retirement_spending: "Retirement spending",
+  charitable_giving: "Charitable giving",
   home_purchase_in_years: "Home purchase timing",
   home_down_payment: "Down payment",
   spouse_wages: "Spouse B income",
@@ -39,6 +41,8 @@ function readField(household: Household | undefined, field: NumberField): number
       return household.goals?.retirement_age ?? null;
     case "retirement_spending":
       return household.goals?.retirement_spending ?? null;
+    case "charitable_giving":
+      return household.goals?.charitable_giving ?? null;
     case "home_purchase_in_years":
       return household.goals?.home_purchase_in_years ?? null;
     case "home_down_payment":
@@ -67,7 +71,8 @@ function tidy(edits: Partial<HouseholdEdits>, presets: Preset[], base: Household
 /** The API's range messages ("Input should be less than or equal to 70") with the field named. */
 function explain(message: string, field: NumberField | null): string {
   const range = message.match(/Input should be (greater|less) than or equal to (-?[\d.]+)/);
-  if (range && field) return `${FIELD_LABELS[field]} has to be ${range[1] === "greater" ? "at least" : "at most"} ${range[2]}.`;
+  if (range && field)
+    return `${FIELD_LABELS[field]} has to be ${range[1] === "greater" ? "at least" : "at most"} ${range[2]}.`;
   return message;
 }
 
@@ -79,15 +84,30 @@ interface FieldProps {
   prefixText?: string;
   suffixText?: string;
   disabled?: boolean;
+  /** The field takes the whole row (the grid has two columns). */
+  wide?: boolean;
   busy: boolean;
   resetKey: number;
   onDraft: (field: NumberField, value: number | null) => void;
   onCommit: (field: NumberField, value: number) => void;
 }
 
-function Field({ field, label, household, integer, prefixText, suffixText, disabled, busy, resetKey, onDraft, onCommit }: FieldProps) {
+function Field({
+  field,
+  label,
+  household,
+  integer,
+  prefixText,
+  suffixText,
+  disabled,
+  wide,
+  busy,
+  resetKey,
+  onDraft,
+  onCommit,
+}: FieldProps) {
   return (
-    <label className={styles.field}>
+    <label className={styles.field} data-wide={wide || undefined}>
       <span className={styles.fieldLabel}>{label}</span>
       <NumberInput
         key={resetKey}
@@ -193,11 +213,20 @@ export function WhatIfDrawer({ onClose }: { onClose: () => void }) {
   const failure = attempted && !loading && state.error ? explain(state.error, lastField) : null;
 
   return (
-    <div id="whatif-panel" ref={panel} className={styles.panel} role="region" aria-labelledby="whatif-title" tabIndex={-1}>
+    <div
+      id="whatif-panel"
+      ref={panel}
+      className={styles.panel}
+      role="region"
+      aria-labelledby="whatif-title"
+      tabIndex={-1}
+    >
       <header className={styles.panelHeader}>
         <div>
           <h2 id="whatif-title">What if...</h2>
-          <p className={styles.panelSub}>Change something and the plan is worked out again on the same simulated futures.</p>
+          <p className={styles.panelSub}>
+            Change something and the plan is worked out again on the same simulated futures.
+          </p>
         </div>
         <button type="button" className={styles.close} onClick={onClose} aria-label="Close what-if panel">
           <Icon name="close" size={20} />
@@ -278,8 +307,39 @@ export function WhatIfDrawer({ onClose }: { onClose: () => void }) {
       <section aria-labelledby="whatif-inputs" className={styles.section}>
         <h3 id="whatif-inputs">Your assumptions</h3>
         <div className={styles.fields}>
-          <Field field="retirement_age" label="Retirement age" household={household} integer busy={loading} resetKey={resetKey} onDraft={onDraft} onCommit={onCommit} />
-          <Field field="retirement_spending" label="Retirement spending" household={household} prefixText="$" suffixText="a year" busy={loading} resetKey={resetKey} onDraft={onDraft} onCommit={onCommit} />
+          <Field
+            field="retirement_age"
+            label="Retirement age"
+            household={household}
+            integer
+            busy={loading}
+            resetKey={resetKey}
+            onDraft={onDraft}
+            onCommit={onCommit}
+          />
+          <Field
+            field="retirement_spending"
+            label="Retirement spending"
+            household={household}
+            prefixText="$"
+            suffixText="a year"
+            busy={loading}
+            resetKey={resetKey}
+            onDraft={onDraft}
+            onCommit={onCommit}
+          />
+          <Field
+            field="charitable_giving"
+            label="Charitable giving"
+            household={household}
+            prefixText="$"
+            suffixText="a year"
+            wide
+            busy={loading}
+            resetKey={resetKey}
+            onDraft={onDraft}
+            onCommit={onCommit}
+          />
           <Field
             field="home_purchase_in_years"
             label="Home purchase in"
@@ -320,9 +380,29 @@ export function WhatIfDrawer({ onClose }: { onClose: () => void }) {
         </div>
         <div className={styles.fields}>
           {household && household.people.length > 1 && (
-            <Field field="spouse_wages" label="Spouse B income" household={household} prefixText="$" suffixText="a year" busy={loading} resetKey={resetKey} onDraft={onDraft} onCommit={onCommit} />
+            <Field
+              field="spouse_wages"
+              label="Spouse B income"
+              household={household}
+              prefixText="$"
+              suffixText="a year"
+              busy={loading}
+              resetKey={resetKey}
+              onDraft={onDraft}
+              onCommit={onCommit}
+            />
           )}
-          <Field field="social_security_annual" label="Social Security" household={household} prefixText="$" suffixText="a year" busy={loading} resetKey={resetKey} onDraft={onDraft} onCommit={onCommit} />
+          <Field
+            field="social_security_annual"
+            label="Social Security"
+            household={household}
+            prefixText="$"
+            suffixText="a year"
+            busy={loading}
+            resetKey={resetKey}
+            onDraft={onDraft}
+            onCommit={onCommit}
+          />
         </div>
       </section>
 

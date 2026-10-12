@@ -332,8 +332,8 @@ def test_short_term_gains_cost_something_to_a_strategy_that_sells_recent_lots():
     policy = Strategy(0.8, "none", 0.0, False, False).policy()  # no direct indexing: its harvested lots carry no gain to tax
     taxed = run_batch(inputs, [policy])
     free = run_batch(inputs, [policy.replace(short_term_ordinary=False)])
-    assert np.median(taxed.taxes_paid) > np.median(free.taxes_paid)
-    assert np.median(taxed.wealth) < np.median(free.wealth)
+    assert np.mean(taxed.taxes_paid) > np.mean(free.taxes_paid)  # (the means: the two medians can fall on the same path and tie)
+    assert np.mean(taxed.wealth) < np.mean(free.wealth)
 
 
 def test_a_young_household_has_a_lot_for_every_year():

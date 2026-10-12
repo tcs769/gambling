@@ -9,15 +9,31 @@ export function Chip({
   ...rest
 }: { selected?: boolean; children: ReactNode } & ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button type="button" role="radio" aria-checked={!!selected} className={`${styles.chip} ${className}`} data-selected={!!selected} {...rest}>
+    <button
+      type="button"
+      role="radio"
+      aria-checked={!!selected}
+      className={`${styles.chip} ${className}`}
+      data-selected={!!selected}
+      {...rest}
+    >
       {children}
     </button>
   );
 }
 
-export function ChipGroup({ label, children }: { label: string; children: ReactNode }) {
+export function ChipGroup({
+  label,
+  describedBy,
+  children,
+}: {
+  label: string;
+  /** The id of text that explains the question (a helper line under it). */
+  describedBy?: string;
+  children: ReactNode;
+}) {
   return (
-    <div role="radiogroup" aria-label={label} className={styles.group}>
+    <div role="radiogroup" aria-label={label} aria-describedby={describedBy} className={styles.group}>
       {children}
     </div>
   );

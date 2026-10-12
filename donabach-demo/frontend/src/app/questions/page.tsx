@@ -6,6 +6,7 @@ import { Button, Icon, PageHeader, Panel, PanelTitle, Tag } from "@/components/u
 import { ChoiceRow, type Choice } from "@/components/questions/ChoiceRow";
 import {
   CASH_BALANCES,
+  CHARITABLE_GIVING,
   COLLEGE_COST_A_YEAR,
   COLLEGE_IN_YEARS,
   HOME_DOWN_PAYMENT,
@@ -146,6 +147,22 @@ export default function QuestionsPage() {
                 choices={amounts(RETIREMENT_SPENDING)}
                 value={answers.retirement_spending}
                 onChange={(value) => actions.setAnswers({ retirement_spending: value })}
+                custom={{ prefix: "$" }}
+              />
+            </div>
+          </section>
+
+          <section className={styles.topic} aria-labelledby="topic-giving">
+            <h3 id="topic-giving" className={styles.topicTitle}>
+              Giving
+            </h3>
+            <div className={styles.rows}>
+              <ChoiceRow
+                label="Charitable giving a year"
+                help="Donabach gives shares that have gained the most instead of cash, so that gain is never taxed. Without itemizing, a couple deducts at most $2,000 of cash gifts."
+                choices={amounts(CHARITABLE_GIVING)}
+                value={answers.charitable_giving}
+                onChange={(value) => actions.setAnswers({ charitable_giving: value })}
                 custom={{ prefix: "$" }}
               />
             </div>

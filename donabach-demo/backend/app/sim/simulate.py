@@ -418,6 +418,7 @@ KEEP_401K_SHARE_OF_WAGES = 0.20  # 401(k) contributions are capped at 20% of wag
 BROKERAGE_SAVINGS_SHARE = 0.10  # ... plus 10% of wages saved in the brokerage account
 LOW_INCOME_SHARE = 0.80  # a "low-income year" is wages below 80% of the expected level
 BUCKET_YEARS_AHEAD = 4  # goal-matched bonds fully fund each goal four years ahead
+NEAR_GOAL_YEARS = 2  # with a spending reserve, a goal or spending this near is funded in safe assets even in a year stocks fell
 HARVEST_DECLINE_SHARE = 0.85  # direct indexing harvests 85% of an equity decline ...
 HARVEST_DISPERSION = 0.03  # ... plus 3% "dispersion" harvest scaled by basis ratio
 HARVEST_CAP_OF_VALUE = 0.35  # ... capped at 35% of value (and at basis)
@@ -924,13 +925,15 @@ def _advisory_fee(total, breakpoints, flat):
 
 
 @jit
-def _rebalance(st, equity, private_credit, uniform):
+def _rebalance(st, equity, private_credit, uniform, taxable_bonds=0.0):
     """Move every account to the target mix. Returns the capital gain realized in brokerage.
 
     uniform: the same mix in every account (the RIA approach; no private credit).
     Otherwise Donabach asset location: private credit goes in the pre-tax account first, overflowing
     to the Roth and then to brokerage; bonds fill what is left of the pre-tax account; the Roth
-    holds stocks (after any private credit); brokerage takes the remainder.
+    holds stocks (after any private credit); brokerage takes the remainder. `taxable_bonds` is a part of the bonds that is kept
+    out of the pre-tax account (so in the taxable one): the spending of the years before 59 1/2, which pre-tax money cannot pay
+    without the 10% penalty.
     """
     pe, pb, pp = st[S_PE], st[S_PB], st[S_PP]
     re, rb, rp = st[S_RE], st[S_RB], st[S_RP]
@@ -954,7 +957,7 @@ def _rebalance(st, equity, private_credit, uniform):
         pp_n = min(pc_target, pre)
         rp_n = min(pc_target - pp_n, ros)
         bp_n = pc_target - pp_n - rp_n
-        pb_n = min(bonds_target, pre - pp_n)
+        pb_n = min(max(0.0, bonds_target - taxable_bonds), pre - pp_n)
         pe_n = pre - pp_n - pb_n
         re_n = min(ros - rp_n, max(equity_target - pe_n, 0.0))
         rb_n = ros - rp_n - re_n
@@ -1549,8 +1552,18 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, single, want
             build = not (act[A_REFILL] > 0.5 and ys[Y_EQRET] < 0.0)
         held = st[S_GB]
         if held < target:
-            if build:
-                sold, gain = _sell_brokerage(st, target - held, 0.0)
+            wanted = target
+            if not build:
+                # A year stocks fell: nothing is sold to build the reserve ahead of time, but a goal that comes due within `NEAR_GOAL_YEARS`
+                # is a known liability, and the bucket is filled for it now whatever the market did (selling then costs no more than
+                # selling for it in the year it is due, which would be a forced sale in a falling year).
+                near = 0.0
+                for j in range(1, NEAR_GOAL_YEARS + 1):
+                    if t + j < tv.shape[0]:
+                        near += tv[t + j, TV_GOAL]
+                wanted = min(target, near)
+            if held < wanted:
+                sold, gain = _sell_brokerage(st, wanted - held, 0.0)
                 realized += gain
                 st[S_GB] += sold
                 bucket_flow = sold
@@ -1599,11 +1612,24 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, single, want
         if total > 0.0:
             safe_share = min(1.0, max(needed / total, pc_held))
             if act[A_REFILL] > 0.5 and ys[Y_EQRET] < 0.0:
+                # nothing is sold to refill the reserve in a year stocks fell, except (before retirement) what the first years' spending will need
                 safe_now = (st[S_PB] + st[S_PP] + st[S_RB] + st[S_RP] + st[S_BB] + st[S_BP]) / total
-                safe_share = min(safe_share, safe_now)
+                near_need = 0.0
+                if tv[t, TV_RETIRED] < 0.5:
+                    # (only while the household is still building toward retirement: once retired the reserve is there to be spent in a
+                    # fall and is refilled when stocks rise)
+                    for j in range(1, NEAR_GOAL_YEARS + 1):
+                        if t + j < tv.shape[0]:
+                            near_need += _need_of(tv, t + j, single)
+                safe_share = min(safe_share, max(safe_now, near_need / total))
         stock_logged = 1.0 - safe_share
+        # the spending of the years before 59 1/2 stays in the taxable account, where it can be spent without the penalty
+        early_need = 0.0
+        for j in range(1, int(act[A_RESERVE] + 0.5) + 1):
+            if t + j < tv.shape[0] and tv[t + j, TV_AGE] < _EARLY_AGE:
+                early_need += _need_of(tv, t + j, single)
         if act[A_LOCATION] > 0.5:
-            realized += _rebalance(st, 1.0 - safe_share, min(pc_share, safe_share), False)
+            realized += _rebalance(st, 1.0 - safe_share, min(pc_share, safe_share), False, early_need)
         else:
             realized += _rebalance(st, 1.0 - safe_share, 0.0, True)
     elif act[A_LOCATION] > 0.5:

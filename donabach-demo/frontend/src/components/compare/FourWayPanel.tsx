@@ -57,11 +57,31 @@ export function FourWayPanel({ plan, section }: { plan: PlanResponse; section: A
 
   const outcomes: MatrixRow[] = [
     // A no-break space keeps "at 80" together when a label wraps.
-    { id: "median", name: `Typical outcome at ${horizon}`, label: `Typical outcome at ${horizon}`, cell: (s) => money(s.outcome.median) },
-    { id: "score", name: `Certainty equivalent at ${horizon}`, label: `Certainty equivalent at ${horizon}`, cell: (s) => money(s.outcome.score) },
-    { id: "p10", name: "Bad case (10th percentile)", label: "Bad case (10th percentile)", cell: (s) => money(s.outcome.p10) },
+    {
+      id: "median",
+      name: `Typical outcome at ${horizon}`,
+      label: `Typical outcome at ${horizon}`,
+      cell: (s) => money(s.outcome.median),
+    },
+    {
+      id: "score",
+      name: `Certainty equivalent at ${horizon}`,
+      label: `Certainty equivalent at ${horizon}`,
+      cell: (s) => money(s.outcome.score),
+    },
+    {
+      id: "p10",
+      name: "Bad case (10th percentile)",
+      label: "Bad case (10th percentile)",
+      cell: (s) => money(s.outcome.p10),
+    },
     { id: "taxes", name: "Lifetime taxes", label: "Lifetime taxes", cell: (s) => money(s.lifetime_taxes) },
-    { id: "shortfall", name: "Chance of running out of money", label: "Chance of running out of money", cell: (s) => percentTrim(s.shortfall_chance) },
+    {
+      id: "shortfall",
+      name: "Chance of running out of money",
+      label: "Chance of running out of money",
+      cell: (s) => percentTrim(s.shortfall_chance),
+    },
   ];
 
   const advantages: MatrixRow[] = MEASURES.flatMap((measure) =>
@@ -150,7 +170,10 @@ export function FourWayPanel({ plan, section }: { plan: PlanResponse; section: A
 
   return (
     <Panel aria-labelledby="fourway-title">
-      <PanelTitle id="fourway-title" aside={`${count(section.n_eval_paths)} fresh futures, after tax, in 2026 dollars`}>
+      <PanelTitle
+        id="fourway-title"
+        aside={`${count(section.n_eval_paths)} fresh futures, after tax, in 2026 dollars · ${plan.settings.liquidated_label}`}
+      >
         The four strategies side by side
       </PanelTitle>
       <p className={styles.intro}>
@@ -159,8 +182,8 @@ export function FourWayPanel({ plan, section }: { plan: PlanResponse; section: A
             <strong>{adaptive.label}.</strong> {adaptive.definition}{" "}
           </>
         )}
-        The best fixed strategy is the Donabach plan above. All four are measured on the same simulated futures, and each
-        advantage comes with the 90% range it would fall in if those futures were resampled.
+        The best fixed strategy is the Donabach plan above. All four are measured on the same simulated futures, and
+        each advantage comes with the 90% range it would fall in if those futures were resampled.
       </p>
       <DataTable
         columns={columns}
@@ -191,9 +214,9 @@ export function FourWayPanel({ plan, section }: { plan: PlanResponse; section: A
         <div>
           <dt>Median and risk-adjusted advantage</dt>
           <dd>
-            The two measures defined in &ldquo;Donabach&apos;s advantage&rdquo; above, here for every strategy. The dollars are
-            the difference in typical (median) wealth at {horizon} in the median rows, and in certainty-equivalent wealth
-            at {horizon} in the risk-adjusted rows.
+            The two measures defined in &ldquo;Donabach&apos;s advantage&rdquo; above, here for every strategy. The
+            dollars are the difference in typical (median) wealth at {horizon} in the median rows, and in
+            certainty-equivalent wealth at {horizon} in the risk-adjusted rows.
           </dd>
         </div>
       </dl>

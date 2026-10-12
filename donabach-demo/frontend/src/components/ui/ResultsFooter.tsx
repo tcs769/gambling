@@ -14,8 +14,8 @@ export function ResultsFooter({ note }: { note?: string }) {
         illustrative.
       </p>
       <p>
-        Simplifications: income tax only (no payroll taxes), standard deduction only (no itemizing), no AMT, no state
-        tax credits. All amounts are in 2026 dollars.
+        Simplifications: income tax only (no payroll taxes), the standard deduction (itemizing only for charitable
+        gifts), no AMT, no state tax credits. All amounts are in 2026 dollars.
       </p>
       <p>
         Not modeled: the years after the first spouse dies (a surviving spouse files as a single taxpayer, with narrower

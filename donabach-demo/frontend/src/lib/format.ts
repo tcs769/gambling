@@ -64,6 +64,19 @@ export function count(n: number): string {
   return Math.round(n).toLocaleString("en-US");
 }
 
+/**
+ * A text's first sentence and the rest ("A one. A two. A three." gives "A one." and "A two. A three."). A sentence ends at a
+ * full stop, "!" or "?" followed by a space and a capital letter, a digit, a dollar sign or an opening bracket or quote, so
+ * "1.5% a year" and "$211,400 to $403,550" stay whole. A text with no such end is all "first".
+ */
+export function splitFirstSentence(text: string): { first: string; rest: string } {
+  const whole = text.trim();
+  const end = /[.!?]\s+(?=[A-Z0-9$("])/.exec(whole);
+  if (!end) return { first: whole, rest: "" };
+  const cut = end.index + 1;
+  return { first: whole.slice(0, cut), rest: whole.slice(cut).trim() };
+}
+
 function trim(s: string): string {
   return s.includes(".") ? s.replace(/\.?0+$/, "") : s;
 }

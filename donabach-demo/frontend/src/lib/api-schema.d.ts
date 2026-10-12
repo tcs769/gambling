@@ -614,6 +614,11 @@ export interface components {
             label: string;
             /** Definition */
             definition: string;
+            /**
+             * Forced Sale Chance
+             * @default 0
+             */
+            forced_sale_chance: number;
             outcome: components["schemas"]["OutcomeView"];
             outcome_heirs: components["schemas"]["OutcomeView"];
             /** Lifetime Taxes */
@@ -1229,7 +1234,7 @@ export interface components {
             risk_aversion: number;
             /**
              * Planning Style
-             * @description equity_first: a spending reserve of bonds and private credit, everything else in stocks; balanced: a stock share with a glide path
+             * @description equity_first: a spending reserve of 2, 4 or 6 years of bonds and private credit, everything else in stocks; balanced: a stock share with a glide path; liability_matched: the reserve chosen from 2 to 12 years (liability.reserve_years) so that the chance of selling stocks in a falling year stays at 2% or less and ruin is no likelier than the good advisor's (slower: several seconds)
              * @default equity_first
              * @enum {string}
              */

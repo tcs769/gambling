@@ -12,6 +12,9 @@
 // The showcase flow (/showcase: the household card, the strategy waterfall, wealth over time) is checked at the end by
 // e2e/showcase.mjs, also against the API's own responses (it can be run alone: `node e2e/showcase.mjs`, same environment).
 //
+// Round two: both valuations of wealth at 80 (e2e/valuations.mjs), annual charitable giving (e2e/giving.mjs) and the Plan screen's
+// planning-style switch (e2e/styles.mjs) are checked at the end, the same way (each can be run alone; e2e/lib.mjs has what they share).
+//
 // The year-by-year (adaptive) plan is checked the same way: the years highlighted in the plan table, the "Why this
 // year" panel, the four-way comparison, what judgment over time adds and the "What changed" panel are compared with
 // the adaptive plan the API sent (in the plan response, or as the result of its background job, read from
@@ -22,7 +25,10 @@
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { chromium } from "playwright-core";
+import { runGiving } from "./giving.mjs";
 import { runShowcase } from "./showcase.mjs";
+import { runStyles } from "./styles.mjs";
+import { runValuations } from "./valuations.mjs";
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const OUT = resolve(process.env.OUT_DIR ?? new URL("../../.screenshots", import.meta.url).pathname);
@@ -1180,6 +1186,12 @@ check(fresh[0] === fresh[1], `demo mode: two fresh sessions show identical numbe
 // --- The showcase flow: household card, strategy waterfall, wealth over time (e2e/showcase.mjs) ----------------------
 // Its own section of checks, all read from the API's /showcase responses; they count with the rest.
 await runShowcase({ browser, base: BASE, out: OUT, check, notes });
+
+// --- Round two: both valuations, charitable giving, planning styles (e2e/valuations.mjs, giving.mjs, styles.mjs) --------------------
+// Each reads its expectations from what the API sent the browser; they count with the rest.
+await runValuations({ browser, base: BASE, out: OUT, check, notes });
+await runGiving({ browser, base: BASE, out: OUT, check, notes });
+await runStyles({ browser, base: BASE, out: OUT, check, notes });
 
 await browser.close();
 for (const n of notes) console.log(` note  ${n}`);

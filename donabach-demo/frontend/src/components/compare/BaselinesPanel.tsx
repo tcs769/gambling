@@ -6,10 +6,16 @@ import type { BaselineView, PlanResponse } from "@/lib/types";
 import { Delta } from "./Delta";
 import styles from "./Baselines.module.css";
 
-/** What one column of cards shows: the same four figures for the plan and for each advisor. */
+/**
+ * What one column of cards shows: the same figures for the plan and for each advisor. Wealth at the horizon is given for both
+ * of the API's valuations (`median` and `p10` liquidated, `medianHeirs` and `p10Heirs` passed to heirs); taxes and the chance
+ * of a shortfall have one figure each.
+ */
 interface Figures {
   median: number;
   p10: number;
+  medianHeirs: number;
+  p10Heirs: number;
   taxes: number;
   shortfall: number;
 }
@@ -37,6 +43,8 @@ const SERIES_BY_KEY: Record<BaselineView["key"], string> = {
 const planFigures = (plan: PlanResponse): Figures => ({
   median: plan.stats.typical_outcome.median,
   p10: plan.stats.typical_outcome.p10,
+  medianHeirs: plan.stats.typical_outcome_heirs.median,
+  p10Heirs: plan.stats.typical_outcome_heirs.p10,
   taxes: plan.stats.lifetime_taxes,
   shortfall: plan.stats.shortfall_chance,
 });
@@ -44,6 +52,8 @@ const planFigures = (plan: PlanResponse): Figures => ({
 const advisorFigures = (b: BaselineView): Figures => ({
   median: b.outcome.median,
   p10: b.outcome.p10,
+  medianHeirs: b.outcome_heirs.median,
+  p10Heirs: b.outcome_heirs.p10,
   taxes: b.lifetime_taxes,
   shortfall: b.shortfall_chance,
 });
@@ -60,9 +70,25 @@ interface Row {
   move: (absoluteChange: number) => string;
 }
 
-const ROWS: Row[] = [
-  { key: "median", label: (h) => `Typical outcome at ${h}`, format: money, goodWhen: "up", epsilon: 0.5, move: money },
-  { key: "p10", label: () => "Bad case (10th percentile)", format: money, goodWhen: "up", epsilon: 0.5, move: money },
+const typical = (key: "median" | "medianHeirs"): Row => ({
+  key,
+  label: (h) => `Typical outcome at ${h}`,
+  format: money,
+  goodWhen: "up",
+  epsilon: 0.5,
+  move: money,
+});
+const badCase = (key: "p10" | "p10Heirs"): Row => ({
+  key,
+  label: () => "Bad case (10th percentile)",
+  format: money,
+  goodWhen: "up",
+  epsilon: 0.5,
+  move: money,
+});
+
+/** The figures that have one value whichever way wealth at the horizon is valued. */
+const SHARED_ROWS: Row[] = [
   { key: "taxes", label: () => "Lifetime taxes", format: money, goodWhen: "down", epsilon: 0.5, move: money },
   {
     key: "shortfall",
@@ -82,7 +108,33 @@ const ROWS: Row[] = [
  * words for each figure follow, once.
  */
 export function BaselinesPanel({ plan, base }: { plan: PlanResponse; base?: PlanResponse }) {
-  const { horizon_age: horizon, n_eval_paths: evalPaths } = plan.settings;
+  const {
+    horizon_age: horizon,
+    n_eval_paths: evalPaths,
+    liquidated_label: liquidated,
+    heirs_label: heirs,
+  } = plan.settings;
+  // Wealth at the horizon under each valuation, with the API's own label over it.
+  const valuations: { id: string; label: string; rows: Row[] }[] = [
+    { id: "liquidated", label: liquidated, rows: [typical("median"), badCase("p10")] },
+    { id: "heirs", label: heirs, rows: [typical("medianHeirs"), badCase("p10Heirs")] },
+  ];
+  const figureRow = (card: Card, row: Row) => (
+    <div key={row.key} className={styles.metric}>
+      <dt>{row.label(horizon)}</dt>
+      <dd className={styles.figure}>{row.format(card.figures[row.key])}</dd>
+      {card.before && (
+        <dd className={styles.move}>
+          <Delta
+            change={card.figures[row.key] - card.before[row.key]}
+            goodWhen={row.goodWhen}
+            epsilon={row.epsilon}
+            format={row.move}
+          />
+        </dd>
+      )}
+    </div>
+  );
   const cards: Card[] = [
     {
       key: "donabach",
@@ -116,7 +168,12 @@ export function BaselinesPanel({ plan, base }: { plan: PlanResponse; base?: Plan
       <div className={styles.wrap}>
         <div className={styles.cards}>
           {cards.map((card) => (
-            <article key={card.key} className={styles.card} data-tone={card.tone} aria-labelledby={`baseline-${card.key}`}>
+            <article
+              key={card.key}
+              className={styles.card}
+              data-tone={card.tone}
+              aria-labelledby={`baseline-${card.key}`}
+            >
               <header className={styles.head}>
                 <Swatch color={card.color} kind="line" lineStyle={card.lineStyle} />
                 <h3 id={`baseline-${card.key}`}>{card.name}</h3>
@@ -129,24 +186,29 @@ export function BaselinesPanel({ plan, base }: { plan: PlanResponse; base?: Plan
                   </Pill>
                 )}
               </div>
-              <dl className={styles.metrics}>
-                {ROWS.map((row) => (
-                  <div key={row.key} className={styles.metric}>
-                    <dt>{row.label(horizon)}</dt>
-                    <dd className={styles.figure}>{row.format(card.figures[row.key])}</dd>
-                    {card.before && (
-                      <dd className={styles.move}>
-                        <Delta
-                          change={card.figures[row.key] - card.before[row.key]}
-                          goodWhen={row.goodWhen}
-                          epsilon={row.epsilon}
-                          format={row.move}
-                        />
-                      </dd>
-                    )}
-                  </div>
-                ))}
-              </dl>
+              {valuations.map((valuation) => (
+                <section
+                  key={valuation.id}
+                  className={styles.valuation}
+                  data-valuation={valuation.id}
+                  aria-labelledby={`baseline-${card.key}-${valuation.id}`}
+                >
+                  <h4 id={`baseline-${card.key}-${valuation.id}`} className={styles.valuationTitle}>
+                    {valuation.label}
+                  </h4>
+                  <dl className={styles.metrics}>{valuation.rows.map((row) => figureRow(card, row))}</dl>
+                </section>
+              ))}
+              <section
+                className={styles.valuation}
+                data-valuation="shared"
+                aria-labelledby={`baseline-${card.key}-shared`}
+              >
+                <h4 id={`baseline-${card.key}-shared`} className={styles.valuationTitle}>
+                  Taxes and risks
+                </h4>
+                <dl className={styles.metrics}>{SHARED_ROWS.map((row) => figureRow(card, row))}</dl>
+              </section>
             </article>
           ))}
         </div>

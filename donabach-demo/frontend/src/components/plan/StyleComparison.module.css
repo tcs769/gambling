@@ -1,0 +1,125 @@
+.intro {
+  margin: -4px 0 16px;
+  max-width: 100ch;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+/* Laid out by the room the panel has (not the window): with the what-if panel open the content column is narrow, and the
+   columns stack instead of squeezing. */
+.wrap {
+  container-type: inline-size;
+}
+
+.columns {
+  display: grid;
+  gap: 16px;
+}
+
+.column {
+  display: grid;
+  /* one track that may be narrower than its widest content (a pill, a long word): the sections wrap inside the card */
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  min-width: 0;
+  padding: 18px 20px 14px;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 6px;
+  padding-bottom: 12px;
+}
+.nameRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+.nameRow h3 {
+  font-size: 1.2rem;
+}
+/* The tag that says which plan the Comparison screen uses may take two lines in a narrow column. */
+.nameRow > span {
+  max-width: 100%;
+  white-space: normal;
+}
+.blurb {
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.pending {
+  min-width: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+/* What the plan is: its label, its reserve and stock choices, the whole sentence behind a fold. */
+.plan {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.planTitle {
+  color: var(--brown);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+.label {
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.fold {
+  margin-top: 2px;
+}
+.sentence {
+  padding: 0 4px 12px;
+  color: var(--espresso);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+.note {
+  margin-top: 14px;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+}
+.note strong {
+  color: var(--brown);
+}
+
+/* Three columns with their rows lined up: the plan's label, then each section sit on one line across the three. */
+@container (min-width: 900px) {
+  .columns {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    /* head, the plan, wealth, advantage, taxes and risks, and (the liability-matched plan only) its limits */
+    grid-template-rows: repeat(6, auto);
+    column-gap: 16px;
+    row-gap: 0;
+  }
+  .column {
+    grid-row: span 6;
+    grid-template-rows: subgrid;
+    row-gap: 0;
+  }
+  /* A column with no plan yet fills the rows its sections would. */
+  .pending {
+    grid-row: 2 / span 5;
+  }
+}

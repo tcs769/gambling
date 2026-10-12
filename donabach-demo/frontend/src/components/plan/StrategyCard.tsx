@@ -12,28 +12,38 @@ export function ChoiceChips({
   choices,
   label,
   changed,
+  compact,
 }: {
   choices: Record<string, string>;
   label: string;
   changed?: Record<string, string | undefined>;
+  /** In a narrow column: a chip may run to two lines, as a rounded box rather than a pill. */
+  compact?: boolean;
 }) {
   const known = Object.keys(CHOICE_LABELS).filter((choice) => choices[choice] !== undefined);
   const unknown = Object.keys(choices).filter((choice) => !(choice in CHOICE_LABELS));
   return (
-    <ul className={styles.choices} aria-label={label}>
+    <ul className={styles.choices} aria-label={label} data-compact={compact || undefined}>
       {[...known, ...unknown].map((choice) => {
         const option = choices[choice];
         const isChanged = !!changed && choice in changed;
         const was = changed?.[choice];
         return (
-          <li key={choice} className={styles.choice} data-off={optionIsOff(choice, option)} data-changed={isChanged || undefined}>
+          <li
+            key={choice}
+            className={styles.choice}
+            data-off={optionIsOff(choice, option)}
+            data-changed={isChanged || undefined}
+          >
             <span className={styles.choiceLabel}>{CHOICE_LABELS[choice] ?? choice}</span>
             <span className={styles.choiceValue}>
               {option === "on" && <Icon name="check" size={15} strokeWidth={2.8} />}
               {chipValue(choices, choice)}
             </span>
             {isChanged && (
-              <span className={styles.choiceWas}>{was === undefined ? "Changed" : `Changed, was ${optionLabel(choice, was)}`}</span>
+              <span className={styles.choiceWas}>
+                {was === undefined ? "Changed" : `Changed, was ${optionLabel(choice, was)}`}
+              </span>
             )}
           </li>
         );

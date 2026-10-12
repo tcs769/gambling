@@ -9,12 +9,17 @@ import styles from "./Profile.module.css";
  */
 export function TaxPicture({ profile }: { profile: HouseholdProfile }) {
   const t = profile.tax_return;
+  // What was taken off AGI: itemized gifts (when they come to more than the standard deduction), or the standard deduction
+  // with the cash-gift allowance a household that does not itemize gets.
+  const deductionNote = t.itemized
+    ? `After ${dollars(t.deduction_used)} of itemized deductions (charitable gifts)`
+    : t.charitable_deduction > 0
+      ? `After the ${dollars(t.standard_deduction)} standard deduction and ${dollars(t.charitable_deduction)} of cash gifts`
+      : `After the ${dollars(t.standard_deduction)} standard deduction`;
   return (
     <>
       <div className={styles.sectionHead}>
-        <h2>
-          This year&apos;s tax picture {profile.tax_estimated && <Tag tone="gold">Estimated</Tag>}
-        </h2>
+        <h2>This year&apos;s tax picture {profile.tax_estimated && <Tag tone="gold">Estimated</Tag>}</h2>
         <p>
           {profile.tax_estimated
             ? "Estimated from your wages and balances, because no tax return was read. 2026 rules."
@@ -24,11 +29,7 @@ export function TaxPicture({ profile }: { profile: HouseholdProfile }) {
 
       <div className={styles.cards}>
         <StatCard label="Adjusted gross income" value={dollars(t.agi)} note="Total income, less adjustments" />
-        <StatCard
-          label="Taxable income"
-          value={dollars(t.taxable_income)}
-          note={`After the ${dollars(t.standard_deduction)} standard deduction`}
-        />
+        <StatCard label="Taxable income" value={dollars(t.taxable_income)} note={deductionNote} />
         <StatCard
           label="Federal tax"
           value={dollars(t.federal_total)}

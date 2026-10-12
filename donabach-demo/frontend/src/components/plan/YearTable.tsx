@@ -41,6 +41,8 @@ interface YearTableProps {
   shock?: MarketShock | null;
   selected: number | null;
   onSelect: (yearIndex: number) => void;
+  /** Why there is no year-by-year plan to switch to (a plan in another planning style has none): said instead of the usual status. */
+  unavailableNote?: string;
 }
 
 /**
@@ -48,7 +50,18 @@ interface YearTableProps {
  * between them. In the year-by-year view the years where the planner changed something from the fixed strategy
  * are tinted and say so in words. Each row opens that year's decisions and tax return.
  */
-export function YearTable({ rows, view, onView, adaptive, horizon, retirementAge, shock, selected, onSelect }: YearTableProps) {
+export function YearTable({
+  rows,
+  view,
+  onView,
+  adaptive,
+  horizon,
+  retirementAge,
+  shock,
+  selected,
+  onSelect,
+  unavailableNote,
+}: YearTableProps) {
   const section = adaptive?.status === "ready" ? adaptive.section : undefined;
   const yearByYear = view === "adaptive" && !!section;
 
@@ -82,8 +95,20 @@ export function YearTable({ rows, view, onView, adaptive, horizon, retirementAge
     // window does not clip a heading or push the last column out of sight.
     { key: "income", header: "Income", align: "end", width: "12%", cell: (row) => money(row.income) },
     { key: "roth", header: "Roth conversion", align: "end", width: "16%", cell: (row) => amount(row.roth_conversion) },
-    { key: "harvest", header: "Losses harvested", align: "end", width: "15%", cell: (row) => amount(row.losses_harvested) },
-    { key: "bonds", header: "Goal bonds (balance)", align: "end", width: "15%", cell: (row) => amount(row.goal_bonds_balance) },
+    {
+      key: "harvest",
+      header: "Losses harvested",
+      align: "end",
+      width: "15%",
+      cell: (row) => amount(row.losses_harvested),
+    },
+    {
+      key: "bonds",
+      header: "Goal bonds (balance)",
+      align: "end",
+      width: "15%",
+      cell: (row) => amount(row.goal_bonds_balance),
+    },
     { key: "stock", header: "Stock share", align: "end", width: "12%", cell: (row) => percent(row.stock_share) },
     { key: "tax", header: "Total tax", align: "end", width: "12%", cell: (row) => money(row.total_tax) },
   ];
@@ -106,7 +131,7 @@ export function YearTable({ rows, view, onView, adaptive, horizon, retirementAge
             selected={yearByYear}
             disabled={!section}
             onClick={() => onView("adaptive")}
-            title={section ? undefined : "The year-by-year plan is not ready"}
+            title={section ? undefined : (unavailableNote ?? "The year-by-year plan is not ready")}
           >
             Year-by-year plan
           </Chip>
@@ -115,31 +140,43 @@ export function YearTable({ rows, view, onView, adaptive, horizon, retirementAge
           </Chip>
         </ChipGroup>
         {/* The wordings share one cell (see `stacked`): the tallest sets the height, so switching views or the plan arriving moves nothing. */}
-        <div className={`${styles.viewStatus} ${styles.stacked}`} aria-live="polite">
-          <p data-active={yearByYear} aria-hidden={yearByYear ? undefined : true}>
-            {section ? (
-              <>
-                <strong>
-                  {changedAges.length} of {section.rows.length} years
-                </strong>{" "}
-                changed from the fixed strategy on this path{changedAges.length > 0 ? ` (${agesList(changedAges)})` : ""}.
-                Across {count(section.n_eval_paths)} simulated futures the planner changes something in{" "}
-                {percentTrim(section.departure_share)} of its year-by-year decisions.
-              </>
-            ) : (
-              // Not known yet: the room for it (the size of a typical sentence), never shown or read.
-              `0 of ${rows.length} years changed from the fixed strategy on this path (ages 00, 00, 00, 00 and 00). Across 000 simulated futures the planner changes something in 0.0% of its year-by-year decisions.`
-            )}
-          </p>
-          <p data-active={!yearByYear && adaptive?.status === "refining"} aria-hidden={!yearByYear && adaptive?.status === "refining" ? undefined : true}>
-            Showing the fixed strategy until the year-by-year plan is ready.
-          </p>
-        </div>
+        {unavailableNote ? (
+          <div className={styles.viewStatus}>
+            <p>{unavailableNote}</p>
+          </div>
+        ) : (
+          <div className={`${styles.viewStatus} ${styles.stacked}`} aria-live="polite">
+            <p data-active={yearByYear} aria-hidden={yearByYear ? undefined : true}>
+              {section ? (
+                <>
+                  <strong>
+                    {changedAges.length} of {section.rows.length} years
+                  </strong>{" "}
+                  changed from the fixed strategy on this path
+                  {changedAges.length > 0 ? ` (${agesList(changedAges)})` : ""}. Across {count(section.n_eval_paths)}{" "}
+                  simulated futures the planner changes something in {percentTrim(section.departure_share)} of its
+                  year-by-year decisions.
+                </>
+              ) : (
+                // Not known yet: the room for it (the size of a typical sentence), never shown or read.
+                `0 of ${rows.length} years changed from the fixed strategy on this path (ages 00, 00, 00, 00 and 00). Across 000 simulated futures the planner changes something in 0.0% of its year-by-year decisions.`
+              )}
+            </p>
+            <p
+              data-active={!yearByYear && adaptive?.status === "refining"}
+              aria-hidden={!yearByYear && adaptive?.status === "refining" ? undefined : true}
+            >
+              Showing the fixed strategy until the year-by-year plan is ready.
+            </p>
+          </div>
+        )}
       </div>
 
       {adaptive?.status === "failed" && (
         <div className={styles.notice}>
-          <AdaptiveFailure message={adaptive.message}>The fixed strategy below is unaffected and still usable.</AdaptiveFailure>
+          <AdaptiveFailure message={adaptive.message}>
+            The fixed strategy below is unaffected and still usable.
+          </AdaptiveFailure>
         </div>
       )}
 

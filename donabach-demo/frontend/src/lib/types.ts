@@ -1,6 +1,7 @@
 // Friendly names for the API's types. The source of truth is api-schema.d.ts, generated from the
 // backend's OpenAPI document (`npm run gen:api` with the backend running).
 import type { components } from "./api-schema";
+import { years } from "./format";
 
 type S = components["schemas"];
 
@@ -32,6 +33,10 @@ export type OutcomeView = S["OutcomeView"];
 export type RankedRow = S["RankedRow"];
 export type FanSeries = S["FanSeries"];
 export type StatCards = S["StatCards"];
+/** How a plan is searched: a spending reserve with everything else in stocks, a stock share with a glide path, or under two limits. */
+export type PlanningStyle = PlanSettings["planning_style"];
+/** The liability-matched plan against its two limits (null on a plan of any other style). */
+export type LiabilityView = S["LiabilityView"];
 export type AdvantageView = S["AdvantageView"];
 export type BaselineView = S["BaselineView"];
 export type PlanSettings = S["PlanSettings"];
@@ -65,6 +70,7 @@ export type ShowcaseWaterfall = S["ShowcaseWaterfall"];
 export type ShowcaseMedian = S["ShowcaseMedian"];
 export type ShowcaseBar = S["ShowcaseBar"];
 export type ShowcaseWealth = S["ShowcaseWealth"];
+export type ShowcaseHeirs = S["ShowcaseHeirs"];
 export type ShowcaseAdvantage = S["ShowcaseAdvantage"];
 export type WealthLines = S["WealthLines"];
 export type HouseholdCard = S["HouseholdCard"];
@@ -115,9 +121,15 @@ export const OPTION_LABELS: Record<string, Record<string, string>> = {
   reserve: { off: "Off", "2": "2 years", "4": "4 years", "6": "6 years" },
 };
 
-/** A choice's value in words, falling back to the raw value. */
+/**
+ * A choice's value in words, falling back to the raw value. The spending reserve is a number of years that the table does
+ * not list in full (the liability-matched style picks from 2 to 12), so any whole number reads as years.
+ */
 export function optionLabel(choice: string, option: string): string {
-  return OPTION_LABELS[choice]?.[option] ?? option;
+  const known = OPTION_LABELS[choice]?.[option];
+  if (known !== undefined) return known;
+  if (choice === "reserve" && /^\d+$/.test(option)) return years(Number(option));
+  return option;
 }
 
 /**

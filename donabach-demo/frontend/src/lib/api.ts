@@ -12,6 +12,7 @@ import type {
   ModelsStatus,
   ParseResponse,
   PlanResponse,
+  PlanningStyle,
   Preset,
   ShowcaseResponse,
   ShowcaseWaterfall,
@@ -66,6 +67,7 @@ const post = <T>(path: string, body?: unknown, signal?: AbortSignal) =>
 export const NO_EDITS: HouseholdEdits = {
   retirement_age: null,
   retirement_spending: null,
+  charitable_giving: null,
   home_purchase_in_years: null,
   home_down_payment: null,
   college_starts_in_years: null,
@@ -101,9 +103,27 @@ export const api = {
   /**
    * The fixed-strategy plan, at once. `adaptive` is the year-by-year plan when the API already has it; otherwise
    * `adaptive_job` is the id to poll with `adaptiveJob`. (The request asks for the API's defaults for both.)
+   *
+   * `planningStyle` is how the plan is searched (the default, equity-first, is what the demo shows). To compare styles on
+   * the same futures pass the plan's own `settings.seed` as `seed` (without it a live, non-demo plan draws a new one), and
+   * `adaptive: false` to skip the year-by-year job, which only the plan on the other screens needs.
    */
-  plan: (household: Household, demoMode: boolean, nPaths = 400, shock: MarketShock | null = null) =>
-    post<PlanResponse>("/plan", { household, n_paths: nPaths, demo_mode: demoMode, shock }),
+  plan: (
+    household: Household,
+    demoMode: boolean,
+    nPaths = 400,
+    shock: MarketShock | null = null,
+    options: { planningStyle?: PlanningStyle; seed?: number; adaptive?: boolean } = {},
+  ) =>
+    post<PlanResponse>("/plan", {
+      household,
+      n_paths: nPaths,
+      demo_mode: demoMode,
+      shock,
+      planning_style: options.planningStyle ?? "equity_first",
+      ...(options.seed === undefined ? {} : { seed: options.seed }),
+      ...(options.adaptive === false ? { adaptive: false } : {}),
+    }),
 
   /** One poll of the background job that computes a plan's year-by-year (adaptive) part. */
   adaptiveJob: (id: string) => request<AdaptiveJob>(`/plan/adaptive/${encodeURIComponent(id)}`),

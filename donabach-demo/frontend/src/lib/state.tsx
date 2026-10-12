@@ -14,6 +14,7 @@ import {
   type ReactNode,
 } from "react";
 import { ApiError, api } from "./api";
+import { errorMessage } from "./showcase";
 import type {
   AdaptiveSection,
   Answers,
@@ -25,6 +26,7 @@ import type {
   MissingField,
   ParsedDocument,
   PlanResponse,
+  PlanningStyle,
   Preset,
   WhatIfResponse,
 } from "./types";
@@ -38,6 +40,7 @@ export const DEFAULT_ANSWERS: Answers = {
   college_years: 4,
   retirement_age: 62,
   retirement_spending: 110_000,
+  charitable_giving: 0,
   roth_balance: 30_000,
   cash: 40_000,
   social_security_annual: 50_000,
@@ -99,6 +102,36 @@ export interface WhatIfState {
   adaptive: AdaptiveState;
 }
 
+/** What the Plan screen's switch is on: one planning style, or all three side by side. */
+export type PlanStyleView = PlanningStyle | "all";
+
+/** The two styles other than the default one, whose plans are asked for when the Plan screen's switch lands on them. */
+export type AltStyle = Exclude<PlanningStyle, "equity_first">;
+export const ALT_STYLES: readonly AltStyle[] = ["balanced", "liability_matched"];
+
+/** One of the other styles' plans for the household on screen: on its way, here, or refused. */
+export type StyleSlot =
+  | { status: "loading" }
+  | { status: "ready"; plan: PlanResponse }
+  | { status: "failed"; message: string };
+export type StyleSlots = Partial<Record<AltStyle, StyleSlot>>;
+
+/**
+ * The other styles' plans for one equity-first plan (`base`, the plan the household on screen has: the base plan or a
+ * what-if's). They are asked for on the same household, shock and seed, so the three plans are measured on the same futures.
+ */
+interface StylePlans {
+  base: PlanResponse;
+  slots: StyleSlots;
+}
+
+const NO_SLOTS: StyleSlots = {};
+
+const withSlot = (entries: StylePlans[], base: PlanResponse, style: AltStyle, slot: StyleSlot): StylePlans[] =>
+  entries.some((e) => e.base === base)
+    ? entries.map((e) => (e.base === base ? { base, slots: { ...e.slots, [style]: slot } } : e))
+    : [...entries, { base, slots: { [style]: slot } }];
+
 export interface AppState {
   demoMode: boolean;
   docs: DocState[];
@@ -119,6 +152,10 @@ export interface AppState {
    */
   adaptive?: { plan: PlanResponse; state: AdaptiveState };
   whatIf?: WhatIfState;
+  /** Where the Plan screen's planning-style switch is (it keeps its place while the viewer visits other screens). */
+  planStyle: PlanStyleView;
+  /** The other planning styles' plans, kept per plan they were asked for so toggling back is instant (see `StylePlans`). */
+  stylePlans: StylePlans[];
   loading: { docs: boolean; household: boolean; forecast: boolean; plan: boolean; whatIf: boolean };
   error?: string;
 }
@@ -130,6 +167,8 @@ const initial: AppState = {
   acknowledged: [],
   answers: DEFAULT_ANSWERS,
   missing: [],
+  planStyle: "equity_first",
+  stylePlans: [],
   loading: { docs: false, household: false, forecast: false, plan: false, whatIf: false },
 };
 
@@ -168,6 +207,12 @@ class Store {
   patch = (change: Patch): void => {
     const before = this.state;
     this.state = { ...before, ...(typeof change === "function" ? change(before) : change) };
+    // The other styles' plans are kept only for the plans that are still on hand (the base plan and a what-if's).
+    if (this.state.stylePlans.length > 0) {
+      const live = [this.state.plan, this.state.whatIf?.response.plan];
+      const kept = this.state.stylePlans.filter((entry) => live.includes(entry.base));
+      if (kept.length !== this.state.stylePlans.length) this.state = { ...this.state, stylePlans: kept };
+    }
     if (
       this.state.answers !== before.answers ||
       this.state.overrides !== before.overrides ||
@@ -238,6 +283,14 @@ export interface Actions {
   /** Re-plan from the base household with these presets and edits. Empty selections reset. */
   runWhatIf(presets: Preset[], edits: Partial<HouseholdEdits>): Promise<void>;
   resetWhatIf(): void;
+  /** Move the Plan screen's planning-style switch. */
+  setPlanStyle(view: PlanStyleView): void;
+  /**
+   * Ask for the plan in one of the other planning styles, for the household on screen (a what-if's if one is active), on
+   * the same futures as the plan on screen. Nothing happens when it is already here or on its way; `retry` asks again
+   * after a refusal.
+   */
+  ensureStylePlan(style: AltStyle, options?: { retry?: boolean }): Promise<void>;
   /** Make sure the household / forecast / plan exist, bootstrapping in demo mode. False = go back to Upload. */
   ensureProfile(): Promise<boolean>;
   ensureForecast(): Promise<boolean>;
@@ -259,6 +312,8 @@ interface AppContextValue {
   /** The year-by-year part of the base plan, kept while a what-if is on screen. */
   baseAdaptive?: AdaptiveState;
   whatIfActive: boolean;
+  /** The other planning styles' plans for the plan on screen, as far as they have been asked for. */
+  styleSlots: StyleSlots;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -550,6 +605,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setLoading("whatIf", false);
       },
 
+      setPlanStyle(view) {
+        patch({ planStyle: view });
+      },
+
+      async ensureStylePlan(style, { retry = false } = {}) {
+        const s = current();
+        // The household on screen, and the equity-first plan that goes with it (a what-if's, if one is active).
+        const response = s.whatIf?.response;
+        const base = response?.plan ?? s.plan;
+        const household = response?.household ?? s.profile?.household;
+        if (!base || !household) return;
+        const known = s.stylePlans.find((entry) => entry.base === base)?.slots[style];
+        if (known && !(retry && known.status === "failed")) return;
+        const put = (slot: StyleSlot) => patch((now) => ({ stylePlans: withSlot(now.stylePlans, base, style, slot) }));
+        put({ status: "loading" });
+        try {
+          // The same futures as the plan on screen (its seed), and no year-by-year job: only the equity-first plan has one.
+          const plan = await api.plan(household, s.demoMode, undefined, base.settings.market_shock ?? null, {
+            planningStyle: style,
+            seed: base.settings.seed,
+            adaptive: false,
+          });
+          put({ status: "ready", plan });
+        } catch (e) {
+          put({ status: "failed", message: errorMessage(e) });
+        }
+      },
+
       async ensureProfile() {
         await store.restored;
         if (current().profile) return true;
@@ -584,6 +667,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AppContextValue>(() => {
     // The base plan's year-by-year part counts only while it belongs to the base plan on hand.
     const baseAdaptive = state.adaptive && state.adaptive.plan === state.plan ? state.adaptive.state : undefined;
+    const onScreen = state.whatIf?.response.plan ?? state.plan;
     return {
       state,
       actions,
@@ -593,6 +677,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       adaptive: state.whatIf ? state.whatIf.adaptive : baseAdaptive,
       baseAdaptive,
       whatIfActive: !!state.whatIf,
+      styleSlots: state.stylePlans.find((entry) => entry.base === onScreen)?.slots ?? NO_SLOTS,
     };
   }, [state, actions]);
 

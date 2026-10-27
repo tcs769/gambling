@@ -246,7 +246,8 @@ export async function runShowcase({ browser, base, out, check, notes }) {
     check(
       lines.length >= 2 &&
         lines[0] === squash(showcase.footer_note) &&
-        /^Prototype for illustration only/.test(lines[1]),
+        /^Not investment or tax advice/.test(lines[1]) &&
+        /Prototype for illustration only\.$/.test(lines[0]),
       `${name}: the footer opens with the API's own line, word for word ("${showcase.footer_note}"), ahead of the disclaimers`,
     );
   };

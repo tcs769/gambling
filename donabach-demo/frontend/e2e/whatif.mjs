@@ -394,7 +394,7 @@ export async function runWhatIf({ browser, base, out, check, notes }) {
         tags === flagged.length &&
           emphasised === flaggedCells &&
           befores === flaggedCells &&
-          /Changed/.test(tagText) &&
+          /^(Changed|Re-planned)/.test(tagText) &&
           /in this year:/.test(tagText) &&
           (await table.locator('[data-testid="changed-tag"][data-kind="event"]').count()) ===
             flagged.filter((y) => y.responded.length).length &&

@@ -1,8 +1,8 @@
 """Income forecast: the connected ML forecaster if there is one, else the placeholder process.
 
 The placeholder is the life-cycle income process in `app.sim.income` (real wage growth, permanent
-and transitory shocks, job loss). It is a simple process, not a learned model, and the response
-says so. It carries no "top factors": those only exist when a model supplies them.
+and transitory shocks, job loss). It is a simple process, not a connected forecasting model, and the
+response says so. It carries no "top factors": those only exist when a model supplies them.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ PLACEHOLDER_LABEL = "Placeholder forecast"
 MODEL_LABEL = "Income forecast model"
 PLACEHOLDER_NOTE = (
     "Model not connected. This is a simple life-cycle income process (wage growth, shocks and "
-    "job loss), not a learned forecast."
+    "job loss), not the output of a connected forecasting model."
 )
 
 

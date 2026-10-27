@@ -1,14 +1,14 @@
-import { money, signedMoney } from "@/lib/format";
+import { money, percentTrim } from "@/lib/format";
 import type { ShowcaseWealth } from "@/lib/types";
 import { ratePercent } from "./waterfall";
 import { moreOrLess } from "./WealthHeadline";
 import styles from "./WealthHeadline.module.css";
 
 /**
- * The household after an event, in both measures of the advantage and in the same box as the wealth screen's headline but
- * compact: after the event, Donabach's and the advisor's median at the horizon, the median advantage a year and in dollars,
- * the risk-adjusted advantage once, and, beside each, what it was for the unchanged household (`before`) so the viewer sees
- * what the event did. The valuation (liquidated) is named on top; the heirs' valuation is one small line. All the API's numbers.
+ * The household after an event, in the same box as the wealth screen's headline but compact: after the event, Donabach's and
+ * the advisor's median at the horizon and the median advantage a year and in dollars; and the bad-market (10th percentile)
+ * wealth and the chance of running out of money for both. The risk-adjusted advantage is shown once, on the wealth screen, not
+ * here. Beside each, what it was for the unchanged household (`before`) so the viewer sees what the event did. The valuation (liquidated) is named on top; the heirs' valuation is one small line. All the API's numbers.
  */
 export function ScenarioHeadline({ wealth, before }: { wealth: ShowcaseWealth; before: ShowcaseWealth | null }) {
   const { advantage, horizon_age: horizon, heirs } = wealth;
@@ -35,20 +35,26 @@ export function ScenarioHeadline({ wealth, before }: { wealth: ShowcaseWealth; b
           )}
         </div>
         <div className={styles.cell}>
-          <h2 className={styles.label}>{wealth.risk_adjusted_label}</h2>
+          <h2 className={styles.label}>In a bad market</h2>
           <p className={styles.figures}>
-            <span className={styles.big}>{ratePercent(advantage.risk_adjusted_rate)}</span>
-            <span className={styles.unit}> a year</span>
+            <span className={styles.big}>{money(advantage.plan_p10_at_horizon)}</span>
+            <span className={styles.unit}> at {horizon}</span>
           </p>
           <p className={styles.dollars}>
             <strong>
-              {signedMoney(advantage.risk_adjusted_dollars)} at {horizon}
+              {advisor} {money(advantage.advisor_p10_at_horizon)}
             </strong>{" "}
-            on the wealth you can count on
+            (the 10th percentile: nine in ten futures do better)
           </p>
-          <p className={styles.line}>{wealth.risk_adjusted_explanation}</p>
+          <p className={styles.line}>
+            Chance of running out of money: Donabach <strong>{percentTrim(advantage.plan_shortfall)}</strong>, {advisor}{" "}
+            <strong>{percentTrim(advantage.advisor_shortfall)}</strong>.
+          </p>
           {before && (
-            <p className={styles.before}>Before the event: {ratePercent(before.advantage.risk_adjusted_rate)} a year</p>
+            <p className={styles.before}>
+              Before the event: {money(before.advantage.plan_p10_at_horizon)} against{" "}
+              {money(before.advantage.advisor_p10_at_horizon)}
+            </p>
           )}
         </div>
         <p className={styles.about}>

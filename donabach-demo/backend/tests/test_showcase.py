@@ -251,9 +251,9 @@ def test_precomputing_leaves_nothing_to_simulate_for_the_screens_or_for_switchin
 
 
 def test_the_footer_says_the_results_are_this_household_s_and_what_a_typical_household_sees(tmp_path):
-    assert showcase.footer_note(0.0163) == "Results for this household. A typical household in our model sees about 1.6% a year."
-    assert showcase.footer_note(0.0171) == "Results for this household. A typical household in our model sees about 1.7% a year."
-    assert showcase.footer_note(None) == "Results for this household."
+    assert showcase.footer_note(0.0163) == "Results for this household. A typical household in our model sees about 1.6% a year. Prototype for illustration only."
+    assert showcase.footer_note(0.0171) == "Results for this household. A typical household in our model sees about 1.7% a year. Prototype for illustration only."
+    assert showcase.footer_note(None) == "Results for this household. Prototype for illustration only."
     table = tmp_path / "study.csv"
     table.write_text("type,index,adv_median_vs_good_ria\na,0,0.010\na,1,0.020\nb,0,0.030\n")
     assert showcase.typical_rate(table) == pytest.approx(0.020)

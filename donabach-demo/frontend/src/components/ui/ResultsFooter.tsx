@@ -9,18 +9,18 @@ export function ResultsFooter({ note }: { note?: string }) {
     <footer className={styles.footer}>
       {note && <p className={styles.note}>{note}</p>}
       <p>
-        Prototype for illustration only, not investment or tax advice. Tax rules from IRS Rev. Proc. 2025-32 and
-        Illinois 2026 guidance, simplified (income tax only, standard deduction). Market returns simulated and
-        illustrative.
+        {note ? "Not investment or tax advice." : "Prototype for illustration only, not investment or tax advice."} Tax
+        rules from IRS Rev. Proc. 2025-32 and Illinois 2026 guidance, simplified (income tax only, standard deduction).
+        Market returns simulated and illustrative.
       </p>
       <p>
         Simplifications: income tax only (no payroll taxes), the standard deduction (itemizing only for charitable
         gifts), no AMT, no state tax credits. All amounts are in 2026 dollars.
       </p>
       <p>
-        Not modeled: the years after the first spouse dies (a surviving spouse files as a single taxpayer, with narrower
-        brackets) and taxes paid by heirs on inherited accounts. Both generally favor Roth conversions, so this tool, if
-        anything, understates their value.
+        After the first of two spouses dies the household files as a single taxpayer, with spending and Social Security
+        reduced; a household with one person on file is taxed as married filing jointly. Taxes paid by heirs are an
+        assumption (a flat rate on pre-tax accounts, shown as a separate valuation), not a simulation.
       </p>
     </footer>
   );

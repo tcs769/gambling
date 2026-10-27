@@ -249,7 +249,7 @@ export async function runWhatIf({ browser, base, out, check, notes }) {
     const expectedLabels = ["No change", ...infos.map((i) => i.label)];
     check(
       squash(head) === "What if things change?" &&
-        /Donabach re-plans when the household's situation changes\. Pick an event\./.test(
+        /Donabach searches its strategies across simulated futures again for the changed household, so the plan adapts\. Pick an event\./.test(
           await page.locator("main").innerText(),
         ) &&
         JSON.stringify(labels) === JSON.stringify(expectedLabels) &&
@@ -317,14 +317,16 @@ export async function runWhatIf({ browser, base, out, check, notes }) {
         `${name}: the headline pair is the event's median advantage (${ratePct(adv.median_rate)} a year, ${moreOrLess(adv.median_dollars, horizon)}), both medians (${money(adv.plan_median_at_horizon)} and ${money(adv.advisor_median_at_horizon)}), labelled "${sw.liquidated_label}", with the unchanged household's ${ratePct(before.median_rate)} beside it`,
       );
       check(
-        headline.includes(sw.risk_adjusted_label) &&
-          headline.includes(`${ratePct(adv.risk_adjusted_rate)} a year`) &&
-          headline.includes(`${signedMoney(adv.risk_adjusted_dollars)} at ${horizon}`) &&
-          headline.split(sw.risk_adjusted_label).length === 2 &&
+        headline.includes("In a bad market") &&
+          headline.includes(money(adv.plan_p10_at_horizon)) &&
+          headline.includes(`${sw.advisor_label} ${money(adv.advisor_p10_at_horizon)}`) &&
+          headline.includes(`Donabach ${pct1(adv.plan_shortfall)}`) &&
+          headline.includes(`${sw.advisor_label} ${pct1(adv.advisor_shortfall)}`) &&
+          !headline.includes(sw.risk_adjusted_label) &&
           headline.includes(sw.heirs.label) &&
           headline.includes(money(sw.heirs.plan_median_at_horizon)) &&
           headline.includes(`${ratePct(sw.heirs.median_rate)} a year`),
-        `${name}: the risk-adjusted advantage appears once (${ratePct(adv.risk_adjusted_rate)} a year) and the heirs valuation is one small line ("${sw.heirs.label}")`,
+        `${name}: the bad-market wealth (${money(adv.plan_p10_at_horizon)} and ${money(adv.advisor_p10_at_horizon)}) and the chances of running out of money are shown; the risk-adjusted advantage is NOT on this screen (it appears once, on the wealth screen); the heirs valuation is one small line ("${sw.heirs.label}")`,
       );
       const summary = (await page.locator('[data-testid="summary"] li').allInnerTexts()).map(squash);
       const replanSummary = (await page.locator('[data-testid="replan-summary"] li').allInnerTexts()).map(squash);
@@ -376,9 +378,9 @@ export async function runWhatIf({ browser, base, out, check, notes }) {
         ) &&
           sameSet(
             await hot(),
-            flagged.map((y) => y.age),
+            flagged.filter((y) => y.responded.length).map((y) => y.age),
           ),
-        `${name}: with the filter on, the rows are exactly the ${flagged.length} years the API flags as responded or replanned (of ${sc.years.length}), and all are highlighted`,
+        `${name}: with the filter on, the rows are exactly the ${flagged.length} years the API flags as responded or replanned (of ${sc.years.length}), and the ${flagged.filter((y) => y.responded.length).length} the event itself changed are highlighted`,
       );
       const tags = await table.locator('[data-testid="changed-tag"]').count();
       const emphasised = await table.locator("[data-differs]").count();
@@ -393,7 +395,11 @@ export async function runWhatIf({ browser, base, out, check, notes }) {
           emphasised === flaggedCells &&
           befores === flaggedCells &&
           /Changed/.test(tagText) &&
-          /in this year:/.test(tagText),
+          /in this year:/.test(tagText) &&
+          (await table.locator('[data-testid="changed-tag"][data-kind="event"]').count()) ===
+            flagged.filter((y) => y.responded.length).length &&
+          (await table.locator('[data-testid="changed-tag"][data-kind="replan"]').count()) ===
+            flagged.filter((y) => !y.responded.length).length,
         `${name}: every highlighted year has a visible "Changed" tag with an icon and text for screen readers (${tags}), and the ${flaggedCells} cells that differ are emphasised and say "before: ..." (${emphasised}, ${befores})`,
       );
       // A cell's numbers are the API's.
@@ -427,9 +433,9 @@ export async function runWhatIf({ browser, base, out, check, notes }) {
         ) &&
           sameSet(
             await hot(),
-            flagged.map((y) => y.age),
+            flagged.filter((y) => y.responded.length).map((y) => y.age),
           ),
-        `${name}: with the filter off, every one of the ${sc.years.length} years is a row (${sc.years[0].age} to ${sc.years.at(-1).age}), and exactly the flagged ones are highlighted`,
+        `${name}: with the filter off, every one of the ${sc.years.length} years is a row (${sc.years[0].age} to ${sc.years.at(-1).age}), and exactly the years the event changed are highlighted`,
       );
       await toggle.check();
 

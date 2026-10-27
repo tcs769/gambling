@@ -192,7 +192,7 @@ def footer_note(rate: float | None) -> str:
     note = "Results for this household."
     if rate is not None:
         note += f" A typical household in our model sees about {rate * 100:.1f}% a year."
-    return note
+    return note + " Prototype for illustration only."
 
 
 def prepare(fixture: Fixture | None = None) -> Prepared:

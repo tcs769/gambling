@@ -58,7 +58,8 @@ export default function ShowcaseWhatIfPage() {
         title="What if things change?"
         subtitle={
           <span className={styles.tagline}>
-            Donabach re-plans when the household&apos;s situation changes. Pick an event.
+            Donabach searches its strategies across simulated futures again for the changed household, so the plan
+            adapts. Pick an event.
           </span>
         }
       />

@@ -51,12 +51,14 @@ const DECISIONS: Decision[] = [
 /** What changed in a year, from the API's flags (never worked out here): the event's response and what planning again added. */
 const changedKeys = (year: ScenarioYear): ReadonlySet<string> => new Set([...year.responded, ...year.replanned]);
 export const yearChanged = (year: ScenarioYear): boolean => year.responded.length > 0 || year.replanned.length > 0;
+/** The year the event itself changed what the plan does (the plan's own response), as against one only planning again changed. */
+export const eventChanged = (year: ScenarioYear): boolean => year.responded.length > 0;
 
 /**
  * Year by year, from today to the end of the plan: what the plan does after the event, for each decision. A decision the
  * event (or planning again) changed is bold with "before: X" (the plan with no event) in small type under it; a year where
- * anything changed is highlighted by a tint, an edge, a visible "Changed" tag with an icon and text for screen readers, so colour is
- * never the only sign. "Show only the years that changed" is on at first. The first highlighted row is scrolled to when the
+ * the event changed is highlighted by a tint, an edge and a visible "Changed" tag with an icon and text for screen readers, so
+ * colour is never the only sign; a year only planning again changed carries a quieter "Re-planned" tag and no tint. "Show only the years that changed" is on at first. The first highlighted row is scrolled to when the
  * table first appears (inside the table, never the page).
  */
 export function ScenarioYears({ years, eventLabel }: { years: readonly ScenarioYear[]; eventLabel: string }) {
@@ -78,9 +80,13 @@ export function ScenarioYears({ years, eventLabel }: { years: readonly ScenarioY
             <span className={styles.ageCell}>
               <span className={styles.age}>{year.age}</span>
               {yearChanged(year) && (
-                <span className={styles.tag} data-testid="changed-tag">
+                <span
+                  className={styles.tag}
+                  data-testid="changed-tag"
+                  data-kind={eventChanged(year) ? "event" : "replan"}
+                >
                   <Icon name="refresh" size={12} strokeWidth={2.6} />
-                  Changed
+                  {eventChanged(year) ? "Changed" : "Re-planned"}
                   <span className="sr-only">
                     {" "}
                     in this year:{" "}
@@ -153,7 +159,7 @@ export function ScenarioYears({ years, eventLabel }: { years: readonly ScenarioY
           rows={rows}
           rowKey={(year) => year.age}
           caption={`Year by year after the event "${eventLabel}": what the plan does at each age, and the years that changed`}
-          rowTone={(year) => (yearChanged(year) ? "highlight" : undefined)}
+          rowTone={(year) => (eventChanged(year) ? "highlight" : undefined)}
           maxHeight={460}
           minWidth={720}
           dense

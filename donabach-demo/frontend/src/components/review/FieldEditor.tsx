@@ -3,7 +3,7 @@
 import { useRef, useState, type FocusEvent, type KeyboardEvent, type MouseEvent } from "react";
 import { Button, Icon, Input, NumberInput } from "@/components/ui";
 import type { ParsedField } from "@/lib/types";
-import { formatValue, sameValue, type FieldValue } from "./fields";
+import { formatValue, sameValue, type FieldValue } from "./fieldLogic";
 import styles from "./Fields.module.css";
 
 interface Props {

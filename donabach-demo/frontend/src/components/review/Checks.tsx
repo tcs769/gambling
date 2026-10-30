@@ -2,7 +2,7 @@
 
 import { Disclosure, Icon } from "@/components/ui";
 import type { CrossCheck } from "@/lib/types";
-import { checkSummary } from "./fields";
+import { checkSummary } from "./fieldLogic";
 import styles from "./Checks.module.css";
 
 interface Props {

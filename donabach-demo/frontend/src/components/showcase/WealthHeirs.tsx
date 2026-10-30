@@ -2,7 +2,7 @@ import { Disclosure } from "@/components/ui";
 import { money, percent, splitFirstSentence } from "@/lib/format";
 import type { ShowcaseWealth } from "@/lib/types";
 import { moreOrLess } from "./WealthHeadline";
-import { ratePercent } from "./waterfall";
+import { ratePercent } from "./waterfallData";
 import styles from "./WealthHeirs.module.css";
 
 /**

@@ -8,7 +8,7 @@ import { MissingValues, type MissingItem } from "@/components/review/MissingValu
 import { PdfViewer, type ViewerDoc, type ViewerFocus } from "@/components/review/PdfViewer";
 import { ReviewSkeleton } from "@/components/review/ReviewSkeleton";
 import { ReviewSummary } from "@/components/review/ReviewSummary";
-import { describeMissing, fieldStatus, sameValue } from "@/components/review/fields";
+import { describeMissing, fieldStatus, sameValue } from "@/components/review/fieldLogic";
 import { scrollBehavior } from "@/components/review/motion";
 import { useReadyDocuments, type ReadyDoc } from "@/components/review/useDocuments";
 import styles from "@/components/review/Review.module.css";

@@ -6,7 +6,7 @@ import { KIND_LABEL, UNRECOGNISED_NOTE } from "@/components/upload/docKinds";
 import type { CrossCheck, ParsedField } from "@/lib/types";
 import { Checks } from "./Checks";
 import { FieldRow } from "./FieldRow";
-import { fieldStatus, groupFields, type Overrides } from "./fields";
+import { fieldStatus, groupFields, type Overrides } from "./fieldLogic";
 import type { ReadyDoc } from "./useDocuments";
 import fields from "./Fields.module.css";
 import styles from "./Review.module.css";

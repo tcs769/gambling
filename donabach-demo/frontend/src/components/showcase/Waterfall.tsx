@@ -21,7 +21,7 @@ import {
   type Axis,
   type Unit,
   type WaterfallRow,
-} from "./waterfall";
+} from "./waterfallData";
 import { strategiesOn } from "./text";
 import styles from "./Waterfall.module.css";
 

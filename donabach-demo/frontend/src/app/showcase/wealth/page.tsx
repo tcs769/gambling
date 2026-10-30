@@ -8,7 +8,7 @@ import { ShowcasePending } from "@/components/showcase/ShowcasePending";
 import { WealthFigure } from "@/components/showcase/WealthFigure";
 import { WealthHeadline, moreOrLess } from "@/components/showcase/WealthHeadline";
 import { WealthHeirs } from "@/components/showcase/WealthHeirs";
-import { ratePercent } from "@/components/showcase/waterfall";
+import { ratePercent } from "@/components/showcase/waterfallData";
 import styles from "@/components/showcase/Showcase.module.css";
 import { Button, PageHeader, Panel, PanelTitle, ResultsFooter } from "@/components/ui";
 import { count } from "@/lib/format";

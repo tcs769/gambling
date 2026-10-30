@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { ConfidenceBadge, Icon, Tag } from "@/components/ui";
 import type { ParsedField } from "@/lib/types";
 import { FieldEditor } from "./FieldEditor";
-import { formatValue, splitLabel, type FieldStatus } from "./fields";
+import { formatValue, splitLabel, type FieldStatus } from "./fieldLogic";
 import styles from "./Fields.module.css";
 
 interface Props {

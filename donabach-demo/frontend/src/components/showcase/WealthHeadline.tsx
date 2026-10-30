@@ -2,7 +2,7 @@ import type { Ref } from "react";
 import { MEASURES } from "@/components/compare/AdvantagePanel";
 import { count, money, signedMoney } from "@/lib/format";
 import type { ShowcaseWealth } from "@/lib/types";
-import { ratePercent } from "./waterfall";
+import { ratePercent } from "./waterfallData";
 import styles from "./WealthHeadline.module.css";
 
 /** "$2.8M more at 80", "$12k less at 80", or that there is no difference. */

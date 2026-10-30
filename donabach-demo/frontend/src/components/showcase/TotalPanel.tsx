@@ -1,7 +1,7 @@
 import { count, money, signedMoney } from "@/lib/format";
 import type { ShowcaseWaterfall } from "@/lib/types";
 import { strategiesOn } from "./text";
-import { ratePercent } from "./waterfall";
+import { ratePercent } from "./waterfallData";
 import styles from "./TotalPanel.module.css";
 
 /**

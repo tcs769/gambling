@@ -1,6 +1,6 @@
 import { money, percentTrim } from "@/lib/format";
 import type { ShowcaseWealth } from "@/lib/types";
-import { ratePercent } from "./waterfall";
+import { ratePercent } from "./waterfallData";
 import { moreOrLess } from "./WealthHeadline";
 import styles from "./WealthHeadline.module.css";
 

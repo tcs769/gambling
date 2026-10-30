@@ -1,6 +1,6 @@
 import { money, signedMoney } from "@/lib/format";
 import type { ShowcaseScenario } from "@/lib/types";
-import { ratePercent } from "./waterfall";
+import { ratePercent } from "./waterfallData";
 import styles from "./Scenario.module.css";
 
 /** What choosing the plan again is worth after the event, with its sign in a word: "worth", "costs", or no difference. */

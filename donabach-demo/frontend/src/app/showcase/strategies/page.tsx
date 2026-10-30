@@ -6,7 +6,7 @@ import { FlowNav } from "@/components/showcase/FlowNav";
 import { ShowcasePending } from "@/components/showcase/ShowcasePending";
 import { TotalPanel } from "@/components/showcase/TotalPanel";
 import { Waterfall } from "@/components/showcase/Waterfall";
-import { ratePercent, dollarsText } from "@/components/showcase/waterfall";
+import { ratePercent, dollarsText } from "@/components/showcase/waterfallData";
 import { strategiesOn } from "@/components/showcase/text";
 import styles from "@/components/showcase/Showcase.module.css";
 import { Disclosure, PageHeader, Panel, PanelTitle, ResultsFooter } from "@/components/ui";

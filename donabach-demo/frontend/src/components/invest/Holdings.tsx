@@ -121,6 +121,7 @@ export function HoldingsTab({ holdings }: { holdings: Holdings }) {
         <section className={t.section} aria-labelledby="hold-largest">
           <h2 id="hold-largest" className={t.heading}>
             Largest individual stocks
+            {holdings.illustrative && <span className={t.tagQuiet}>Illustrative</span>}
           </h2>
           <div className={t.tableWrap}>
             <table className={t.table} data-testid="largest-stocks">

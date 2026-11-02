@@ -1,20 +1,19 @@
 import type { Metadata } from "next";
-import { AppProvider } from "@/lib/state";
+import { PortalProvider } from "@/lib/portal-state";
 import { Shell } from "@/components/shell/Shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Donabach",
-  description: "Private-bank strategies for every household. A clickable demo built on fictional data.",
+  title: "Waramoug",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
       <body>
-        <AppProvider>
+        <PortalProvider>
           <Shell>{children}</Shell>
-        </AppProvider>
+        </PortalProvider>
       </body>
     </html>
   );

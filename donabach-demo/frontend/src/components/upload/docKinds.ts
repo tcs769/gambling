@@ -7,6 +7,7 @@ export const KIND_LABEL: Record<DocKind, string> = {
   form_1040: "Form 1040 (2026 projection)",
   brokerage_statement: "Brokerage statement",
   retirement_401k: "401(k) statement",
+  roth_ira: "Roth IRA statement",
   unknown: "Not recognised",
 };
 
@@ -15,6 +16,7 @@ export const SHORT_KIND_LABEL: Record<DocKind, string> = {
   form_1040: "Form 1040",
   brokerage_statement: "Brokerage statement",
   retirement_401k: "401(k) statement",
+  roth_ira: "Roth IRA statement",
   unknown: "Other document",
 };
 

@@ -1,6 +1,6 @@
 // Words for what the customer changed since the last Invest ("Income: job loss next year", "Retirement age: 65").
 // The API shows precomputed changes under its own label; this one is for a change it has to work out live.
-import { dollarsWhole, formatField, sameValue } from "./portal-format";
+import { customerLabel, dollarsWhole, formatField, sameValue } from "./portal-format";
 import type { InvestInputs, ParsedField, PortalAnswers } from "./portal-types";
 
 type Income = NonNullable<PortalAnswers["income_change"]>;
@@ -42,7 +42,8 @@ export function changeLabel(previous: InvestInputs | null, next: InvestInputs, f
   const collegeAfter = b.college_starts_in_years ?? null;
   if (
     collegeBefore !== collegeAfter ||
-    (collegeAfter !== null && (!sameValue(a.college_annual_cost, b.college_annual_cost) || a.college_years !== b.college_years))
+    (collegeAfter !== null &&
+      (!sameValue(a.college_annual_cost, b.college_annual_cost) || a.college_years !== b.college_years))
   )
     parts.push(`College: ${collegeText(b)}`);
 
@@ -55,7 +56,7 @@ export function changeLabel(previous: InvestInputs | null, next: InvestInputs, f
     const field = byKey.get(key);
     if (!field) continue;
     // An edit that was taken back is a change back to the value on the document.
-    parts.push(`${field.label}: ${formatField(field.kind, after === undefined ? field.value : after)}`);
+    parts.push(`${customerLabel(field.label)}: ${formatField(field.kind, after === undefined ? field.value : after)}`);
   }
   return parts.length > 0 ? parts.join("; ") : null;
 }

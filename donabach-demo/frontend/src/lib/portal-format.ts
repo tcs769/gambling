@@ -5,7 +5,8 @@ import type { ParsedField } from "./portal-types";
 export function dollarsExact(value: number): string {
   const rounded = Math.round(value * 100) / 100;
   const sign = rounded < 0 ? "−" : "";
-  return `${sign}$${Math.abs(rounded).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  const cents = !Number.isInteger(rounded);
+  return `${sign}$${Math.abs(rounded).toLocaleString("en-US", { minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: 2 })}`;
 }
 
 /** Whole dollars: $90,015. */
@@ -47,3 +48,6 @@ const KIND_LABEL: Record<string, string> = {
 export function documentLabel(doc: { doc_kind: string; title: string }): string {
   return KIND_LABEL[doc.doc_kind] ?? doc.title;
 }
+
+/** A label from the API as the customer reads it: the word "plan" is not used on screen ("contributions (plan year)" is "(year)"). */
+export const customerLabel = (text: string): string => text.replace(/\bplan year\b/gi, "year");

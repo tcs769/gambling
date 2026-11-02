@@ -1,0 +1,10 @@
+.id {
+  font-size: 1.1rem;
+  color: var(--ink-2);
+}
+
+.disclaimer {
+  margin-top: 24px;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}

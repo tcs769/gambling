@@ -1,0 +1,60 @@
+.progress {
+  height: 6px;
+  max-width: 560px;
+  background: var(--panel);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bar {
+  display: block;
+  height: 100%;
+  background: var(--navy);
+  border-radius: 3px;
+  transition: width 400ms ease;
+}
+
+.count {
+  margin: 10px 0 24px;
+  color: var(--ink-2);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 560px;
+  min-height: 232px;
+  border-top: 1px solid var(--line);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--line);
+  animation: page-in 260ms ease-out;
+}
+
+.tick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: var(--white);
+  flex: none;
+}
+
+.name {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.pages {
+  margin-left: auto;
+  color: var(--ink-2);
+}

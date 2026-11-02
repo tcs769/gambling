@@ -28,7 +28,8 @@ function messageOf(detail: unknown, status: number): string {
       .join("; ");
     if (text) return text;
   }
-  if (detail && typeof detail === "object" && "message" in detail) return String((detail as { message: unknown }).message);
+  if (detail && typeof detail === "object" && "message" in detail)
+    return String((detail as { message: unknown }).message);
   return `Request failed (${status})`;
 }
 

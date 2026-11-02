@@ -1,0 +1,123 @@
+.viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  background: var(--white);
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  background: var(--panel);
+}
+
+.tab[aria-current="true"] {
+  background: var(--panel);
+  border-color: var(--line);
+  color: var(--navy);
+}
+
+/* The desk the pages lie on. The gutter is always reserved so a scrollbar appearing never changes the page width. */
+.scroller {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--panel-deep);
+  scrollbar-gutter: stable;
+}
+
+.scroller:focus-visible {
+  outline-offset: -4px;
+}
+
+.page {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  background: white;
+  border-radius: 3px;
+  box-shadow: 0 1px 3px rgba(30, 36, 48, 0.18);
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.canvas[data-drawn="true"] {
+  opacity: 1;
+}
+
+.loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.error {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  color: var(--ink);
+  background: var(--white);
+  border: 1px solid var(--bad);
+  border-radius: var(--radius);
+}
+.error svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--bad);
+}
+
+/* The box around a number: a brown outline and wash, with a ring that pulses outward twice. */
+.highlight {
+  position: absolute;
+  border: 2px solid var(--brown-dark);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--brown) 32%, transparent);
+  pointer-events: none;
+  animation: pulse 1s ease-out 2;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brown) 70%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 14px color-mix(in srgb, var(--brown) 0%, transparent);
+  }
+}

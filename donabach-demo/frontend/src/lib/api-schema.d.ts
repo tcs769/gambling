@@ -4,3503 +4,3497 @@
  */
 
 export interface paths {
-    "/portal/documents/sample": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Load Sample */
-        post: operations["load_sample_portal_documents_sample_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/portal/documents/sample": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/portal/documents/upload": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Upload */
-        post: operations["upload_portal_documents_upload_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Load Sample */
+    post: operations["load_sample_portal_documents_sample_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/portal/documents/upload": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/portal/documents/{doc_id}/file": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Document File */
-        get: operations["document_file_portal_documents__doc_id__file_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Upload */
+    post: operations["upload_portal_documents_upload_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/portal/documents/{doc_id}/file": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/portal/household": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create Household */
-        post: operations["create_household_portal_household_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Document File */
+    get: operations["document_file_portal_documents__doc_id__file_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/portal/household": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/portal/defaults": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Defaults
-         * @description The goal answers prefilled with John Smith's (from fixtures/showcase.json).
-         */
-        get: operations["defaults_portal_defaults_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Create Household */
+    post: operations["create_household_portal_household_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/portal/defaults": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Health */
-        get: operations["health_health_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Defaults
+     * @description The goal answers prefilled with John Smith's (from fixtures/showcase.json).
+     */
+    get: operations["defaults_portal_defaults_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/models/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Models Status */
-        get: operations["models_status_models_status_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Health */
+    get: operations["health_health_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/models/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/documents/sample": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Load Sample Documents */
-        post: operations["load_sample_documents_documents_sample_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Models Status */
+    get: operations["models_status_models_status_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/documents/sample": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/documents/upload": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Upload Documents */
-        post: operations["upload_documents_documents_upload_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Load Sample Documents */
+    post: operations["load_sample_documents_documents_sample_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/documents/upload": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/documents/{doc_id}/parse": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Parse Document */
-        post: operations["parse_document_documents__doc_id__parse_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Upload Documents */
+    post: operations["upload_documents_documents_upload_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/documents/{doc_id}/parse": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/documents/{doc_id}/file": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Document File */
-        get: operations["document_file_documents__doc_id__file_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Parse Document */
+    post: operations["parse_document_documents__doc_id__parse_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/documents/{doc_id}/file": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/household": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create Household */
-        post: operations["create_household_household_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Document File */
+    get: operations["document_file_documents__doc_id__file_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/household": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/forecast": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Income Forecast */
-        post: operations["income_forecast_forecast_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Create Household */
+    post: operations["create_household_household_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/forecast": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/plan": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Make Plan */
-        post: operations["make_plan_plan_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Income Forecast */
+    post: operations["income_forecast_forecast_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/plan": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/plan/adaptive/{job_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Adaptive Job */
-        get: operations["adaptive_job_plan_adaptive__job_id__get"];
-        put?: never;
-        post?: never;
-        /**
-         * Cancel Adaptive Job
-         * @description The caller no longer wants this job (its plan was replaced). It stops once nobody else is waiting for it.
-         */
-        delete: operations["cancel_adaptive_job_plan_adaptive__job_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Make Plan */
+    post: operations["make_plan_plan_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/plan/adaptive/{job_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/plan/year-detail": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Year Detail */
-        post: operations["year_detail_plan_year_detail_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Adaptive Job */
+    get: operations["adaptive_job_plan_adaptive__job_id__get"];
+    put?: never;
+    post?: never;
+    /**
+     * Cancel Adaptive Job
+     * @description The caller no longer wants this job (its plan was replaced). It stops once nobody else is waiting for it.
+     */
+    delete: operations["cancel_adaptive_job_plan_adaptive__job_id__delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/plan/year-detail": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/plan/whatif": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Plan Whatif */
-        post: operations["plan_whatif_plan_whatif_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Year Detail */
+    post: operations["year_detail_plan_year_detail_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/plan/whatif": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/showcase": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Showcase
-         * @description The showcase household: its summary card, the waterfall with every strategy on, and the whole plan over time against the
-         *     advisor (both measures of the advantage). All of it is worked out once and kept.
-         */
-        get: operations["get_showcase_showcase_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Plan Whatif */
+    post: operations["plan_whatif_plan_whatif_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/showcase": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/showcase/analysis": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Showcase Analysis
-         * @description The strategy waterfall, median advantage only, with only the strategies in `enabled` switched on.
-         */
-        post: operations["showcase_analysis_showcase_analysis_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Get Showcase
+     * @description The showcase household: its summary card, the waterfall with every strategy on, and the whole plan over time against the
+     *     advisor (both measures of the advantage). All of it is worked out once and kept.
+     */
+    get: operations["get_showcase_showcase_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/showcase/analysis": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/showcase/scenarios": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Showcase Scenarios
-         * @description The events the showcase household can be put through (a job lost next year, a 30% fall in stocks next year).
-         */
-        get: operations["get_showcase_scenarios_showcase_scenarios_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Showcase Analysis
+     * @description The strategy waterfall, median advantage only, with only the strategies in `enabled` switched on.
+     */
+    post: operations["showcase_analysis_showcase_analysis_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/showcase/scenarios": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/showcase/scenarios/{key}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Showcase Scenario
-         * @description The showcase household after the event, planned again: wealth against the advisor on the same shocked futures, what the
-         *     plan does each year beside what it did before, and the years that differ. Precomputed at start-up, then kept.
-         */
-        get: operations["get_showcase_scenario_showcase_scenarios__key__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Get Showcase Scenarios
+     * @description The events the showcase household can be put through (a job lost next year, a 30% fall in stocks next year).
+     */
+    get: operations["get_showcase_scenarios_showcase_scenarios_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/showcase/scenarios/{key}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/portal/invest": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Portal Invest
-         * @description The portfolio for the household (and the event), with what changed against the plan the customer saw before. A plan that was
-         *     precomputed (demo mode) comes straight from the cache; any other change runs the real planner on the changed household.
-         */
-        post: operations["portal_invest_portal_invest_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Get Showcase Scenario
+     * @description The showcase household after the event, planned again: wealth against the advisor on the same shocked futures, what the
+     *     plan does each year beside what it did before, and the years that differ. Precomputed at start-up, then kept.
+     */
+    get: operations["get_showcase_scenario_showcase_scenarios__key__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/portal/invest": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/portal/plan/{plan_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Portal Plan */
-        get: operations["portal_plan_portal_plan__plan_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Portal Invest
+     * @description The portfolio for the household (and the event), with what changed against the plan the customer saw before. A plan that was
+     *     precomputed (demo mode) comes straight from the cache; any other change runs the real planner on the changed household.
+     */
+    post: operations["portal_invest_portal_invest_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/portal/plan/{plan_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    /** Portal Plan */
+    get: operations["portal_plan_portal_plan__plan_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        /** AccountHoldings */
-        AccountHoldings: {
-            /**
-             * Key
-             * @enum {string}
-             */
-            key: "brokerage" | "pretax" | "roth";
-            /** Label */
-            label: string;
-            /** Balance */
-            balance: number;
-            /** Taxation */
-            taxation: string;
-            /** Cost Basis */
-            cost_basis?: number | null;
-            /** Unrealized Gain */
-            unrealized_gain?: number | null;
-            /** Holdings */
-            holdings: components["schemas"]["HoldingRow"][];
-        };
-        /** AccountLine */
-        AccountLine: {
-            /** Label */
-            label: string;
-            /** Amount */
-            amount: number;
-            /**
-             * Estimated
-             * @default false
-             */
-            estimated: boolean;
-            /** Detail */
-            detail?: string | null;
-        };
-        /** Accounts */
-        Accounts: {
-            /** Brokerage Value */
-            brokerage_value: number;
-            /**
-             * Brokerage Basis
-             * @description Cost basis of the brokerage equity
-             */
-            brokerage_basis: number;
-            /**
-             * Pretax Balance
-             * @description 401(k)/IRA balances combined
-             */
-            pretax_balance: number;
-            /**
-             * Pretax Equity Share
-             * @description Stock share of the 401(k)/IRA
-             * @default 0.75
-             */
-            pretax_equity_share: number;
-            /**
-             * Roth Balance
-             * @default 0
-             */
-            roth_balance: number;
-            /**
-             * Roth Equity Share
-             * @default 1
-             */
-            roth_equity_share: number;
-            /**
-             * Cash
-             * @description Cash savings; invested with brokerage bonds
-             * @default 0
-             */
-            cash: number;
-        };
-        /**
-         * ActionView
-         * @description One year's decisions.
-         */
-        ActionView: {
-            /** Stock Share */
-            stock_share: number;
-            /** Conversion Bracket */
-            conversion_bracket: number | null;
-            /** Private Credit */
-            private_credit: number;
-            /**
-             * K401
-             * @enum {string}
-             */
-            k401: "pretax" | "roth";
-            /** Goal Funding */
-            goal_funding: ("sell" | "borrow") | null;
-            /** Realize Gains */
-            realize_gains: boolean;
-            /** Label */
-            label: string;
-        };
-        /** AdaptiveJob */
-        AdaptiveJob: {
-            /** Id */
-            id: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "running" | "done" | "error" | "cancelled";
-            /** Progress */
-            progress: number;
-            /** Error */
-            error?: string | null;
-            result?: components["schemas"]["AdaptiveSection"] | null;
-        };
-        /** AdaptivePlanRow */
-        AdaptivePlanRow: {
-            /** Year Index */
-            year_index: number;
-            /** Age */
-            age: number;
-            /** Income */
-            income: number;
-            /** Wages */
-            wages: number;
-            /** Roth Conversion */
-            roth_conversion: number;
-            /** Losses Harvested */
-            losses_harvested: number;
-            /** Goal Bonds Balance */
-            goal_bonds_balance: number;
-            /** Goal Bonds Flow */
-            goal_bonds_flow: number;
-            /** Goal Paid */
-            goal_paid: number;
-            /** Goal Label */
-            goal_label?: string | null;
-            /** Stock Share */
-            stock_share: number;
-            /** Total Tax */
-            total_tax: number;
-            /** Federal Tax */
-            federal_tax: number;
-            /** Illinois Tax */
-            illinois_tax: number;
-            /** Wealth */
-            wealth: number;
-            /**
-             * Required Distribution
-             * @default 0
-             */
-            required_distribution: number;
-            /**
-             * Private Credit Balance
-             * @default 0
-             */
-            private_credit_balance: number;
-            /**
-             * Roth 401K Contribution
-             * @default 0
-             */
-            roth_401k_contribution: number;
-            /**
-             * Borrowed
-             * @default 0
-             */
-            borrowed: number;
-            /**
-             * Loan Balance
-             * @default 0
-             */
-            loan_balance: number;
-            /**
-             * Gains Realized Tax Free
-             * @default 0
-             */
-            gains_realized_tax_free: number;
-            /**
-             * Departs
-             * @default false
-             */
-            departs: boolean;
-            /** Departures */
-            departures?: string[];
-        };
-        /** AdaptiveSection */
-        AdaptiveSection: {
-            /** K */
-            k: number;
-            /** N Eval Paths */
-            n_eval_paths: number;
-            /** Z Min */
-            z_min: number;
-            /** Confirm K */
-            confirm_k: number;
-            /** Confirm Z */
-            confirm_z: number;
-            /** Tilt */
-            tilt: number;
-            /** Plan Path K */
-            plan_path_k: number;
-            /** Plan Path Confirm K */
-            plan_path_confirm_k: number;
-            /** Risk Aversion */
-            risk_aversion: number;
-            /** Elapsed Seconds */
-            elapsed_seconds: number;
-            /** Seconds Per Path */
-            seconds_per_path: number;
-            /** Search */
-            search: string;
-            /** Rows */
-            rows: components["schemas"]["AdaptivePlanRow"][];
-            /** Year Details */
-            year_details: components["schemas"]["YearDetail"][];
-            /** Decisions */
-            decisions: components["schemas"]["YearDecisionView"][];
-            /** Strategies */
-            strategies: components["schemas"]["StrategyOutcome"][];
-            value_of_judgment: components["schemas"]["AdvantageView"];
-            /** Departure Share */
-            departure_share: number;
-            /** Departure By Decision */
-            departure_by_decision: {
-                [key: string]: number;
-            };
-            /** Departure By Year */
-            departure_by_year: number[];
-            /** Departure By Year And Decision */
-            departure_by_year_and_decision: {
-                [key: string]: number[];
-            };
-            /**
-             * From Cache
-             * @default false
-             */
-            from_cache: boolean;
-        };
-        /** AdvantageStep */
-        AdvantageStep: {
-            /** Label */
-            label: string;
-            /** Delta Median */
-            delta_median: number;
-            /** Delta P10 */
-            delta_p10: number;
-            /** Cumulative Median */
-            cumulative_median: number;
-            /** Active */
-            active: boolean;
-        };
-        /**
-         * AdvantageView
-         * @description The plan's advantage over one baseline, measured two ways (spec A7), both annualized.
-         *
-         *     Each is the yearly growth-rate difference `(plan / baseline)^(1/years) - 1` that would open the
-         *     observed gap over the horizon: median uses median after-tax wealth, risk-adjusted uses
-         *     certainty-equivalent wealth (the planner's own objective). The `*_low` / `*_high` pair is the
-         *     5th to 95th percentile when the evaluation futures are resampled.
-         */
-        AdvantageView: {
-            /** Median */
-            median: number;
-            /** Risk Adjusted */
-            risk_adjusted: number;
-            /** Median Dollars */
-            median_dollars: number;
-            /** Risk Adjusted Dollars */
-            risk_adjusted_dollars: number;
-            /** Median Low */
-            median_low: number;
-            /** Median High */
-            median_high: number;
-            /** Risk Adjusted Low */
-            risk_adjusted_low: number;
-            /** Risk Adjusted High */
-            risk_adjusted_high: number;
-        };
-        /** AdvisorCard */
-        AdvisorCard: {
-            /** Title */
-            title: string;
-            /** Wealth 80 */
-            wealth_80: number;
-            /** Bar */
-            bar: number;
-            /** Mix */
-            mix: components["schemas"]["MixShare"][];
-            /** Accounts */
-            accounts: string[];
-            /** Harvesting */
-            harvesting: string;
-            /** Harvested So Far */
-            harvested_so_far?: number | null;
-            /** Roth Conversion */
-            roth_conversion: number;
-            /** Fee Dollars */
-            fee_dollars: number;
-            /** Fee Rate */
-            fee_rate: number;
-        };
-        /** AlternativeView */
-        AlternativeView: {
-            action: components["schemas"]["ActionView"];
-            /** Ce */
-            ce: number;
-            /** Ce Gap */
-            ce_gap: number;
-            /** Differs In */
-            differs_in: string[];
-        };
-        /**
-         * Answers
-         * @description What the app asks (goals) and what it estimates (Roth, cash, Social Security).
-         */
-        Answers: {
-            /**
-             * Home Purchase In Years
-             * @default 3
-             */
-            home_purchase_in_years: number | null;
-            /**
-             * Home Down Payment
-             * @default 120000
-             */
-            home_down_payment: number;
-            /**
-             * College Starts In Years
-             * @default 10
-             */
-            college_starts_in_years: number | null;
-            /**
-             * College Annual Cost
-             * @default 35000
-             */
-            college_annual_cost: number;
-            /**
-             * College Years
-             * @default 4
-             */
-            college_years: number;
-            /**
-             * Retirement Age
-             * @default 62
-             */
-            retirement_age: number;
-            /**
-             * Retirement Spending
-             * @default 110000
-             */
-            retirement_spending: number;
-            /**
-             * Charitable Giving
-             * @description Gifts to charity a year
-             * @default 0
-             */
-            charitable_giving: number;
-            /**
-             * Roth Balance
-             * @default 30000
-             */
-            roth_balance: number;
-            /**
-             * Cash
-             * @default 40000
-             */
-            cash: number;
-            /**
-             * Social Security Annual
-             * @default 50000
-             */
-            social_security_annual: number;
-            /**
-             * Social Security Start Age
-             * @default 67
-             */
-            social_security_start_age: number;
-        };
-        /** AssetRow */
-        AssetRow: {
-            /**
-             * Key
-             * @enum {string}
-             */
-            key: "us_stocks" | "intl_stocks" | "bonds" | "private_credit" | "cash";
-            /** Label */
-            label: string;
-            /** Amount */
-            amount: number;
-            /** Share */
-            share: number;
-            /** Expected Return */
-            expected_return: number;
-        };
-        /**
-         * BBox
-         * @description Rectangle in PDF points, origin at the top-left of the page (pdfplumber convention).
-         */
-        BBox: {
-            /** X0 */
-            x0: number;
-            /** Top */
-            top: number;
-            /** X1 */
-            x1: number;
-            /** Bottom */
-            bottom: number;
-        };
-        /** BarRow */
-        BarRow: {
-            /** Label */
-            label: string;
-            /** Share */
-            share: number;
-            /** Amount */
-            amount: number;
-        };
-        /**
-         * BaselineView
-         * @description One advisor the plan is compared with, measured on the same evaluation futures.
-         */
-        BaselineView: {
-            /**
-             * Key
-             * @enum {string}
-             */
-            key: "good_ria" | "typical_advisor";
-            /** Label */
-            label: string;
-            /** Definition */
-            definition: string;
-            /**
-             * Forced Sale Chance
-             * @default 0
-             */
-            forced_sale_chance: number;
-            outcome: components["schemas"]["OutcomeView"];
-            outcome_heirs: components["schemas"]["OutcomeView"];
-            /** Lifetime Taxes */
-            lifetime_taxes: number;
-            /** Shortfall Chance */
-            shortfall_chance: number;
-            advantage: components["schemas"]["AdvantageView"];
-            advantage_heirs: components["schemas"]["AdvantageView"];
-            fan: components["schemas"]["FanSeries"];
-        };
-        /** Body_upload_documents_documents_upload_post */
-        Body_upload_documents_documents_upload_post: {
-            /** Files */
-            files: string[];
-        };
-        /** Body_upload_portal_documents_upload_post */
-        Body_upload_portal_documents_upload_post: {
-            /** File */
-            file: string;
-        };
-        /** BracketStep */
-        BracketStep: {
-            /** Rate */
-            rate: number;
-            /** Floor */
-            floor: number;
-            /** Ceiling */
-            ceiling: number | null;
-            /** Filled */
-            filled: boolean;
-        };
-        /** BracketView */
-        BracketView: {
-            /** Brackets */
-            brackets: components["schemas"]["BracketStep"][];
-            /** Taxable Before */
-            taxable_before: number;
-            /** Conversion */
-            conversion: number;
-            /** Fills To */
-            fills_to: number;
-            /** Marginal Rate */
-            marginal_rate: number;
-            /** Illinois Tax On Conversion */
-            illinois_tax_on_conversion: number;
-        };
-        /** CardAccount */
-        CardAccount: {
-            /**
-             * Key
-             * @enum {string}
-             */
-            key: "taxable" | "pretax" | "roth" | "cash";
-            /** Label */
-            label: string;
-            /** Value */
-            value: number;
-            /** Share */
-            share: number;
-            /** Basis */
-            basis?: number | null;
-            /** Unrealized Gain */
-            unrealized_gain?: number | null;
-        };
-        /** CardGoal */
-        CardGoal: {
-            /**
-             * Key
-             * @enum {string}
-             */
-            key: "home" | "college" | "retirement" | "social_security";
-            /** Label */
-            label: string;
-            /** Detail */
-            detail: string;
-            /** Years From Now */
-            years_from_now?: number | null;
-            /** Amount */
-            amount?: number | null;
-        };
-        /** CardPerson */
-        CardPerson: {
-            /** Label */
-            label: string;
-            /** Age */
-            age: number;
-            /** Wages */
-            wages: number;
-        };
-        /** Change */
-        Change: {
-            /** Field */
-            field: string;
-            /** Label */
-            label: string;
-            /** Before */
-            before: string;
-            /** After */
-            after: string;
-        };
-        /** ChoiceRecommendation */
-        ChoiceRecommendation: {
-            /** Choice */
-            choice: string;
-            /** Option */
-            option: string;
-            /** Probability */
-            probability: number;
-            /** Distribution */
-            distribution?: components["schemas"]["OptionProbability"][] | null;
-        };
-        /** Comparison */
-        Comparison: {
-            /** Dollars More */
-            dollars_more: number;
-            /** Rate Per Year */
-            rate_per_year: number;
-            advisor: components["schemas"]["AdvisorCard"];
-            waramoug: components["schemas"]["AdvisorCard"];
-        };
-        /** ConversionRow */
-        ConversionRow: {
-            /** Year */
-            year: number;
-            /** Age */
-            age: number;
-            /** Amount */
-            amount: number;
-            /** Tax */
-            tax: number;
-            /** Bracket Rate */
-            bracket_rate: number;
-        };
-        /**
-         * Correction
-         * @description One value the customer changed, with what the document said.
-         */
-        Correction: {
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            /** Document Value */
-            document_value: number | string | null;
-            /** Corrected Value */
-            corrected_value: number | string;
-        };
-        /**
-         * CrossCheck
-         * @description One consistency check between fields of a document.
-         */
-        CrossCheck: {
-            /** Name */
-            name: string;
-            /** Passed */
-            passed: boolean;
-            /** Detail */
-            detail: string;
-            /** Keys */
-            keys: string[];
-        };
-        /** Decision */
-        Decision: {
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            /** Description */
-            description: string;
-            /** Amount */
-            amount?: number | null;
-            /** Value */
-            value?: number | null;
-            /**
-             * Valued
-             * @default true
-             */
-            valued: boolean;
-        };
-        /** DocumentInfo */
-        DocumentInfo: {
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Size Bytes */
-            size_bytes: number;
-            /** Pages */
-            pages: number;
-            /** Kind */
-            kind?: ("form_1040" | "brokerage_statement" | "retirement_401k" | "roth_ira" | "unknown") | null;
-        };
-        /** DocumentList */
-        DocumentList: {
-            /** Documents */
-            documents: components["schemas"]["DocumentInfo"][];
-        };
-        /**
-         * Factor
-         * @description One input that moved a prediction.
-         *
-         *     direction: "up" if a higher value of the feature raises the output (the probability of the
-         *     recommended option, or forecast income); "down" if it lowers it.
-         *     weight: relative importance, 0 to 1.
-         */
-        Factor: {
-            /** Feature */
-            feature: string;
-            /**
-             * Direction
-             * @enum {string}
-             */
-            direction: "up" | "down";
-            /** Weight */
-            weight: number;
-        };
-        /** FanSeries */
-        FanSeries: {
-            /** Ages */
-            ages: number[];
-            /** P10 */
-            p10: number[];
-            /** P25 */
-            p25: number[];
-            /** P50 */
-            p50: number[];
-            /** P75 */
-            p75: number[];
-            /** P90 */
-            p90: number[];
-        };
-        /** ForecastRequest */
-        ForecastRequest: {
-            household: components["schemas"]["Household"];
-            /**
-             * N Paths
-             * @default 2000
-             */
-            n_paths: number;
-            /**
-             * Demo Mode
-             * @default true
-             */
-            demo_mode: boolean;
-            /** Seed */
-            seed?: number | null;
-        };
-        /** ForecastResponse */
-        ForecastResponse: {
-            /** Connected */
-            connected: boolean;
-            /** Label */
-            label: string;
-            /** Reason */
-            reason?: string | null;
-            /** Note */
-            note: string;
-            forecast: components["schemas"]["IncomeForecast"];
-            /** Top Factors */
-            top_factors?: components["schemas"]["Factor"][];
-        };
-        /** GoalCard */
-        GoalCard: {
-            /**
-             * Key
-             * @enum {string}
-             */
-            key: "college" | "retirement" | "home";
-            /** Label */
-            label: string;
-            /** Target */
-            target: number;
-            /** Target Label */
-            target_label: string;
-            /** Timing */
-            timing: string;
-            /** Progress */
-            progress: number;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "On track" | "Close" | "Behind";
-        };
-        /** GoalLine */
-        GoalLine: {
-            /** Label */
-            label: string;
-            /** Detail */
-            detail: string;
-            /**
-             * Estimated
-             * @default false
-             */
-            estimated: boolean;
-        };
-        /** GoalMarker */
-        GoalMarker: {
-            /**
-             * Key
-             * @enum {string}
-             */
-            key: "college" | "retirement" | "social_security" | "home";
-            /** Label */
-            label: string;
-            /** Start Age */
-            start_age: number;
-            /** End Age */
-            end_age?: number | null;
-        };
-        /** Goals */
-        Goals: {
-            /**
-             * Home Purchase In Years
-             * @description Years until the purchase
-             * @default 3
-             */
-            home_purchase_in_years: number | null;
-            /**
-             * Home Down Payment
-             * @default 120000
-             */
-            home_down_payment: number;
-            /**
-             * College Starts In Years
-             * @default 10
-             */
-            college_starts_in_years: number | null;
-            /**
-             * College Annual Cost
-             * @default 35000
-             */
-            college_annual_cost: number;
-            /**
-             * College Years
-             * @default 4
-             */
-            college_years: number;
-            /**
-             * Retirement Age
-             * @default 62
-             */
-            retirement_age: number;
-            /**
-             * Retirement Spending
-             * @description Spending a year, before tax
-             * @default 110000
-             */
-            retirement_spending: number;
-            /**
-             * Charitable Giving
-             * @description Gifts to charity a year (real dollars), paid in cash unless the plan gives appreciated stock instead
-             * @default 0
-             */
-            charitable_giving: number;
-        };
-        /** GoalsTab */
-        GoalsTab: {
-            /** Cards */
-            cards: components["schemas"]["GoalCard"][];
-        };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
-        };
-        /** HoldingRow */
-        HoldingRow: {
-            /** Name */
-            name: string;
-            /** Positions */
-            positions: number;
-            /** Value */
-            value: number;
-            /** Gain */
-            gain?: number | null;
-            /** Yield Rate */
-            yield_rate?: number | null;
-            /** Share */
-            share: number;
-        };
-        /** HoldingsTab */
-        HoldingsTab: {
-            /** Accounts */
-            accounts: components["schemas"]["AccountHoldings"][];
-            /** Largest Stocks */
-            largest_stocks?: components["schemas"]["StockRow"][] | null;
-            /** Sectors */
-            sectors: components["schemas"]["BarRow"][];
-            /** Regions */
-            regions: components["schemas"]["BarRow"][];
-            /**
-             * Illustrative
-             * @default true
-             */
-            illustrative: boolean;
-        };
-        /** Household */
-        Household: {
-            /** People */
-            people: components["schemas"]["Person"][];
-            /** Children Ages */
-            children_ages?: number[];
-            accounts: components["schemas"]["Accounts"];
-            goals?: components["schemas"]["Goals"];
-            social_security?: components["schemas"]["SocialSecurity"];
-            snapshot?: components["schemas"]["IncomeSnapshot"] | null;
-            /**
-             * Estimated
-             * @description Inputs that are estimates, not read from documents
-             */
-            estimated?: string[];
-        };
-        /**
-         * HouseholdCard
-         * @description Everything the summary card shows, computed from the household.
-         */
-        HouseholdCard: {
-            /** People */
-            people: components["schemas"]["CardPerson"][];
-            /** Children Ages */
-            children_ages: number[];
-            /** Annual Income */
-            annual_income: number;
-            /** Total Savings */
-            total_savings: number;
-            /** Accounts */
-            accounts: components["schemas"]["CardAccount"][];
-            /** Goals */
-            goals: components["schemas"]["CardGoal"][];
-            /** Notes */
-            notes: string[];
-        };
-        /**
-         * HouseholdEdits
-         * @description Editable what-if inputs. Only the fields the caller sets are applied.
-         */
-        HouseholdEdits: {
-            /** Retirement Age */
-            retirement_age?: number | null;
-            /** Retirement Spending */
-            retirement_spending?: number | null;
-            /** Charitable Giving */
-            charitable_giving?: number | null;
-            /** Home Purchase In Years */
-            home_purchase_in_years?: number | null;
-            /** Home Down Payment */
-            home_down_payment?: number | null;
-            /** College Starts In Years */
-            college_starts_in_years?: number | null;
-            /** College Annual Cost */
-            college_annual_cost?: number | null;
-            /** Primary Wages */
-            primary_wages?: number | null;
-            /** Spouse Wages */
-            spouse_wages?: number | null;
-            /** Social Security Annual */
-            social_security_annual?: number | null;
-            /** Roth Balance */
-            roth_balance?: number | null;
-            /** Cash */
-            cash?: number | null;
-            /**
-             * Remove Home Purchase
-             * @default false
-             */
-            remove_home_purchase: boolean;
-            /**
-             * Remove College
-             * @default false
-             */
-            remove_college: boolean;
-        };
-        /** HouseholdProfile */
-        HouseholdProfile: {
-            household: components["schemas"]["Household"];
-            /** Accounts */
-            accounts: components["schemas"]["AccountLine"][];
-            /** Goals */
-            goals: components["schemas"]["GoalLine"][];
-            tax_return: components["schemas"]["TaxReturn"];
-            /** Tax Lines */
-            tax_lines: components["schemas"]["TaxLine"][];
-            /** Estimated */
-            estimated: string[];
-            /**
-             * Tax Estimated
-             * @default false
-             */
-            tax_estimated: boolean;
-            /** Total Assets */
-            total_assets: number;
-        };
-        /** HouseholdRequest */
-        HouseholdRequest: {
-            /** Document Ids */
-            document_ids: string[];
-            /**
-             * Overrides
-             * @description Fields the user corrected, by field key
-             */
-            overrides?: {
-                [key: string]: number | string;
-            };
-            answers?: components["schemas"]["Answers"];
-        };
-        /** IncomeForecast */
-        IncomeForecast: {
-            /** Ages */
-            ages: number[];
-            /** P10 */
-            p10: number[];
-            /** P25 */
-            p25: number[];
-            /** P50 */
-            p50: number[];
-            /** P75 */
-            p75: number[];
-            /** P90 */
-            p90: number[];
-            /** Top Factors */
-            top_factors?: components["schemas"]["Factor"][];
-        };
-        /** IncomeRow */
-        IncomeRow: {
-            /** Age */
-            age: number;
-            /** Year */
-            year: number;
-            /** Social Security */
-            social_security: number;
-            /** From Pretax */
-            from_pretax: number;
-            /** From Taxable */
-            from_taxable: number;
-            /** From Roth */
-            from_roth: number;
-            /** Total Sources */
-            total_sources: number;
-            /** Spending */
-            spending: number;
-            /** Tax */
-            tax: number;
-            /** Total Uses */
-            total_uses: number;
-        };
-        /**
-         * IncomeSnapshot
-         * @description This year's income as reported on the tax form (feeds the profile's tax picture).
-         */
-        IncomeSnapshot: {
-            /**
-             * Wages After 401K
-             * @default 0
-             */
-            wages_after_401k: number;
-            /**
-             * Interest
-             * @default 0
-             */
-            interest: number;
-            /**
-             * Qualified Dividends
-             * @default 0
-             */
-            qualified_dividends: number;
-            /**
-             * Ordinary Dividends
-             * @default 0
-             */
-            ordinary_dividends: number;
-            /**
-             * Net Capital Gain
-             * @default 0
-             */
-            net_capital_gain: number;
-        };
-        /** InvestRequest */
-        InvestRequest: {
-            household: components["schemas"]["Household"];
-            /**
-             * Event
-             * @default none
-             * @enum {string}
-             */
-            event: "none" | "job_loss" | "raise";
-            /**
-             * Previous Plan Id
-             * @description The plan the customer saw before this change (what changed is shown against it)
-             */
-            previous_plan_id?: string | null;
-            /**
-             * Change Label
-             * @description Words for the value that was changed, e.g. 'Income: job loss next year'
-             */
-            change_label?: string | null;
-        };
-        /**
-         * LiabilityView
-         * @description The liability-matched plan against its two limits, measured on the futures it was chosen on (`chosen_on`) and on fresh ones.
-         */
-        LiabilityView: {
-            /** Reserve Years */
-            reserve_years: number;
-            /** Forced Sale Limit */
-            forced_sale_limit: number;
-            /** Forced Sale Chance */
-            forced_sale_chance: number;
-            /** Advisor Forced Sale Chance */
-            advisor_forced_sale_chance: number;
-            /** Ruin Chance */
-            ruin_chance: number;
-            /** Advisor Ruin Chance */
-            advisor_ruin_chance: number;
-            /** Chosen On Forced Sale Chance */
-            chosen_on_forced_sale_chance: number;
-            /** Chosen On Ruin Chance */
-            chosen_on_ruin_chance: number;
-            /** Chosen On Advisor Ruin Chance */
-            chosen_on_advisor_ruin_chance: number;
-            /** Feasible */
-            feasible: boolean;
-            /** Stock Share By Age */
-            stock_share_by_age: [
-                number,
-                number
-            ][];
-        };
-        /** Location */
-        Location: {
-            /** Rows */
-            rows: components["schemas"]["LocationRow"][];
-            total: components["schemas"]["LocationRow"];
-        };
-        /** LocationRow */
-        LocationRow: {
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            /** Brokerage */
-            brokerage: number;
-            /** Pretax */
-            pretax: number;
-            /** Roth */
-            roth: number;
-            /** Total */
-            total: number;
-        };
-        /**
-         * MarketShock
-         * @description A one-off equity shock applied to every simulated future (a what-if).
-         */
-        MarketShock: {
-            /**
-             * Year
-             * @description Years from now (1 = next year)
-             * @default 1
-             */
-            year: number;
-            /**
-             * Equity Return
-             * @default -0.3
-             */
-            equity_return: number;
-        };
-        /** Mix */
-        Mix: {
-            /** Rows */
-            rows: components["schemas"]["AssetRow"][];
-            /** Total */
-            total: number;
-            /**
-             * Illustrative Split
-             * @default true
-             */
-            illustrative_split: boolean;
-        };
-        /** MixChange */
-        MixChange: {
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            /** Before */
-            before: number;
-            /** After */
-            after: number;
-            /** Moved */
-            moved: boolean;
-        };
-        /** MixShare */
-        MixShare: {
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            /** Share */
-            share: number;
-        };
-        /** ModelStatus */
-        ModelStatus: {
-            /**
-             * Model
-             * @enum {string}
-             */
-            model: "recommender" | "forecaster" | "policy" | "value";
-            /** Connected */
-            connected: boolean;
-            /** Reason */
-            reason?: string | null;
-            /** Expected Path */
-            expected_path?: string | null;
-        };
-        /** ModelsStatus */
-        ModelsStatus: {
-            recommender: components["schemas"]["ModelStatus"];
-            forecaster: components["schemas"]["ModelStatus"];
-            policy: components["schemas"]["ModelStatus"];
-            value: components["schemas"]["ModelStatus"];
-        };
-        /** Move */
-        Move: {
-            /** Key */
-            key: string;
-            /** Title */
-            title: string;
-            /** Amount */
-            amount?: number | null;
-            /** Timing */
-            timing: string;
-            /** Age */
-            age?: number | null;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "done" | "ongoing" | "scheduled" | "needs_ok" | "your_step";
-            /** Detail */
-            detail?: string | null;
-        };
-        /** MoveChange */
-        MoveChange: {
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "added" | "removed" | "changed";
-            /** Title */
-            title: string;
-            /** Before */
-            before?: string | null;
-            /** After */
-            after?: string | null;
-        };
-        /** Opportunity */
-        Opportunity: {
-            /** Name */
-            name: string;
-            /** Value */
-            value: number;
-            /** Cost */
-            cost: number;
-            /** Loss */
-            loss: number;
-            /** Replacement */
-            replacement: string;
-        };
-        /** OptionProbability */
-        OptionProbability: {
-            /** Option */
-            option: string;
-            /** Probability */
-            probability: number;
-        };
-        /** OutcomeView */
-        OutcomeView: {
-            /** Median */
-            median: number;
-            /** P10 */
-            p10: number;
-            /** P90 */
-            p90: number;
-            /** Score */
-            score: number;
-        };
-        /** Overview */
-        Overview: {
-            /** Projection */
-            projection: components["schemas"]["ProjectionPoint"][];
-            /** Markers */
-            markers: components["schemas"]["GoalMarker"][];
-            mix: components["schemas"]["Mix"];
-            location: components["schemas"]["Location"];
-            /** Moves */
-            moves: components["schemas"]["Move"][];
-        };
-        /** ParseResponse */
-        ParseResponse: {
-            document: components["schemas"]["DocumentInfo"];
-            parsed: components["schemas"]["ParsedDocument"];
-        };
-        /** ParsedDocument */
-        ParsedDocument: {
-            /**
-             * Doc Kind
-             * @enum {string}
-             */
-            doc_kind: "form_1040" | "brokerage_statement" | "retirement_401k" | "roth_ira" | "unknown";
-            /** Title */
-            title: string;
-            /** Page Sizes */
-            page_sizes: [
-                number,
-                number
-            ][];
-            /** First Page */
-            first_page?: number | null;
-            /** Last Page */
-            last_page?: number | null;
-            /** Fields */
-            fields: components["schemas"]["ParsedField"][];
-            /** Checks */
-            checks: components["schemas"]["CrossCheck"][];
-        };
-        /**
-         * ParsedField
-         * @description One value read from a document.
-         *
-         *     Confidence is rule-based. `high`: found, and every cross-check it belongs to passes (or it
-         *     is in no check). `medium`: found, but it is the stated total or derived line of a failed
-         *     cross-check (`flag` says why). `low`: not found (`value` and `bbox` are None, `flag` says
-         *     what was missing).
-         */
-        ParsedField: {
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            /** Group */
-            group: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "money" | "integer" | "percent" | "text";
-            /** Value */
-            value: number | string | null;
-            /** Page */
-            page: number | null;
-            bbox: components["schemas"]["BBox"] | null;
-            /**
-             * Confidence
-             * @enum {string}
-             */
-            confidence: "high" | "medium" | "low";
-            /** Flag */
-            flag: string | null;
-            /** Meta */
-            meta?: {
-                [key: string]: string | number;
-            };
-        };
-        /** Person */
-        Person: {
-            /**
-             * Name
-             * @default
-             */
-            name: string;
-            /** Age */
-            age: number;
-            /**
-             * Wages
-             * @description Gross annual wages before pre-tax deferrals
-             */
-            wages: number;
-            /**
-             * Pretax 401K
-             * @description This year's pre-tax 401(k) deferrals
-             * @default 0
-             */
-            pretax_401k: number;
-        };
-        /** Plan */
-        Plan: {
-            /** Plan Id */
-            plan_id: string;
-            household: components["schemas"]["Household"];
-            portfolio: components["schemas"]["Portfolio"];
-            comparison: components["schemas"]["Comparison"];
-            what_changed?: components["schemas"]["WhatChanged"] | null;
-            /**
-             * Event
-             * @default none
-             * @enum {string}
-             */
-            event: "none" | "job_loss" | "raise";
-        };
-        /** PlanRequest */
-        PlanRequest: {
-            household: components["schemas"]["Household"];
-            /**
-             * N Paths
-             * @description Futures the strategy search runs on
-             * @default 400
-             */
-            n_paths: number;
-            /**
-             * N Eval Paths
-             * @description Fresh futures (never seen by the search) every result is measured on
-             * @default 200
-             */
-            n_eval_paths: number;
-            /**
-             * Demo Mode
-             * @default true
-             */
-            demo_mode: boolean;
-            /** Seed */
-            seed?: number | null;
-            shock?: components["schemas"]["MarketShock"] | null;
-            /**
-             * Risk Aversion
-             * @description CRRA coefficient behind the score
-             * @default 3
-             */
-            risk_aversion: number;
-            /**
-             * Planning Style
-             * @description equity_first: a spending reserve of 2, 4 or 6 years of bonds and private credit, everything else in stocks; balanced: a stock share with a glide path; liability_matched: the reserve chosen from 2 to 12 years (liability.reserve_years) so that the chance of selling stocks in a falling year stays at 2% or less and ruin is no likelier than the good advisor's (slower: several seconds)
-             * @default equity_first
-             * @enum {string}
-             */
-            planning_style: "balanced" | "equity_first" | "liability_matched";
-            /**
-             * Adaptive
-             * @description Also compute the year-by-year adaptive plan (in the background)
-             * @default true
-             */
-            adaptive: boolean;
-            /**
-             * Adaptive Rollouts
-             * @description Rollouts (fresh futures) scored per candidate action
-             * @default 32
-             */
-            adaptive_rollouts: number;
-        };
-        /** PlanResponse */
-        PlanResponse: {
-            /** Planner Label */
-            planner_label: string;
-            strategy: components["schemas"]["StrategyView"];
-            /** Reason */
-            reason: string;
-            recommender: components["schemas"]["RecommenderPanel"];
-            ria: components["schemas"]["StrategyView"];
-            /** Rows */
-            rows: components["schemas"]["PlanRow"][];
-            stats: components["schemas"]["StatCards"];
-            fan: components["schemas"]["FanSeries"];
-            ria_fan: components["schemas"]["FanSeries"];
-            /** Baselines */
-            baselines: components["schemas"]["BaselineView"][];
-            liability?: components["schemas"]["LiabilityView"] | null;
-            /** Advantage */
-            advantage: components["schemas"]["AdvantageStep"][];
-            /** Searched */
-            searched: components["schemas"]["RankedRow"][];
-            settings: components["schemas"]["PlanSettings"];
-            adaptive?: components["schemas"]["AdaptiveSection"] | null;
-            /** Adaptive Job */
-            adaptive_job?: string | null;
-        };
-        /**
-         * PlanRow
-         * @description One year of the deterministic plan (expected returns, no shocks).
-         */
-        PlanRow: {
-            /** Year Index */
-            year_index: number;
-            /** Age */
-            age: number;
-            /** Income */
-            income: number;
-            /** Wages */
-            wages: number;
-            /** Roth Conversion */
-            roth_conversion: number;
-            /** Losses Harvested */
-            losses_harvested: number;
-            /** Goal Bonds Balance */
-            goal_bonds_balance: number;
-            /** Goal Bonds Flow */
-            goal_bonds_flow: number;
-            /** Goal Paid */
-            goal_paid: number;
-            /** Goal Label */
-            goal_label?: string | null;
-            /** Stock Share */
-            stock_share: number;
-            /** Total Tax */
-            total_tax: number;
-            /** Federal Tax */
-            federal_tax: number;
-            /** Illinois Tax */
-            illinois_tax: number;
-            /** Wealth */
-            wealth: number;
-            /**
-             * Required Distribution
-             * @default 0
-             */
-            required_distribution: number;
-            /**
-             * Private Credit Balance
-             * @default 0
-             */
-            private_credit_balance: number;
-            /**
-             * Roth 401K Contribution
-             * @default 0
-             */
-            roth_401k_contribution: number;
-            /**
-             * Borrowed
-             * @default 0
-             */
-            borrowed: number;
-            /**
-             * Loan Balance
-             * @default 0
-             */
-            loan_balance: number;
-            /**
-             * Gains Realized Tax Free
-             * @default 0
-             */
-            gains_realized_tax_free: number;
-        };
-        /** PlanSettings */
-        PlanSettings: {
-            /** N Paths */
-            n_paths: number;
-            /** N Eval Paths */
-            n_eval_paths: number;
-            /** Seed */
-            seed: number;
-            /** Eval Seed */
-            eval_seed: number;
-            /** Demo Mode */
-            demo_mode: boolean;
-            /** Elapsed Seconds */
-            elapsed_seconds: number;
-            /** Current Age */
-            current_age: number;
-            /** Horizon Age */
-            horizon_age: number;
-            /** Strategies Searched */
-            strategies_searched: number;
-            /** Risk Aversion */
-            risk_aversion: number;
-            /** Wealth Floor */
-            wealth_floor: number;
-            market_shock?: components["schemas"]["MarketShock"] | null;
-            /**
-             * Planning Style
-             * @default equity_first
-             * @enum {string}
-             */
-            planning_style: "balanced" | "equity_first" | "liability_matched";
-            /**
-             * Heirs Rate
-             * @default 0.24
-             */
-            heirs_rate: number;
-            /**
-             * Liquidated Label
-             * @default Liquidated at 80
-             */
-            liquidated_label: string;
-            /**
-             * Heirs Label
-             * @default Passed to heirs at 80
-             */
-            heirs_label: string;
-            /**
-             * Heirs Note
-             * @default
-             */
-            heirs_note: string;
-        };
-        /**
-         * PortalAnswers
-         * @description The goal questions the customer answers (same limits as `app.api_models.Answers`).
-         */
-        PortalAnswers: {
-            /** Retirement Age */
-            retirement_age: number;
-            /** Retirement Spending */
-            retirement_spending: number;
-            /** College Starts In Years */
-            college_starts_in_years?: number | null;
-            /**
-             * College Annual Cost
-             * @default 0
-             */
-            college_annual_cost: number;
-            /**
-             * College Years
-             * @default 4
-             */
-            college_years: number;
-            /** Home Purchase In Years */
-            home_purchase_in_years?: number | null;
-            /**
-             * Home Down Payment
-             * @default 0
-             */
-            home_down_payment: number;
-            /** Social Security Annual */
-            social_security_annual: number;
-            /**
-             * Social Security Start Age
-             * @default 67
-             */
-            social_security_start_age: number;
-            /**
-             * Charitable Giving
-             * @default 0
-             */
-            charitable_giving: number;
-            /**
-             * Income Change
-             * @default none
-             * @enum {string}
-             */
-            income_change: "none" | "job_loss" | "raise";
-        };
-        /**
-         * PortalDocuments
-         * @description One uploaded PDF and the documents found in it (pages are absolute in this PDF).
-         */
-        PortalDocuments: {
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Size Bytes */
-            size_bytes: number;
-            /** Pages */
-            pages: number;
-            /** Documents */
-            documents: components["schemas"]["ParsedDocument"][];
-        };
-        /** PortalHouseholdRequest */
-        PortalHouseholdRequest: {
-            /** Document Id */
-            document_id: string;
-            /**
-             * Overrides
-             * @description Values the customer corrected, by field key
-             */
-            overrides?: {
-                [key: string]: number;
-            };
-            answers: components["schemas"]["PortalAnswers"];
-        };
-        /** PortalHouseholdResponse */
-        PortalHouseholdResponse: {
-            household: components["schemas"]["Household"];
-            /** Corrections */
-            corrections: components["schemas"]["Correction"][];
-            /** Documents */
-            documents: components["schemas"]["ParsedDocument"][];
-        };
-        /** Portfolio */
-        Portfolio: {
-            summary: components["schemas"]["Summary"];
-            overview: components["schemas"]["Overview"];
-            holdings: components["schemas"]["HoldingsTab"];
-            taxes: components["schemas"]["TaxesTab"];
-            retirement: components["schemas"]["RetirementTab"];
-            goals: components["schemas"]["GoalsTab"];
-        };
-        /** ProjectionPoint */
-        ProjectionPoint: {
-            /** Age */
-            age: number;
-            /** Wealth */
-            wealth: number;
-        };
-        /** RankedRow */
-        RankedRow: {
-            /** Rank */
-            rank: number;
-            /** Choices */
-            choices: {
-                [key: string]: string;
-            };
-            /** Label */
-            label: string;
-            /** Median */
-            median: number;
-            /** P10 */
-            p10: number;
-            /** P90 */
-            p90: number;
-            /** Score */
-            score: number;
-            /** Tied With */
-            tied_with?: number | null;
-            /**
-             * Is Chosen
-             * @default false
-             */
-            is_chosen: boolean;
-            /**
-             * Is Model Pick
-             * @default false
-             */
-            is_model_pick: boolean;
-        };
-        /** Recommendation */
-        Recommendation: {
-            /** Choices */
-            choices: components["schemas"]["ChoiceRecommendation"][];
-            /** Top Factors */
-            top_factors?: components["schemas"]["Factor"][];
-        };
-        /** RecommenderPanel */
-        RecommenderPanel: {
-            status: components["schemas"]["ModelStatus"];
-            recommendation?: components["schemas"]["Recommendation"] | null;
-            model_strategy?: components["schemas"]["StrategyView"] | null;
-            verified_strategy?: components["schemas"]["StrategyView"] | null;
-            /** Agrees */
-            agrees?: boolean | null;
-            /** Candidates */
-            candidates?: components["schemas"]["RankedRow"][];
-        };
-        /** RequiredWithdrawals */
-        RequiredWithdrawals: {
-            /** Start Age */
-            start_age: number;
-            /** First Amount */
-            first_amount: number;
-            /** Covered */
-            covered: boolean;
-            /** Note */
-            note: string;
-        };
-        /** RetirementTab */
-        RetirementTab: {
-            /** Rows */
-            rows: components["schemas"]["IncomeRow"][];
-            /** Withdrawal Order */
-            withdrawal_order: string[];
-            required: components["schemas"]["RequiredWithdrawals"];
-        };
-        /** ScenarioChange */
-        ScenarioChange: {
-            /** Age */
-            age: number;
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            /**
-             * Source
-             * @enum {string}
-             */
-            source: "event" | "replan";
-            /** Before */
-            before: number;
-            /** After */
-            after: number;
-            /** Text */
-            text: string;
-        };
-        /** ScenarioInfo */
-        ScenarioInfo: {
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            /** Event */
-            event: string;
-        };
-        /**
-         * ScenarioReplan
-         * @description What re-planning is worth after the event: the plan chosen before it and the plan chosen knowing about it, both on the same
-         *     2,000 shocked futures neither was searched on. It can be small or negative: it is whatever the engine measures.
-         */
-        ScenarioReplan: {
-            /** Original Plan Median At Horizon */
-            original_plan_median_at_horizon: number;
-            /** Replanned Median At Horizon */
-            replanned_median_at_horizon: number;
-            /** Median Rate */
-            median_rate: number;
-            /** Median Dollars */
-            median_dollars: number;
-        };
-        /**
-         * ScenarioYear
-         * @description One year on the expected path, for three plans: the plan before the event (no event), the same plan once the event happens
-         *     (its rules respond to the new situation), and the plan chosen again knowing about the event (expected returns, no other shocks).
-         */
-        ScenarioYear: {
-            /** Year Index */
-            year_index: number;
-            /** Age */
-            age: number;
-            /** Wages */
-            wages: number;
-            /** Base Wages */
-            base_wages: number;
-            /** Roth Conversion */
-            roth_conversion: number;
-            /** Held Roth Conversion */
-            held_roth_conversion: number;
-            /** Base Roth Conversion */
-            base_roth_conversion: number;
-            /** Losses Harvested */
-            losses_harvested: number;
-            /** Held Losses Harvested */
-            held_losses_harvested: number;
-            /** Base Losses Harvested */
-            base_losses_harvested: number;
-            /** Gains Harvested Tax Free */
-            gains_harvested_tax_free: number;
-            /** Held Gains Harvested Tax Free */
-            held_gains_harvested_tax_free: number;
-            /** Base Gains Harvested Tax Free */
-            base_gains_harvested_tax_free: number;
-            /** Stock Share */
-            stock_share: number;
-            /** Held Stock Share */
-            held_stock_share: number;
-            /** Base Stock Share */
-            base_stock_share: number;
-            /** Total Tax */
-            total_tax: number;
-            /** Base Total Tax */
-            base_total_tax: number;
-            /** Wealth */
-            wealth: number;
-            /** Base Wealth */
-            base_wealth: number;
-            /** Responded */
-            responded: string[];
-            /** Replanned */
-            replanned: string[];
-        };
-        /** ShowcaseAdvantage */
-        ShowcaseAdvantage: {
-            /** Median Rate */
-            median_rate: number;
-            /** Median Dollars */
-            median_dollars: number;
-            /** Median Low */
-            median_low: number;
-            /** Median High */
-            median_high: number;
-            /** Risk Adjusted Rate */
-            risk_adjusted_rate: number;
-            /** Risk Adjusted Dollars */
-            risk_adjusted_dollars: number;
-            /** Plan Median At Horizon */
-            plan_median_at_horizon: number;
-            /** Advisor Median At Horizon */
-            advisor_median_at_horizon: number;
-            /** Plan P10 At Horizon */
-            plan_p10_at_horizon: number;
-            /** Advisor P10 At Horizon */
-            advisor_p10_at_horizon: number;
-            /** Plan Shortfall */
-            plan_shortfall: number;
-            /** Advisor Shortfall */
-            advisor_shortfall: number;
-        };
-        /**
-         * ShowcaseBar
-         * @description One strategy of the waterfall.
-         */
-        ShowcaseBar: {
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            /** Detail */
-            detail: string;
-            /** Enabled */
-            enabled: boolean;
-            /** Delta Rate */
-            delta_rate: number;
-            /** Delta Dollars */
-            delta_dollars: number;
-            /** Cumulative Rate */
-            cumulative_rate: number;
-            /** Cumulative Dollars */
-            cumulative_dollars: number;
-        };
-        /**
-         * ShowcaseHeirs
-         * @description The same plan and advisor with the estate passed to heirs at the horizon (step-up on the taxable account, the pre-tax
-         *     accounts taxed at the heirs' rate), on the same futures. The median only: the risk-adjusted advantage is shown once.
-         */
-        ShowcaseHeirs: {
-            /** Label */
-            label: string;
-            /** Note */
-            note: string;
-            /** Rate */
-            rate: number;
-            /** Median Rate */
-            median_rate: number;
-            /** Median Dollars */
-            median_dollars: number;
-            /** Plan Median At Horizon */
-            plan_median_at_horizon: number;
-            /** Advisor Median At Horizon */
-            advisor_median_at_horizon: number;
-        };
-        /**
-         * ShowcaseMedian
-         * @description The waterfall's headline: the median advantage and nothing else.
-         */
-        ShowcaseMedian: {
-            /** Median Rate */
-            median_rate: number;
-            /** Median Dollars */
-            median_dollars: number;
-            /** Median Low */
-            median_low: number;
-            /** Median High */
-            median_high: number;
-            /** Plan Median At Horizon */
-            plan_median_at_horizon: number;
-            /** Advisor Median At Horizon */
-            advisor_median_at_horizon: number;
-        };
-        /** ShowcaseRequest */
-        ShowcaseRequest: {
-            /** Enabled */
-            enabled?: string[] | null;
-        };
-        /** ShowcaseResponse */
-        ShowcaseResponse: {
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Type Label */
-            type_label: string;
-            /** Tagline */
-            tagline: string;
-            household: components["schemas"]["Household"];
-            card: components["schemas"]["HouseholdCard"];
-            /** Plan Label */
-            plan_label: string;
-            /** Plan Sentence */
-            plan_sentence: string;
-            waterfall: components["schemas"]["ShowcaseWaterfall"];
-            wealth: components["schemas"]["ShowcaseWealth"];
-            /** Typical Rate */
-            typical_rate: number | null;
-            /** Footer Note */
-            footer_note: string;
-        };
-        /**
-         * ShowcaseScenario
-         * @description The showcase household after an event, planned again, against the advisor on the same shocked futures.
-         */
-        ShowcaseScenario: {
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            /** Event */
-            event: string;
-            /** Plan Label */
-            plan_label: string;
-            /** Plan Sentence */
-            plan_sentence: string;
-            /** Original Plan Label */
-            original_plan_label: string;
-            /** Plan Changed */
-            plan_changed: boolean;
-            wealth: components["schemas"]["ShowcaseWealth"];
-            replan: components["schemas"]["ScenarioReplan"];
-            /** Years */
-            years: components["schemas"]["ScenarioYear"][];
-            /** Changes */
-            changes: components["schemas"]["ScenarioChange"][];
-            /** Summary */
-            summary: string[];
-            /** Replan Summary */
-            replan_summary: string[];
-        };
-        /**
-         * ShowcaseWaterfall
-         * @description The strategies switched on in sequence on the same futures: one bar each, and what they add up to (median only).
-         */
-        ShowcaseWaterfall: {
-            /** Enabled */
-            enabled: string[];
-            /** Bars */
-            bars: components["schemas"]["ShowcaseBar"][];
-            advantage: components["schemas"]["ShowcaseMedian"];
-            /** N Paths */
-            n_paths: number;
-            /** Years */
-            years: number;
-            /** Horizon Age */
-            horizon_age: number;
-            /** Advisor Label */
-            advisor_label: string;
-        };
-        /**
-         * ShowcaseWealth
-         * @description The whole plan (every strategy on) against the advisor: wealth over time and both measures of the advantage.
-         *
-         *     Worked out once. Switching strategies off on the waterfall does not change it.
-         */
-        ShowcaseWealth: {
-            /** Liquidated Label */
-            liquidated_label: string;
-            advantage: components["schemas"]["ShowcaseAdvantage"];
-            heirs: components["schemas"]["ShowcaseHeirs"];
-            wealth: components["schemas"]["WealthLines"];
-            /** Risk Adjusted Label */
-            risk_adjusted_label: string;
-            /** Risk Adjusted Explanation */
-            risk_adjusted_explanation: string;
-            /** N Paths */
-            n_paths: number;
-            /** Years */
-            years: number;
-            /** Horizon Age */
-            horizon_age: number;
-            /** Risk Aversion */
-            risk_aversion: number;
-            /** Advisor Label */
-            advisor_label: string;
-        };
-        /** SocialSecurity */
-        SocialSecurity: {
-            /**
-             * Annual Benefit
-             * @description Household benefit a year
-             * @default 50000
-             */
-            annual_benefit: number;
-            /**
-             * Start Age
-             * @default 67
-             */
-            start_age: number;
-        };
-        /** StatCards */
-        StatCards: {
-            typical_outcome: components["schemas"]["OutcomeView"];
-            ria_typical_outcome: components["schemas"]["OutcomeView"];
-            typical_outcome_heirs: components["schemas"]["OutcomeView"];
-            ria_typical_outcome_heirs: components["schemas"]["OutcomeView"];
-            /** Advantage Per Year */
-            advantage_per_year: number;
-            /** Advantage Total */
-            advantage_total: number;
-            /** Lifetime Taxes */
-            lifetime_taxes: number;
-            /** Ria Lifetime Taxes */
-            ria_lifetime_taxes: number;
-            /** Years */
-            years: number;
-            /** Shortfall Chance */
-            shortfall_chance: number;
-            advantage: components["schemas"]["AdvantageView"];
-            advantage_heirs: components["schemas"]["AdvantageView"];
-            /**
-             * Forced Sale Chance
-             * @default 0
-             */
-            forced_sale_chance: number;
-            /**
-             * Ria Forced Sale Chance
-             * @default 0
-             */
-            ria_forced_sale_chance: number;
-        };
-        /** StockRow */
-        StockRow: {
-            /** Name */
-            name: string;
-            /** Value */
-            value: number;
-            /** Gain */
-            gain: number;
-        };
-        /**
-         * StrategyOutcome
-         * @description One of the four strategies, measured on the same evaluation futures.
-         */
-        StrategyOutcome: {
-            /**
-             * Key
-             * @enum {string}
-             */
-            key: "typical_advisor" | "good_ria" | "best_fixed" | "adaptive";
-            /** Label */
-            label: string;
-            /** Definition */
-            definition: string;
-            outcome: components["schemas"]["OutcomeView"];
-            /** Lifetime Taxes */
-            lifetime_taxes: number;
-            /** Shortfall Chance */
-            shortfall_chance: number;
-            fan: components["schemas"]["FanSeries"];
-            advantage_vs_typical?: components["schemas"]["AdvantageView"] | null;
-            advantage_vs_ria?: components["schemas"]["AdvantageView"] | null;
-        };
-        /** StrategyView */
-        StrategyView: {
-            /** Choices */
-            choices: {
-                [key: string]: string;
-            };
-            /** Label */
-            label: string;
-            /** Sentence */
-            sentence: string;
-            outcome: components["schemas"]["OutcomeView"];
-        };
-        /** Summary */
-        Summary: {
-            /** Horizon Age */
-            horizon_age: number;
-            /** Age */
-            age: number;
-            /** Projected Wealth */
-            projected_wealth: number;
-            /** Invested Today */
-            invested_today: number;
-            /** Fee Dollars */
-            fee_dollars: number;
-            /** Fee Rate */
-            fee_rate: number;
-            /** Tax Saved */
-            tax_saved: number;
-        };
-        /** TaxLine */
-        TaxLine: {
-            /** Label */
-            label: string;
-            /** Amount */
-            amount: number;
-            /**
-             * Kind
-             * @default amount
-             */
-            kind: string;
-            /** Note */
-            note?: string | null;
-        };
-        /**
-         * TaxReturn
-         * @description Every line item of the computed return.
-         */
-        TaxReturn: {
-            /** Wages */
-            wages: number;
-            /** Interest */
-            interest: number;
-            /** Qualified Dividends */
-            qualified_dividends: number;
-            /** Ordinary Dividends */
-            ordinary_dividends: number;
-            /** Capital Gain Input */
-            capital_gain_input: number;
-            /** Capital Gain Line */
-            capital_gain_line: number;
-            /** Short Term Gain Ordinary */
-            short_term_gain_ordinary: number;
-            /** Retirement Distributions */
-            retirement_distributions: number;
-            /** Roth Conversions */
-            roth_conversions: number;
-            /** Social Security */
-            social_security: number;
-            /** Taxable Social Security */
-            taxable_social_security: number;
-            /** Total Income */
-            total_income: number;
-            /** Agi */
-            agi: number;
-            /** Standard Deduction */
-            standard_deduction: number;
-            /**
-             * Deduction Used
-             * @default 0
-             */
-            deduction_used: number;
-            /**
-             * Charitable Deduction
-             * @default 0
-             */
-            charitable_deduction: number;
-            /**
-             * Itemized
-             * @default false
-             */
-            itemized: boolean;
-            /** Taxable Income */
-            taxable_income: number;
-            /** Preferential Income */
-            preferential_income: number;
-            /** Ordinary Taxable Income */
-            ordinary_taxable_income: number;
-            /** Ordinary Tax */
-            ordinary_tax: number;
-            /** Capital Gains Tax */
-            capital_gains_tax: number;
-            /** Niit */
-            niit: number;
-            /** Child Tax Credit Available */
-            child_tax_credit_available: number;
-            /** Child Tax Credit */
-            child_tax_credit: number;
-            /** Early Withdrawal Penalty */
-            early_withdrawal_penalty: number;
-            /** Federal Total */
-            federal_total: number;
-            /** Il Base Income */
-            il_base_income: number;
-            /** Il Exemptions */
-            il_exemptions: number;
-            /** Il Taxable Income */
-            il_taxable_income: number;
-            /** Illinois Tax */
-            illinois_tax: number;
-            /** Grand Total */
-            grand_total: number;
-            /** Marginal Federal Rate */
-            marginal_federal_rate: number;
-            /** Effective Federal Rate */
-            effective_federal_rate: number;
-            /** Effective Total Rate */
-            effective_total_rate: number;
-            /** Capital Loss Carryforward In */
-            capital_loss_carryforward_in: number;
-            /** Capital Loss Deducted */
-            capital_loss_deducted: number;
-            /** Capital Loss Carryforward Out */
-            capital_loss_carryforward_out: number;
-        };
-        /** TaxesTab */
-        TaxesTab: {
-            this_year: components["schemas"]["TaxesThisYear"];
-            bracket: components["schemas"]["BracketView"];
-            /** Opportunities */
-            opportunities: components["schemas"]["Opportunity"][];
-            /**
-             * Opportunities Illustrative
-             * @default true
-             */
-            opportunities_illustrative: boolean;
-            /** Conversions */
-            conversions: components["schemas"]["ConversionRow"][];
-        };
-        /** TaxesThisYear */
-        TaxesThisYear: {
-            /** Roth Conversion */
-            roth_conversion: number;
-            /** Conversion Tax */
-            conversion_tax: number;
-            /** Losses Harvested */
-            losses_harvested: number;
-            /** Gains Offset */
-            gains_offset: number;
-            /** Deducted From Income */
-            deducted_from_income: number;
-            /** Carried Forward */
-            carried_forward: number;
-            /** Interest Kept Out */
-            interest_kept_out: number;
-            /** Tax Saved */
-            tax_saved: number;
-        };
-        /** ValidationError */
-        ValidationError: {
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
-        };
-        /** WealthLines */
-        WealthLines: {
-            /** Ages */
-            ages: number[];
-            /** Plan Median */
-            plan_median: number[];
-            /** Plan P10 */
-            plan_p10: number[];
-            /** Advisor Median */
-            advisor_median: number[];
-            /** Advisor P10 */
-            advisor_p10: number[];
-        };
-        /** WhatChanged */
-        WhatChanged: {
-            /** Changed */
-            changed: string;
-            /** Mix */
-            mix: components["schemas"]["MixChange"][];
-            /** Wealth Before */
-            wealth_before: number;
-            /** Wealth After */
-            wealth_after: number;
-            /** Moves */
-            moves: components["schemas"]["MoveChange"][];
-            /** Conversion Age */
-            conversion_age: number;
-            /** Conversion Before */
-            conversion_before: number;
-            /** Conversion After */
-            conversion_after: number;
-        };
-        /** WhatIfRequest */
-        WhatIfRequest: {
-            household: components["schemas"]["Household"];
-            /** Presets */
-            presets?: ("home_next_year" | "spouse_b_income_cut" | "retire_57" | "market_drop_30")[];
-            edits?: components["schemas"]["HouseholdEdits"];
-            /**
-             * N Paths
-             * @default 400
-             */
-            n_paths: number;
-            /**
-             * N Eval Paths
-             * @default 200
-             */
-            n_eval_paths: number;
-            /**
-             * Demo Mode
-             * @default true
-             */
-            demo_mode: boolean;
-            /** Seed */
-            seed?: number | null;
-            /**
-             * Risk Aversion
-             * @default 3
-             */
-            risk_aversion: number;
-            /**
-             * Planning Style
-             * @default equity_first
-             * @enum {string}
-             */
-            planning_style: "balanced" | "equity_first" | "liability_matched";
-            /**
-             * Adaptive
-             * @default true
-             */
-            adaptive: boolean;
-            /**
-             * Adaptive Rollouts
-             * @default 32
-             */
-            adaptive_rollouts: number;
-            shock?: components["schemas"]["MarketShock"] | null;
-        };
-        /** WhatIfResponse */
-        WhatIfResponse: {
-            /** Changes */
-            changes: components["schemas"]["Change"][];
-            household: components["schemas"]["Household"];
-            shock: components["schemas"]["MarketShock"] | null;
-            plan: components["schemas"]["PlanResponse"];
-        };
-        /**
-         * YearDecisionView
-         * @description Why this year: what the adaptive planner chose along the plan path, and what it weighed.
-         */
-        YearDecisionView: {
-            /** Year Index */
-            year_index: number;
-            /** Age */
-            age: number;
-            chosen: components["schemas"]["ActionView"];
-            fixed: components["schemas"]["ActionView"];
-            /** Departs */
-            departs: boolean;
-            /** Departures */
-            departures: string[];
-            /** Alternatives */
-            alternatives: components["schemas"]["AlternativeView"][];
-            /** Ce Chosen */
-            ce_chosen: number;
-            /** Ce Fixed */
-            ce_fixed: number;
-            /** Candidates Scored */
-            candidates_scored: number;
-            /** Changes Proposed */
-            changes_proposed: number;
-            /** Changes Kept */
-            changes_kept: number;
-            /** Ce Chosen Fresh */
-            ce_chosen_fresh: number;
-            /** Ce Fixed Fresh */
-            ce_fixed_fresh: number;
-            /** Why */
-            why: string;
-            /** Facts */
-            facts: {
-                [key: string]: number;
-            };
-        };
-        /** YearDetail */
-        YearDetail: {
-            /** Year Index */
-            year_index: number;
-            /** Age */
-            age: number;
-            /** Decisions */
-            decisions: components["schemas"]["Decision"][];
-            /** Tax Lines */
-            tax_lines: components["schemas"]["TaxLine"][];
-            tax_return: components["schemas"]["TaxReturn"];
-            /** Wealth At Year End */
-            wealth_at_year_end: number;
-        };
-        /** YearDetailRequest */
-        YearDetailRequest: {
-            household: components["schemas"]["Household"];
-            /** Choices */
-            choices: {
-                [key: string]: string;
-            };
-            /** Year Index */
-            year_index: number;
-            shock?: components["schemas"]["MarketShock"] | null;
-        };
+  schemas: {
+    /** AccountHoldings */
+    AccountHoldings: {
+      /**
+       * Key
+       * @enum {string}
+       */
+      key: "brokerage" | "pretax" | "roth";
+      /** Label */
+      label: string;
+      /** Balance */
+      balance: number;
+      /** Taxation */
+      taxation: string;
+      /** Cost Basis */
+      cost_basis?: number | null;
+      /** Unrealized Gain */
+      unrealized_gain?: number | null;
+      /** Holdings */
+      holdings: components["schemas"]["HoldingRow"][];
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    /** AccountLine */
+    AccountLine: {
+      /** Label */
+      label: string;
+      /** Amount */
+      amount: number;
+      /**
+       * Estimated
+       * @default false
+       */
+      estimated: boolean;
+      /** Detail */
+      detail?: string | null;
+    };
+    /** Accounts */
+    Accounts: {
+      /** Brokerage Value */
+      brokerage_value: number;
+      /**
+       * Brokerage Basis
+       * @description Cost basis of the brokerage equity
+       */
+      brokerage_basis: number;
+      /**
+       * Pretax Balance
+       * @description 401(k)/IRA balances combined
+       */
+      pretax_balance: number;
+      /**
+       * Pretax Equity Share
+       * @description Stock share of the 401(k)/IRA
+       * @default 0.75
+       */
+      pretax_equity_share: number;
+      /**
+       * Roth Balance
+       * @default 0
+       */
+      roth_balance: number;
+      /**
+       * Roth Equity Share
+       * @default 1
+       */
+      roth_equity_share: number;
+      /**
+       * Cash
+       * @description Cash savings; invested with brokerage bonds
+       * @default 0
+       */
+      cash: number;
+    };
+    /**
+     * ActionView
+     * @description One year's decisions.
+     */
+    ActionView: {
+      /** Stock Share */
+      stock_share: number;
+      /** Conversion Bracket */
+      conversion_bracket: number | null;
+      /** Private Credit */
+      private_credit: number;
+      /**
+       * K401
+       * @enum {string}
+       */
+      k401: "pretax" | "roth";
+      /** Goal Funding */
+      goal_funding: ("sell" | "borrow") | null;
+      /** Realize Gains */
+      realize_gains: boolean;
+      /** Label */
+      label: string;
+    };
+    /** AdaptiveJob */
+    AdaptiveJob: {
+      /** Id */
+      id: string;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "running" | "done" | "error" | "cancelled";
+      /** Progress */
+      progress: number;
+      /** Error */
+      error?: string | null;
+      result?: components["schemas"]["AdaptiveSection"] | null;
+    };
+    /** AdaptivePlanRow */
+    AdaptivePlanRow: {
+      /** Year Index */
+      year_index: number;
+      /** Age */
+      age: number;
+      /** Income */
+      income: number;
+      /** Wages */
+      wages: number;
+      /** Roth Conversion */
+      roth_conversion: number;
+      /** Losses Harvested */
+      losses_harvested: number;
+      /** Goal Bonds Balance */
+      goal_bonds_balance: number;
+      /** Goal Bonds Flow */
+      goal_bonds_flow: number;
+      /** Goal Paid */
+      goal_paid: number;
+      /** Goal Label */
+      goal_label?: string | null;
+      /** Stock Share */
+      stock_share: number;
+      /** Total Tax */
+      total_tax: number;
+      /** Federal Tax */
+      federal_tax: number;
+      /** Illinois Tax */
+      illinois_tax: number;
+      /** Wealth */
+      wealth: number;
+      /**
+       * Required Distribution
+       * @default 0
+       */
+      required_distribution: number;
+      /**
+       * Private Credit Balance
+       * @default 0
+       */
+      private_credit_balance: number;
+      /**
+       * Roth 401K Contribution
+       * @default 0
+       */
+      roth_401k_contribution: number;
+      /**
+       * Borrowed
+       * @default 0
+       */
+      borrowed: number;
+      /**
+       * Loan Balance
+       * @default 0
+       */
+      loan_balance: number;
+      /**
+       * Gains Realized Tax Free
+       * @default 0
+       */
+      gains_realized_tax_free: number;
+      /**
+       * Departs
+       * @default false
+       */
+      departs: boolean;
+      /** Departures */
+      departures?: string[];
+    };
+    /** AdaptiveSection */
+    AdaptiveSection: {
+      /** K */
+      k: number;
+      /** N Eval Paths */
+      n_eval_paths: number;
+      /** Z Min */
+      z_min: number;
+      /** Confirm K */
+      confirm_k: number;
+      /** Confirm Z */
+      confirm_z: number;
+      /** Tilt */
+      tilt: number;
+      /** Plan Path K */
+      plan_path_k: number;
+      /** Plan Path Confirm K */
+      plan_path_confirm_k: number;
+      /** Risk Aversion */
+      risk_aversion: number;
+      /** Elapsed Seconds */
+      elapsed_seconds: number;
+      /** Seconds Per Path */
+      seconds_per_path: number;
+      /** Search */
+      search: string;
+      /** Rows */
+      rows: components["schemas"]["AdaptivePlanRow"][];
+      /** Year Details */
+      year_details: components["schemas"]["YearDetail"][];
+      /** Decisions */
+      decisions: components["schemas"]["YearDecisionView"][];
+      /** Strategies */
+      strategies: components["schemas"]["StrategyOutcome"][];
+      value_of_judgment: components["schemas"]["AdvantageView"];
+      /** Departure Share */
+      departure_share: number;
+      /** Departure By Decision */
+      departure_by_decision: {
+        [key: string]: number;
+      };
+      /** Departure By Year */
+      departure_by_year: number[];
+      /** Departure By Year And Decision */
+      departure_by_year_and_decision: {
+        [key: string]: number[];
+      };
+      /**
+       * From Cache
+       * @default false
+       */
+      from_cache: boolean;
+    };
+    /** AdvantageStep */
+    AdvantageStep: {
+      /** Label */
+      label: string;
+      /** Delta Median */
+      delta_median: number;
+      /** Delta P10 */
+      delta_p10: number;
+      /** Cumulative Median */
+      cumulative_median: number;
+      /** Active */
+      active: boolean;
+    };
+    /**
+     * AdvantageView
+     * @description The plan's advantage over one baseline, measured two ways (spec A7), both annualized.
+     *
+     *     Each is the yearly growth-rate difference `(plan / baseline)^(1/years) - 1` that would open the
+     *     observed gap over the horizon: median uses median after-tax wealth, risk-adjusted uses
+     *     certainty-equivalent wealth (the planner's own objective). The `*_low` / `*_high` pair is the
+     *     5th to 95th percentile when the evaluation futures are resampled.
+     */
+    AdvantageView: {
+      /** Median */
+      median: number;
+      /** Risk Adjusted */
+      risk_adjusted: number;
+      /** Median Dollars */
+      median_dollars: number;
+      /** Risk Adjusted Dollars */
+      risk_adjusted_dollars: number;
+      /** Median Low */
+      median_low: number;
+      /** Median High */
+      median_high: number;
+      /** Risk Adjusted Low */
+      risk_adjusted_low: number;
+      /** Risk Adjusted High */
+      risk_adjusted_high: number;
+    };
+    /** AdvisorCard */
+    AdvisorCard: {
+      /** Title */
+      title: string;
+      /** Wealth 80 */
+      wealth_80: number;
+      /** Bar */
+      bar: number;
+      /** Mix */
+      mix: components["schemas"]["MixShare"][];
+      /** Accounts */
+      accounts: string[];
+      /** Harvesting */
+      harvesting: string;
+      /** Harvested So Far */
+      harvested_so_far?: number | null;
+      /** Roth Conversion */
+      roth_conversion: number;
+      /** Fee Dollars */
+      fee_dollars: number;
+      /** Fee Rate */
+      fee_rate: number;
+    };
+    /** AlternativeView */
+    AlternativeView: {
+      action: components["schemas"]["ActionView"];
+      /** Ce */
+      ce: number;
+      /** Ce Gap */
+      ce_gap: number;
+      /** Differs In */
+      differs_in: string[];
+    };
+    /**
+     * Answers
+     * @description What the app asks (goals) and what it estimates (Roth, cash, Social Security).
+     */
+    Answers: {
+      /**
+       * Home Purchase In Years
+       * @default 3
+       */
+      home_purchase_in_years: number | null;
+      /**
+       * Home Down Payment
+       * @default 120000
+       */
+      home_down_payment: number;
+      /**
+       * College Starts In Years
+       * @default 10
+       */
+      college_starts_in_years: number | null;
+      /**
+       * College Annual Cost
+       * @default 35000
+       */
+      college_annual_cost: number;
+      /**
+       * College Years
+       * @default 4
+       */
+      college_years: number;
+      /**
+       * Retirement Age
+       * @default 62
+       */
+      retirement_age: number;
+      /**
+       * Retirement Spending
+       * @default 110000
+       */
+      retirement_spending: number;
+      /**
+       * Charitable Giving
+       * @description Gifts to charity a year
+       * @default 0
+       */
+      charitable_giving: number;
+      /**
+       * Roth Balance
+       * @default 30000
+       */
+      roth_balance: number;
+      /**
+       * Cash
+       * @default 40000
+       */
+      cash: number;
+      /**
+       * Social Security Annual
+       * @default 50000
+       */
+      social_security_annual: number;
+      /**
+       * Social Security Start Age
+       * @default 67
+       */
+      social_security_start_age: number;
+    };
+    /** AssetRow */
+    AssetRow: {
+      /**
+       * Key
+       * @enum {string}
+       */
+      key: "us_stocks" | "intl_stocks" | "bonds" | "private_credit" | "cash";
+      /** Label */
+      label: string;
+      /** Amount */
+      amount: number;
+      /** Share */
+      share: number;
+      /** Expected Return */
+      expected_return: number;
+    };
+    /**
+     * BBox
+     * @description Rectangle in PDF points, origin at the top-left of the page (pdfplumber convention).
+     */
+    BBox: {
+      /** X0 */
+      x0: number;
+      /** Top */
+      top: number;
+      /** X1 */
+      x1: number;
+      /** Bottom */
+      bottom: number;
+    };
+    /** BarRow */
+    BarRow: {
+      /** Label */
+      label: string;
+      /** Share */
+      share: number;
+      /** Amount */
+      amount: number;
+    };
+    /**
+     * BaselineView
+     * @description One advisor the plan is compared with, measured on the same evaluation futures.
+     */
+    BaselineView: {
+      /**
+       * Key
+       * @enum {string}
+       */
+      key: "good_ria" | "typical_advisor";
+      /** Label */
+      label: string;
+      /** Definition */
+      definition: string;
+      /**
+       * Forced Sale Chance
+       * @default 0
+       */
+      forced_sale_chance: number;
+      outcome: components["schemas"]["OutcomeView"];
+      outcome_heirs: components["schemas"]["OutcomeView"];
+      /** Lifetime Taxes */
+      lifetime_taxes: number;
+      /** Shortfall Chance */
+      shortfall_chance: number;
+      advantage: components["schemas"]["AdvantageView"];
+      advantage_heirs: components["schemas"]["AdvantageView"];
+      fan: components["schemas"]["FanSeries"];
+    };
+    /** Body_upload_documents_documents_upload_post */
+    Body_upload_documents_documents_upload_post: {
+      /** Files */
+      files: string[];
+    };
+    /** Body_upload_portal_documents_upload_post */
+    Body_upload_portal_documents_upload_post: {
+      /** File */
+      file: string;
+    };
+    /** BracketStep */
+    BracketStep: {
+      /** Rate */
+      rate: number;
+      /** Floor */
+      floor: number;
+      /** Ceiling */
+      ceiling: number | null;
+      /** Filled */
+      filled: boolean;
+    };
+    /** BracketView */
+    BracketView: {
+      /** Brackets */
+      brackets: components["schemas"]["BracketStep"][];
+      /** Taxable Before */
+      taxable_before: number;
+      /** Conversion */
+      conversion: number;
+      /** Fills To */
+      fills_to: number;
+      /** Marginal Rate */
+      marginal_rate: number;
+      /** Illinois Tax On Conversion */
+      illinois_tax_on_conversion: number;
+    };
+    /** CardAccount */
+    CardAccount: {
+      /**
+       * Key
+       * @enum {string}
+       */
+      key: "taxable" | "pretax" | "roth" | "cash";
+      /** Label */
+      label: string;
+      /** Value */
+      value: number;
+      /** Share */
+      share: number;
+      /** Basis */
+      basis?: number | null;
+      /** Unrealized Gain */
+      unrealized_gain?: number | null;
+    };
+    /** CardGoal */
+    CardGoal: {
+      /**
+       * Key
+       * @enum {string}
+       */
+      key: "home" | "college" | "retirement" | "social_security";
+      /** Label */
+      label: string;
+      /** Detail */
+      detail: string;
+      /** Years From Now */
+      years_from_now?: number | null;
+      /** Amount */
+      amount?: number | null;
+    };
+    /** CardPerson */
+    CardPerson: {
+      /** Label */
+      label: string;
+      /** Age */
+      age: number;
+      /** Wages */
+      wages: number;
+    };
+    /** Change */
+    Change: {
+      /** Field */
+      field: string;
+      /** Label */
+      label: string;
+      /** Before */
+      before: string;
+      /** After */
+      after: string;
+    };
+    /** ChoiceRecommendation */
+    ChoiceRecommendation: {
+      /** Choice */
+      choice: string;
+      /** Option */
+      option: string;
+      /** Probability */
+      probability: number;
+      /** Distribution */
+      distribution?: components["schemas"]["OptionProbability"][] | null;
+    };
+    /** Comparison */
+    Comparison: {
+      /** Dollars More */
+      dollars_more: number;
+      /** Rate Per Year */
+      rate_per_year: number;
+      advisor: components["schemas"]["AdvisorCard"];
+      waramoug: components["schemas"]["AdvisorCard"];
+    };
+    /** ConversionRow */
+    ConversionRow: {
+      /** Year */
+      year: number;
+      /** Age */
+      age: number;
+      /** Amount */
+      amount: number;
+      /** Tax */
+      tax: number;
+      /** Bracket Rate */
+      bracket_rate: number;
+    };
+    /**
+     * Correction
+     * @description One value the customer changed, with what the document said.
+     */
+    Correction: {
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /** Document Value */
+      document_value: number | string | null;
+      /** Corrected Value */
+      corrected_value: number | string;
+    };
+    /**
+     * CrossCheck
+     * @description One consistency check between fields of a document.
+     */
+    CrossCheck: {
+      /** Name */
+      name: string;
+      /** Passed */
+      passed: boolean;
+      /** Detail */
+      detail: string;
+      /** Keys */
+      keys: string[];
+    };
+    /** Decision */
+    Decision: {
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /** Description */
+      description: string;
+      /** Amount */
+      amount?: number | null;
+      /** Value */
+      value?: number | null;
+      /**
+       * Valued
+       * @default true
+       */
+      valued: boolean;
+    };
+    /** DocumentInfo */
+    DocumentInfo: {
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /** Size Bytes */
+      size_bytes: number;
+      /** Pages */
+      pages: number;
+      /** Kind */
+      kind?: ("form_1040" | "brokerage_statement" | "retirement_401k" | "roth_ira" | "unknown") | null;
+    };
+    /** DocumentList */
+    DocumentList: {
+      /** Documents */
+      documents: components["schemas"]["DocumentInfo"][];
+    };
+    /**
+     * Factor
+     * @description One input that moved a prediction.
+     *
+     *     direction: "up" if a higher value of the feature raises the output (the probability of the
+     *     recommended option, or forecast income); "down" if it lowers it.
+     *     weight: relative importance, 0 to 1.
+     */
+    Factor: {
+      /** Feature */
+      feature: string;
+      /**
+       * Direction
+       * @enum {string}
+       */
+      direction: "up" | "down";
+      /** Weight */
+      weight: number;
+    };
+    /** FanSeries */
+    FanSeries: {
+      /** Ages */
+      ages: number[];
+      /** P10 */
+      p10: number[];
+      /** P25 */
+      p25: number[];
+      /** P50 */
+      p50: number[];
+      /** P75 */
+      p75: number[];
+      /** P90 */
+      p90: number[];
+    };
+    /** ForecastRequest */
+    ForecastRequest: {
+      household: components["schemas"]["Household"];
+      /**
+       * N Paths
+       * @default 2000
+       */
+      n_paths: number;
+      /**
+       * Demo Mode
+       * @default true
+       */
+      demo_mode: boolean;
+      /** Seed */
+      seed?: number | null;
+    };
+    /** ForecastResponse */
+    ForecastResponse: {
+      /** Connected */
+      connected: boolean;
+      /** Label */
+      label: string;
+      /** Reason */
+      reason?: string | null;
+      /** Note */
+      note: string;
+      forecast: components["schemas"]["IncomeForecast"];
+      /** Top Factors */
+      top_factors?: components["schemas"]["Factor"][];
+    };
+    /** GoalCard */
+    GoalCard: {
+      /**
+       * Key
+       * @enum {string}
+       */
+      key: "college" | "retirement" | "home";
+      /** Label */
+      label: string;
+      /** Target */
+      target: number;
+      /** Target Label */
+      target_label: string;
+      /** Timing */
+      timing: string;
+      /** Progress */
+      progress: number;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "On track" | "Close" | "Behind";
+    };
+    /** GoalLine */
+    GoalLine: {
+      /** Label */
+      label: string;
+      /** Detail */
+      detail: string;
+      /**
+       * Estimated
+       * @default false
+       */
+      estimated: boolean;
+    };
+    /** GoalMarker */
+    GoalMarker: {
+      /**
+       * Key
+       * @enum {string}
+       */
+      key: "college" | "retirement" | "social_security" | "home";
+      /** Label */
+      label: string;
+      /** Start Age */
+      start_age: number;
+      /** End Age */
+      end_age?: number | null;
+    };
+    /** Goals */
+    Goals: {
+      /**
+       * Home Purchase In Years
+       * @description Years until the purchase
+       * @default 3
+       */
+      home_purchase_in_years: number | null;
+      /**
+       * Home Down Payment
+       * @default 120000
+       */
+      home_down_payment: number;
+      /**
+       * College Starts In Years
+       * @default 10
+       */
+      college_starts_in_years: number | null;
+      /**
+       * College Annual Cost
+       * @default 35000
+       */
+      college_annual_cost: number;
+      /**
+       * College Years
+       * @default 4
+       */
+      college_years: number;
+      /**
+       * Retirement Age
+       * @default 62
+       */
+      retirement_age: number;
+      /**
+       * Retirement Spending
+       * @description Spending a year, before tax
+       * @default 110000
+       */
+      retirement_spending: number;
+      /**
+       * Charitable Giving
+       * @description Gifts to charity a year (real dollars), paid in cash unless the plan gives appreciated stock instead
+       * @default 0
+       */
+      charitable_giving: number;
+    };
+    /** GoalsTab */
+    GoalsTab: {
+      /** Cards */
+      cards: components["schemas"]["GoalCard"][];
+    };
+    /** HTTPValidationError */
+    HTTPValidationError: {
+      /** Detail */
+      detail?: components["schemas"]["ValidationError"][];
+    };
+    /** HoldingRow */
+    HoldingRow: {
+      /** Name */
+      name: string;
+      /** Positions */
+      positions: number;
+      /** Value */
+      value: number;
+      /** Gain */
+      gain?: number | null;
+      /** Yield Rate */
+      yield_rate?: number | null;
+      /** Share */
+      share: number;
+    };
+    /** HoldingsTab */
+    HoldingsTab: {
+      /** Accounts */
+      accounts: components["schemas"]["AccountHoldings"][];
+      /** Largest Stocks */
+      largest_stocks?: components["schemas"]["StockRow"][] | null;
+      /** Sectors */
+      sectors: components["schemas"]["BarRow"][];
+      /** Regions */
+      regions: components["schemas"]["BarRow"][];
+      /**
+       * Illustrative
+       * @default true
+       */
+      illustrative: boolean;
+    };
+    /** Household */
+    Household: {
+      /** People */
+      people: components["schemas"]["Person"][];
+      /** Children Ages */
+      children_ages?: number[];
+      accounts: components["schemas"]["Accounts"];
+      goals?: components["schemas"]["Goals"];
+      social_security?: components["schemas"]["SocialSecurity"];
+      snapshot?: components["schemas"]["IncomeSnapshot"] | null;
+      /**
+       * Estimated
+       * @description Inputs that are estimates, not read from documents
+       */
+      estimated?: string[];
+    };
+    /**
+     * HouseholdCard
+     * @description Everything the summary card shows, computed from the household.
+     */
+    HouseholdCard: {
+      /** People */
+      people: components["schemas"]["CardPerson"][];
+      /** Children Ages */
+      children_ages: number[];
+      /** Annual Income */
+      annual_income: number;
+      /** Total Savings */
+      total_savings: number;
+      /** Accounts */
+      accounts: components["schemas"]["CardAccount"][];
+      /** Goals */
+      goals: components["schemas"]["CardGoal"][];
+      /** Notes */
+      notes: string[];
+    };
+    /**
+     * HouseholdEdits
+     * @description Editable what-if inputs. Only the fields the caller sets are applied.
+     */
+    HouseholdEdits: {
+      /** Retirement Age */
+      retirement_age?: number | null;
+      /** Retirement Spending */
+      retirement_spending?: number | null;
+      /** Charitable Giving */
+      charitable_giving?: number | null;
+      /** Home Purchase In Years */
+      home_purchase_in_years?: number | null;
+      /** Home Down Payment */
+      home_down_payment?: number | null;
+      /** College Starts In Years */
+      college_starts_in_years?: number | null;
+      /** College Annual Cost */
+      college_annual_cost?: number | null;
+      /** Primary Wages */
+      primary_wages?: number | null;
+      /** Spouse Wages */
+      spouse_wages?: number | null;
+      /** Social Security Annual */
+      social_security_annual?: number | null;
+      /** Roth Balance */
+      roth_balance?: number | null;
+      /** Cash */
+      cash?: number | null;
+      /**
+       * Remove Home Purchase
+       * @default false
+       */
+      remove_home_purchase: boolean;
+      /**
+       * Remove College
+       * @default false
+       */
+      remove_college: boolean;
+    };
+    /** HouseholdProfile */
+    HouseholdProfile: {
+      household: components["schemas"]["Household"];
+      /** Accounts */
+      accounts: components["schemas"]["AccountLine"][];
+      /** Goals */
+      goals: components["schemas"]["GoalLine"][];
+      tax_return: components["schemas"]["TaxReturn"];
+      /** Tax Lines */
+      tax_lines: components["schemas"]["TaxLine"][];
+      /** Estimated */
+      estimated: string[];
+      /**
+       * Tax Estimated
+       * @default false
+       */
+      tax_estimated: boolean;
+      /** Total Assets */
+      total_assets: number;
+    };
+    /** HouseholdRequest */
+    HouseholdRequest: {
+      /** Document Ids */
+      document_ids: string[];
+      /**
+       * Overrides
+       * @description Fields the user corrected, by field key
+       */
+      overrides?: {
+        [key: string]: number | string;
+      };
+      answers?: components["schemas"]["Answers"];
+    };
+    /** IncomeForecast */
+    IncomeForecast: {
+      /** Ages */
+      ages: number[];
+      /** P10 */
+      p10: number[];
+      /** P25 */
+      p25: number[];
+      /** P50 */
+      p50: number[];
+      /** P75 */
+      p75: number[];
+      /** P90 */
+      p90: number[];
+      /** Top Factors */
+      top_factors?: components["schemas"]["Factor"][];
+    };
+    /** IncomeRow */
+    IncomeRow: {
+      /** Age */
+      age: number;
+      /** Year */
+      year: number;
+      /** Social Security */
+      social_security: number;
+      /** From Pretax */
+      from_pretax: number;
+      /** From Taxable */
+      from_taxable: number;
+      /** From Roth */
+      from_roth: number;
+      /** Total Sources */
+      total_sources: number;
+      /** Spending */
+      spending: number;
+      /** Tax */
+      tax: number;
+      /** Total Uses */
+      total_uses: number;
+    };
+    /**
+     * IncomeSnapshot
+     * @description This year's income as reported on the tax form (feeds the profile's tax picture).
+     */
+    IncomeSnapshot: {
+      /**
+       * Wages After 401K
+       * @default 0
+       */
+      wages_after_401k: number;
+      /**
+       * Interest
+       * @default 0
+       */
+      interest: number;
+      /**
+       * Qualified Dividends
+       * @default 0
+       */
+      qualified_dividends: number;
+      /**
+       * Ordinary Dividends
+       * @default 0
+       */
+      ordinary_dividends: number;
+      /**
+       * Net Capital Gain
+       * @default 0
+       */
+      net_capital_gain: number;
+    };
+    /** InvestRequest */
+    InvestRequest: {
+      household: components["schemas"]["Household"];
+      /**
+       * Event
+       * @default none
+       * @enum {string}
+       */
+      event: "none" | "job_loss" | "raise";
+      /**
+       * Previous Plan Id
+       * @description The plan the customer saw before this change (what changed is shown against it)
+       */
+      previous_plan_id?: string | null;
+      /**
+       * Change Label
+       * @description Words for the value that was changed, e.g. 'Income: job loss next year'
+       */
+      change_label?: string | null;
+    };
+    /**
+     * LiabilityView
+     * @description The liability-matched plan against its two limits, measured on the futures it was chosen on (`chosen_on`) and on fresh ones.
+     */
+    LiabilityView: {
+      /** Reserve Years */
+      reserve_years: number;
+      /** Forced Sale Limit */
+      forced_sale_limit: number;
+      /** Forced Sale Chance */
+      forced_sale_chance: number;
+      /** Advisor Forced Sale Chance */
+      advisor_forced_sale_chance: number;
+      /** Ruin Chance */
+      ruin_chance: number;
+      /** Advisor Ruin Chance */
+      advisor_ruin_chance: number;
+      /** Chosen On Forced Sale Chance */
+      chosen_on_forced_sale_chance: number;
+      /** Chosen On Ruin Chance */
+      chosen_on_ruin_chance: number;
+      /** Chosen On Advisor Ruin Chance */
+      chosen_on_advisor_ruin_chance: number;
+      /** Feasible */
+      feasible: boolean;
+      /** Stock Share By Age */
+      stock_share_by_age: [number, number][];
+    };
+    /** Location */
+    Location: {
+      /** Rows */
+      rows: components["schemas"]["LocationRow"][];
+      total: components["schemas"]["LocationRow"];
+    };
+    /** LocationRow */
+    LocationRow: {
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /** Brokerage */
+      brokerage: number;
+      /** Pretax */
+      pretax: number;
+      /** Roth */
+      roth: number;
+      /** Total */
+      total: number;
+    };
+    /**
+     * MarketShock
+     * @description A one-off equity shock applied to every simulated future (a what-if).
+     */
+    MarketShock: {
+      /**
+       * Year
+       * @description Years from now (1 = next year)
+       * @default 1
+       */
+      year: number;
+      /**
+       * Equity Return
+       * @default -0.3
+       */
+      equity_return: number;
+    };
+    /** Mix */
+    Mix: {
+      /** Rows */
+      rows: components["schemas"]["AssetRow"][];
+      /** Total */
+      total: number;
+      /**
+       * Illustrative Split
+       * @default true
+       */
+      illustrative_split: boolean;
+    };
+    /** MixChange */
+    MixChange: {
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /** Before */
+      before: number;
+      /** After */
+      after: number;
+      /** Moved */
+      moved: boolean;
+    };
+    /** MixShare */
+    MixShare: {
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /** Share */
+      share: number;
+    };
+    /** ModelStatus */
+    ModelStatus: {
+      /**
+       * Model
+       * @enum {string}
+       */
+      model: "recommender" | "forecaster" | "policy" | "value";
+      /** Connected */
+      connected: boolean;
+      /** Reason */
+      reason?: string | null;
+      /** Expected Path */
+      expected_path?: string | null;
+    };
+    /** ModelsStatus */
+    ModelsStatus: {
+      recommender: components["schemas"]["ModelStatus"];
+      forecaster: components["schemas"]["ModelStatus"];
+      policy: components["schemas"]["ModelStatus"];
+      value: components["schemas"]["ModelStatus"];
+    };
+    /** Move */
+    Move: {
+      /** Key */
+      key: string;
+      /** Title */
+      title: string;
+      /** Amount */
+      amount?: number | null;
+      /** Timing */
+      timing: string;
+      /** Age */
+      age?: number | null;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "done" | "ongoing" | "scheduled" | "needs_ok" | "your_step";
+      /** Detail */
+      detail?: string | null;
+    };
+    /** MoveChange */
+    MoveChange: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "added" | "removed" | "changed";
+      /** Title */
+      title: string;
+      /** Before */
+      before?: string | null;
+      /** After */
+      after?: string | null;
+    };
+    /** Opportunity */
+    Opportunity: {
+      /** Name */
+      name: string;
+      /** Value */
+      value: number;
+      /** Cost */
+      cost: number;
+      /** Loss */
+      loss: number;
+      /** Replacement */
+      replacement: string;
+    };
+    /** OptionProbability */
+    OptionProbability: {
+      /** Option */
+      option: string;
+      /** Probability */
+      probability: number;
+    };
+    /** OutcomeView */
+    OutcomeView: {
+      /** Median */
+      median: number;
+      /** P10 */
+      p10: number;
+      /** P90 */
+      p90: number;
+      /** Score */
+      score: number;
+    };
+    /** Overview */
+    Overview: {
+      /** Projection */
+      projection: components["schemas"]["ProjectionPoint"][];
+      /** Markers */
+      markers: components["schemas"]["GoalMarker"][];
+      mix: components["schemas"]["Mix"];
+      location: components["schemas"]["Location"];
+      /** Moves */
+      moves: components["schemas"]["Move"][];
+    };
+    /** ParseResponse */
+    ParseResponse: {
+      document: components["schemas"]["DocumentInfo"];
+      parsed: components["schemas"]["ParsedDocument"];
+    };
+    /** ParsedDocument */
+    ParsedDocument: {
+      /**
+       * Doc Kind
+       * @enum {string}
+       */
+      doc_kind: "form_1040" | "brokerage_statement" | "retirement_401k" | "roth_ira" | "unknown";
+      /** Title */
+      title: string;
+      /** Page Sizes */
+      page_sizes: [number, number][];
+      /** First Page */
+      first_page?: number | null;
+      /** Last Page */
+      last_page?: number | null;
+      /** Fields */
+      fields: components["schemas"]["ParsedField"][];
+      /** Checks */
+      checks: components["schemas"]["CrossCheck"][];
+    };
+    /**
+     * ParsedField
+     * @description One value read from a document.
+     *
+     *     Confidence is rule-based. `high`: found, and every cross-check it belongs to passes (or it
+     *     is in no check). `medium`: found, but it is the stated total or derived line of a failed
+     *     cross-check (`flag` says why). `low`: not found (`value` and `bbox` are None, `flag` says
+     *     what was missing).
+     */
+    ParsedField: {
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /** Group */
+      group: string;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "money" | "integer" | "percent" | "text";
+      /** Value */
+      value: number | string | null;
+      /** Page */
+      page: number | null;
+      bbox: components["schemas"]["BBox"] | null;
+      /**
+       * Confidence
+       * @enum {string}
+       */
+      confidence: "high" | "medium" | "low";
+      /** Flag */
+      flag: string | null;
+      /** Meta */
+      meta?: {
+        [key: string]: string | number;
+      };
+    };
+    /** Person */
+    Person: {
+      /**
+       * Name
+       * @default
+       */
+      name: string;
+      /** Age */
+      age: number;
+      /**
+       * Wages
+       * @description Gross annual wages before pre-tax deferrals
+       */
+      wages: number;
+      /**
+       * Pretax 401K
+       * @description This year's pre-tax 401(k) deferrals
+       * @default 0
+       */
+      pretax_401k: number;
+    };
+    /** Plan */
+    Plan: {
+      /** Plan Id */
+      plan_id: string;
+      household: components["schemas"]["Household"];
+      portfolio: components["schemas"]["Portfolio"];
+      comparison: components["schemas"]["Comparison"];
+      what_changed?: components["schemas"]["WhatChanged"] | null;
+      /**
+       * Event
+       * @default none
+       * @enum {string}
+       */
+      event: "none" | "job_loss" | "raise";
+    };
+    /** PlanRequest */
+    PlanRequest: {
+      household: components["schemas"]["Household"];
+      /**
+       * N Paths
+       * @description Futures the strategy search runs on
+       * @default 400
+       */
+      n_paths: number;
+      /**
+       * N Eval Paths
+       * @description Fresh futures (never seen by the search) every result is measured on
+       * @default 200
+       */
+      n_eval_paths: number;
+      /**
+       * Demo Mode
+       * @default true
+       */
+      demo_mode: boolean;
+      /** Seed */
+      seed?: number | null;
+      shock?: components["schemas"]["MarketShock"] | null;
+      /**
+       * Risk Aversion
+       * @description CRRA coefficient behind the score
+       * @default 3
+       */
+      risk_aversion: number;
+      /**
+       * Planning Style
+       * @description equity_first: a spending reserve of 2, 4 or 6 years of bonds and private credit, everything else in stocks; balanced: a stock share with a glide path; liability_matched: the reserve chosen from 2 to 12 years (liability.reserve_years) so that the chance of selling stocks in a falling year stays at 2% or less and ruin is no likelier than the good advisor's (slower: several seconds)
+       * @default equity_first
+       * @enum {string}
+       */
+      planning_style: "balanced" | "equity_first" | "liability_matched";
+      /**
+       * Adaptive
+       * @description Also compute the year-by-year adaptive plan (in the background)
+       * @default true
+       */
+      adaptive: boolean;
+      /**
+       * Adaptive Rollouts
+       * @description Rollouts (fresh futures) scored per candidate action
+       * @default 32
+       */
+      adaptive_rollouts: number;
+    };
+    /** PlanResponse */
+    PlanResponse: {
+      /** Planner Label */
+      planner_label: string;
+      strategy: components["schemas"]["StrategyView"];
+      /** Reason */
+      reason: string;
+      recommender: components["schemas"]["RecommenderPanel"];
+      ria: components["schemas"]["StrategyView"];
+      /** Rows */
+      rows: components["schemas"]["PlanRow"][];
+      stats: components["schemas"]["StatCards"];
+      fan: components["schemas"]["FanSeries"];
+      ria_fan: components["schemas"]["FanSeries"];
+      /** Baselines */
+      baselines: components["schemas"]["BaselineView"][];
+      liability?: components["schemas"]["LiabilityView"] | null;
+      /** Advantage */
+      advantage: components["schemas"]["AdvantageStep"][];
+      /** Searched */
+      searched: components["schemas"]["RankedRow"][];
+      settings: components["schemas"]["PlanSettings"];
+      adaptive?: components["schemas"]["AdaptiveSection"] | null;
+      /** Adaptive Job */
+      adaptive_job?: string | null;
+    };
+    /**
+     * PlanRow
+     * @description One year of the deterministic plan (expected returns, no shocks).
+     */
+    PlanRow: {
+      /** Year Index */
+      year_index: number;
+      /** Age */
+      age: number;
+      /** Income */
+      income: number;
+      /** Wages */
+      wages: number;
+      /** Roth Conversion */
+      roth_conversion: number;
+      /** Losses Harvested */
+      losses_harvested: number;
+      /** Goal Bonds Balance */
+      goal_bonds_balance: number;
+      /** Goal Bonds Flow */
+      goal_bonds_flow: number;
+      /** Goal Paid */
+      goal_paid: number;
+      /** Goal Label */
+      goal_label?: string | null;
+      /** Stock Share */
+      stock_share: number;
+      /** Total Tax */
+      total_tax: number;
+      /** Federal Tax */
+      federal_tax: number;
+      /** Illinois Tax */
+      illinois_tax: number;
+      /** Wealth */
+      wealth: number;
+      /**
+       * Required Distribution
+       * @default 0
+       */
+      required_distribution: number;
+      /**
+       * Private Credit Balance
+       * @default 0
+       */
+      private_credit_balance: number;
+      /**
+       * Roth 401K Contribution
+       * @default 0
+       */
+      roth_401k_contribution: number;
+      /**
+       * Borrowed
+       * @default 0
+       */
+      borrowed: number;
+      /**
+       * Loan Balance
+       * @default 0
+       */
+      loan_balance: number;
+      /**
+       * Gains Realized Tax Free
+       * @default 0
+       */
+      gains_realized_tax_free: number;
+    };
+    /** PlanSettings */
+    PlanSettings: {
+      /** N Paths */
+      n_paths: number;
+      /** N Eval Paths */
+      n_eval_paths: number;
+      /** Seed */
+      seed: number;
+      /** Eval Seed */
+      eval_seed: number;
+      /** Demo Mode */
+      demo_mode: boolean;
+      /** Elapsed Seconds */
+      elapsed_seconds: number;
+      /** Current Age */
+      current_age: number;
+      /** Horizon Age */
+      horizon_age: number;
+      /** Strategies Searched */
+      strategies_searched: number;
+      /** Risk Aversion */
+      risk_aversion: number;
+      /** Wealth Floor */
+      wealth_floor: number;
+      market_shock?: components["schemas"]["MarketShock"] | null;
+      /**
+       * Planning Style
+       * @default equity_first
+       * @enum {string}
+       */
+      planning_style: "balanced" | "equity_first" | "liability_matched";
+      /**
+       * Heirs Rate
+       * @default 0.24
+       */
+      heirs_rate: number;
+      /**
+       * Liquidated Label
+       * @default Liquidated at 80
+       */
+      liquidated_label: string;
+      /**
+       * Heirs Label
+       * @default Passed to heirs at 80
+       */
+      heirs_label: string;
+      /**
+       * Heirs Note
+       * @default
+       */
+      heirs_note: string;
+    };
+    /**
+     * PortalAnswers
+     * @description The goal questions the customer answers (same limits as `app.api_models.Answers`).
+     */
+    PortalAnswers: {
+      /** Retirement Age */
+      retirement_age: number;
+      /** Retirement Spending */
+      retirement_spending: number;
+      /** College Starts In Years */
+      college_starts_in_years?: number | null;
+      /**
+       * College Annual Cost
+       * @default 0
+       */
+      college_annual_cost: number;
+      /**
+       * College Years
+       * @default 4
+       */
+      college_years: number;
+      /** Home Purchase In Years */
+      home_purchase_in_years?: number | null;
+      /**
+       * Home Down Payment
+       * @default 0
+       */
+      home_down_payment: number;
+      /** Social Security Annual */
+      social_security_annual: number;
+      /**
+       * Social Security Start Age
+       * @default 67
+       */
+      social_security_start_age: number;
+      /**
+       * Charitable Giving
+       * @default 0
+       */
+      charitable_giving: number;
+      /**
+       * Income Change
+       * @default none
+       * @enum {string}
+       */
+      income_change: "none" | "job_loss" | "raise";
+    };
+    /**
+     * PortalDocuments
+     * @description One uploaded PDF and the documents found in it (pages are absolute in this PDF).
+     */
+    PortalDocuments: {
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /** Size Bytes */
+      size_bytes: number;
+      /** Pages */
+      pages: number;
+      /** Documents */
+      documents: components["schemas"]["ParsedDocument"][];
+    };
+    /** PortalHouseholdRequest */
+    PortalHouseholdRequest: {
+      /** Document Id */
+      document_id: string;
+      /**
+       * Overrides
+       * @description Values the customer corrected, by field key
+       */
+      overrides?: {
+        [key: string]: number;
+      };
+      answers: components["schemas"]["PortalAnswers"];
+    };
+    /** PortalHouseholdResponse */
+    PortalHouseholdResponse: {
+      household: components["schemas"]["Household"];
+      /** Corrections */
+      corrections: components["schemas"]["Correction"][];
+      /** Documents */
+      documents: components["schemas"]["ParsedDocument"][];
+    };
+    /** Portfolio */
+    Portfolio: {
+      summary: components["schemas"]["Summary"];
+      overview: components["schemas"]["Overview"];
+      holdings: components["schemas"]["HoldingsTab"];
+      taxes: components["schemas"]["TaxesTab"];
+      retirement: components["schemas"]["RetirementTab"];
+      goals: components["schemas"]["GoalsTab"];
+    };
+    /** ProjectionPoint */
+    ProjectionPoint: {
+      /** Age */
+      age: number;
+      /** Wealth */
+      wealth: number;
+    };
+    /** RankedRow */
+    RankedRow: {
+      /** Rank */
+      rank: number;
+      /** Choices */
+      choices: {
+        [key: string]: string;
+      };
+      /** Label */
+      label: string;
+      /** Median */
+      median: number;
+      /** P10 */
+      p10: number;
+      /** P90 */
+      p90: number;
+      /** Score */
+      score: number;
+      /** Tied With */
+      tied_with?: number | null;
+      /**
+       * Is Chosen
+       * @default false
+       */
+      is_chosen: boolean;
+      /**
+       * Is Model Pick
+       * @default false
+       */
+      is_model_pick: boolean;
+    };
+    /** Recommendation */
+    Recommendation: {
+      /** Choices */
+      choices: components["schemas"]["ChoiceRecommendation"][];
+      /** Top Factors */
+      top_factors?: components["schemas"]["Factor"][];
+    };
+    /** RecommenderPanel */
+    RecommenderPanel: {
+      status: components["schemas"]["ModelStatus"];
+      recommendation?: components["schemas"]["Recommendation"] | null;
+      model_strategy?: components["schemas"]["StrategyView"] | null;
+      verified_strategy?: components["schemas"]["StrategyView"] | null;
+      /** Agrees */
+      agrees?: boolean | null;
+      /** Candidates */
+      candidates?: components["schemas"]["RankedRow"][];
+    };
+    /** RequiredWithdrawals */
+    RequiredWithdrawals: {
+      /** Start Age */
+      start_age: number;
+      /** First Amount */
+      first_amount: number;
+      /** Covered */
+      covered: boolean;
+      /** Note */
+      note: string;
+    };
+    /** RetirementTab */
+    RetirementTab: {
+      /** Rows */
+      rows: components["schemas"]["IncomeRow"][];
+      /** Withdrawal Order */
+      withdrawal_order: string[];
+      required: components["schemas"]["RequiredWithdrawals"];
+    };
+    /** ScenarioChange */
+    ScenarioChange: {
+      /** Age */
+      age: number;
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /**
+       * Source
+       * @enum {string}
+       */
+      source: "event" | "replan";
+      /** Before */
+      before: number;
+      /** After */
+      after: number;
+      /** Text */
+      text: string;
+    };
+    /** ScenarioInfo */
+    ScenarioInfo: {
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /** Event */
+      event: string;
+    };
+    /**
+     * ScenarioReplan
+     * @description What re-planning is worth after the event: the plan chosen before it and the plan chosen knowing about it, both on the same
+     *     2,000 shocked futures neither was searched on. It can be small or negative: it is whatever the engine measures.
+     */
+    ScenarioReplan: {
+      /** Original Plan Median At Horizon */
+      original_plan_median_at_horizon: number;
+      /** Replanned Median At Horizon */
+      replanned_median_at_horizon: number;
+      /** Median Rate */
+      median_rate: number;
+      /** Median Dollars */
+      median_dollars: number;
+    };
+    /**
+     * ScenarioYear
+     * @description One year on the expected path, for three plans: the plan before the event (no event), the same plan once the event happens
+     *     (its rules respond to the new situation), and the plan chosen again knowing about the event (expected returns, no other shocks).
+     */
+    ScenarioYear: {
+      /** Year Index */
+      year_index: number;
+      /** Age */
+      age: number;
+      /** Wages */
+      wages: number;
+      /** Base Wages */
+      base_wages: number;
+      /** Roth Conversion */
+      roth_conversion: number;
+      /** Held Roth Conversion */
+      held_roth_conversion: number;
+      /** Base Roth Conversion */
+      base_roth_conversion: number;
+      /** Losses Harvested */
+      losses_harvested: number;
+      /** Held Losses Harvested */
+      held_losses_harvested: number;
+      /** Base Losses Harvested */
+      base_losses_harvested: number;
+      /** Gains Harvested Tax Free */
+      gains_harvested_tax_free: number;
+      /** Held Gains Harvested Tax Free */
+      held_gains_harvested_tax_free: number;
+      /** Base Gains Harvested Tax Free */
+      base_gains_harvested_tax_free: number;
+      /** Stock Share */
+      stock_share: number;
+      /** Held Stock Share */
+      held_stock_share: number;
+      /** Base Stock Share */
+      base_stock_share: number;
+      /** Total Tax */
+      total_tax: number;
+      /** Base Total Tax */
+      base_total_tax: number;
+      /** Wealth */
+      wealth: number;
+      /** Base Wealth */
+      base_wealth: number;
+      /** Responded */
+      responded: string[];
+      /** Replanned */
+      replanned: string[];
+    };
+    /** ShowcaseAdvantage */
+    ShowcaseAdvantage: {
+      /** Median Rate */
+      median_rate: number;
+      /** Median Dollars */
+      median_dollars: number;
+      /** Median Low */
+      median_low: number;
+      /** Median High */
+      median_high: number;
+      /** Risk Adjusted Rate */
+      risk_adjusted_rate: number;
+      /** Risk Adjusted Dollars */
+      risk_adjusted_dollars: number;
+      /** Plan Median At Horizon */
+      plan_median_at_horizon: number;
+      /** Advisor Median At Horizon */
+      advisor_median_at_horizon: number;
+      /** Plan P10 At Horizon */
+      plan_p10_at_horizon: number;
+      /** Advisor P10 At Horizon */
+      advisor_p10_at_horizon: number;
+      /** Plan Shortfall */
+      plan_shortfall: number;
+      /** Advisor Shortfall */
+      advisor_shortfall: number;
+    };
+    /**
+     * ShowcaseBar
+     * @description One strategy of the waterfall.
+     */
+    ShowcaseBar: {
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /** Detail */
+      detail: string;
+      /** Enabled */
+      enabled: boolean;
+      /** Delta Rate */
+      delta_rate: number;
+      /** Delta Dollars */
+      delta_dollars: number;
+      /** Cumulative Rate */
+      cumulative_rate: number;
+      /** Cumulative Dollars */
+      cumulative_dollars: number;
+    };
+    /**
+     * ShowcaseHeirs
+     * @description The same plan and advisor with the estate passed to heirs at the horizon (step-up on the taxable account, the pre-tax
+     *     accounts taxed at the heirs' rate), on the same futures. The median only: the risk-adjusted advantage is shown once.
+     */
+    ShowcaseHeirs: {
+      /** Label */
+      label: string;
+      /** Note */
+      note: string;
+      /** Rate */
+      rate: number;
+      /** Median Rate */
+      median_rate: number;
+      /** Median Dollars */
+      median_dollars: number;
+      /** Plan Median At Horizon */
+      plan_median_at_horizon: number;
+      /** Advisor Median At Horizon */
+      advisor_median_at_horizon: number;
+    };
+    /**
+     * ShowcaseMedian
+     * @description The waterfall's headline: the median advantage and nothing else.
+     */
+    ShowcaseMedian: {
+      /** Median Rate */
+      median_rate: number;
+      /** Median Dollars */
+      median_dollars: number;
+      /** Median Low */
+      median_low: number;
+      /** Median High */
+      median_high: number;
+      /** Plan Median At Horizon */
+      plan_median_at_horizon: number;
+      /** Advisor Median At Horizon */
+      advisor_median_at_horizon: number;
+    };
+    /** ShowcaseRequest */
+    ShowcaseRequest: {
+      /** Enabled */
+      enabled?: string[] | null;
+    };
+    /** ShowcaseResponse */
+    ShowcaseResponse: {
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /** Type Label */
+      type_label: string;
+      /** Tagline */
+      tagline: string;
+      household: components["schemas"]["Household"];
+      card: components["schemas"]["HouseholdCard"];
+      /** Plan Label */
+      plan_label: string;
+      /** Plan Sentence */
+      plan_sentence: string;
+      waterfall: components["schemas"]["ShowcaseWaterfall"];
+      wealth: components["schemas"]["ShowcaseWealth"];
+      /** Typical Rate */
+      typical_rate: number | null;
+      /** Footer Note */
+      footer_note: string;
+    };
+    /**
+     * ShowcaseScenario
+     * @description The showcase household after an event, planned again, against the advisor on the same shocked futures.
+     */
+    ShowcaseScenario: {
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /** Event */
+      event: string;
+      /** Plan Label */
+      plan_label: string;
+      /** Plan Sentence */
+      plan_sentence: string;
+      /** Original Plan Label */
+      original_plan_label: string;
+      /** Plan Changed */
+      plan_changed: boolean;
+      wealth: components["schemas"]["ShowcaseWealth"];
+      replan: components["schemas"]["ScenarioReplan"];
+      /** Years */
+      years: components["schemas"]["ScenarioYear"][];
+      /** Changes */
+      changes: components["schemas"]["ScenarioChange"][];
+      /** Summary */
+      summary: string[];
+      /** Replan Summary */
+      replan_summary: string[];
+    };
+    /**
+     * ShowcaseWaterfall
+     * @description The strategies switched on in sequence on the same futures: one bar each, and what they add up to (median only).
+     */
+    ShowcaseWaterfall: {
+      /** Enabled */
+      enabled: string[];
+      /** Bars */
+      bars: components["schemas"]["ShowcaseBar"][];
+      advantage: components["schemas"]["ShowcaseMedian"];
+      /** N Paths */
+      n_paths: number;
+      /** Years */
+      years: number;
+      /** Horizon Age */
+      horizon_age: number;
+      /** Advisor Label */
+      advisor_label: string;
+    };
+    /**
+     * ShowcaseWealth
+     * @description The whole plan (every strategy on) against the advisor: wealth over time and both measures of the advantage.
+     *
+     *     Worked out once. Switching strategies off on the waterfall does not change it.
+     */
+    ShowcaseWealth: {
+      /** Liquidated Label */
+      liquidated_label: string;
+      advantage: components["schemas"]["ShowcaseAdvantage"];
+      heirs: components["schemas"]["ShowcaseHeirs"];
+      wealth: components["schemas"]["WealthLines"];
+      /** Risk Adjusted Label */
+      risk_adjusted_label: string;
+      /** Risk Adjusted Explanation */
+      risk_adjusted_explanation: string;
+      /** N Paths */
+      n_paths: number;
+      /** Years */
+      years: number;
+      /** Horizon Age */
+      horizon_age: number;
+      /** Risk Aversion */
+      risk_aversion: number;
+      /** Advisor Label */
+      advisor_label: string;
+    };
+    /** SocialSecurity */
+    SocialSecurity: {
+      /**
+       * Annual Benefit
+       * @description Household benefit a year
+       * @default 50000
+       */
+      annual_benefit: number;
+      /**
+       * Start Age
+       * @default 67
+       */
+      start_age: number;
+    };
+    /** StatCards */
+    StatCards: {
+      typical_outcome: components["schemas"]["OutcomeView"];
+      ria_typical_outcome: components["schemas"]["OutcomeView"];
+      typical_outcome_heirs: components["schemas"]["OutcomeView"];
+      ria_typical_outcome_heirs: components["schemas"]["OutcomeView"];
+      /** Advantage Per Year */
+      advantage_per_year: number;
+      /** Advantage Total */
+      advantage_total: number;
+      /** Lifetime Taxes */
+      lifetime_taxes: number;
+      /** Ria Lifetime Taxes */
+      ria_lifetime_taxes: number;
+      /** Years */
+      years: number;
+      /** Shortfall Chance */
+      shortfall_chance: number;
+      advantage: components["schemas"]["AdvantageView"];
+      advantage_heirs: components["schemas"]["AdvantageView"];
+      /**
+       * Forced Sale Chance
+       * @default 0
+       */
+      forced_sale_chance: number;
+      /**
+       * Ria Forced Sale Chance
+       * @default 0
+       */
+      ria_forced_sale_chance: number;
+    };
+    /** StockRow */
+    StockRow: {
+      /** Name */
+      name: string;
+      /** Value */
+      value: number;
+      /** Gain */
+      gain: number;
+    };
+    /**
+     * StrategyOutcome
+     * @description One of the four strategies, measured on the same evaluation futures.
+     */
+    StrategyOutcome: {
+      /**
+       * Key
+       * @enum {string}
+       */
+      key: "typical_advisor" | "good_ria" | "best_fixed" | "adaptive";
+      /** Label */
+      label: string;
+      /** Definition */
+      definition: string;
+      outcome: components["schemas"]["OutcomeView"];
+      /** Lifetime Taxes */
+      lifetime_taxes: number;
+      /** Shortfall Chance */
+      shortfall_chance: number;
+      fan: components["schemas"]["FanSeries"];
+      advantage_vs_typical?: components["schemas"]["AdvantageView"] | null;
+      advantage_vs_ria?: components["schemas"]["AdvantageView"] | null;
+    };
+    /** StrategyView */
+    StrategyView: {
+      /** Choices */
+      choices: {
+        [key: string]: string;
+      };
+      /** Label */
+      label: string;
+      /** Sentence */
+      sentence: string;
+      outcome: components["schemas"]["OutcomeView"];
+    };
+    /** Summary */
+    Summary: {
+      /** Horizon Age */
+      horizon_age: number;
+      /** Age */
+      age: number;
+      /** Projected Wealth */
+      projected_wealth: number;
+      /** Invested Today */
+      invested_today: number;
+      /** Fee Dollars */
+      fee_dollars: number;
+      /** Fee Rate */
+      fee_rate: number;
+      /** Tax Saved */
+      tax_saved: number;
+    };
+    /** TaxLine */
+    TaxLine: {
+      /** Label */
+      label: string;
+      /** Amount */
+      amount: number;
+      /**
+       * Kind
+       * @default amount
+       */
+      kind: string;
+      /** Note */
+      note?: string | null;
+    };
+    /**
+     * TaxReturn
+     * @description Every line item of the computed return.
+     */
+    TaxReturn: {
+      /** Wages */
+      wages: number;
+      /** Interest */
+      interest: number;
+      /** Qualified Dividends */
+      qualified_dividends: number;
+      /** Ordinary Dividends */
+      ordinary_dividends: number;
+      /** Capital Gain Input */
+      capital_gain_input: number;
+      /** Capital Gain Line */
+      capital_gain_line: number;
+      /** Short Term Gain Ordinary */
+      short_term_gain_ordinary: number;
+      /** Retirement Distributions */
+      retirement_distributions: number;
+      /** Roth Conversions */
+      roth_conversions: number;
+      /** Social Security */
+      social_security: number;
+      /** Taxable Social Security */
+      taxable_social_security: number;
+      /** Total Income */
+      total_income: number;
+      /** Agi */
+      agi: number;
+      /** Standard Deduction */
+      standard_deduction: number;
+      /**
+       * Deduction Used
+       * @default 0
+       */
+      deduction_used: number;
+      /**
+       * Charitable Deduction
+       * @default 0
+       */
+      charitable_deduction: number;
+      /**
+       * Itemized
+       * @default false
+       */
+      itemized: boolean;
+      /** Taxable Income */
+      taxable_income: number;
+      /** Preferential Income */
+      preferential_income: number;
+      /** Ordinary Taxable Income */
+      ordinary_taxable_income: number;
+      /** Ordinary Tax */
+      ordinary_tax: number;
+      /** Capital Gains Tax */
+      capital_gains_tax: number;
+      /** Niit */
+      niit: number;
+      /** Child Tax Credit Available */
+      child_tax_credit_available: number;
+      /** Child Tax Credit */
+      child_tax_credit: number;
+      /** Early Withdrawal Penalty */
+      early_withdrawal_penalty: number;
+      /** Federal Total */
+      federal_total: number;
+      /** Il Base Income */
+      il_base_income: number;
+      /** Il Exemptions */
+      il_exemptions: number;
+      /** Il Taxable Income */
+      il_taxable_income: number;
+      /** Illinois Tax */
+      illinois_tax: number;
+      /** Grand Total */
+      grand_total: number;
+      /** Marginal Federal Rate */
+      marginal_federal_rate: number;
+      /** Effective Federal Rate */
+      effective_federal_rate: number;
+      /** Effective Total Rate */
+      effective_total_rate: number;
+      /** Capital Loss Carryforward In */
+      capital_loss_carryforward_in: number;
+      /** Capital Loss Deducted */
+      capital_loss_deducted: number;
+      /** Capital Loss Carryforward Out */
+      capital_loss_carryforward_out: number;
+    };
+    /** TaxesTab */
+    TaxesTab: {
+      this_year: components["schemas"]["TaxesThisYear"];
+      bracket: components["schemas"]["BracketView"];
+      /** Opportunities */
+      opportunities: components["schemas"]["Opportunity"][];
+      /**
+       * Opportunities Illustrative
+       * @default true
+       */
+      opportunities_illustrative: boolean;
+      /** Conversions */
+      conversions: components["schemas"]["ConversionRow"][];
+    };
+    /** TaxesThisYear */
+    TaxesThisYear: {
+      /** Roth Conversion */
+      roth_conversion: number;
+      /** Conversion Tax */
+      conversion_tax: number;
+      /** Losses Harvested */
+      losses_harvested: number;
+      /** Gains Offset */
+      gains_offset: number;
+      /** Deducted From Income */
+      deducted_from_income: number;
+      /** Carried Forward */
+      carried_forward: number;
+      /** Interest Kept Out */
+      interest_kept_out: number;
+      /** Tax Saved */
+      tax_saved: number;
+    };
+    /** ValidationError */
+    ValidationError: {
+      /** Location */
+      loc: (string | number)[];
+      /** Message */
+      msg: string;
+      /** Error Type */
+      type: string;
+      /** Input */
+      input?: unknown;
+      /** Context */
+      ctx?: Record<string, never>;
+    };
+    /** WealthLines */
+    WealthLines: {
+      /** Ages */
+      ages: number[];
+      /** Plan Median */
+      plan_median: number[];
+      /** Plan P10 */
+      plan_p10: number[];
+      /** Advisor Median */
+      advisor_median: number[];
+      /** Advisor P10 */
+      advisor_p10: number[];
+    };
+    /** WhatChanged */
+    WhatChanged: {
+      /** Changed */
+      changed: string;
+      /** Mix */
+      mix: components["schemas"]["MixChange"][];
+      /** Wealth Before */
+      wealth_before: number;
+      /** Wealth After */
+      wealth_after: number;
+      /** Moves */
+      moves: components["schemas"]["MoveChange"][];
+      /** Conversion Age */
+      conversion_age: number;
+      /** Conversion Before */
+      conversion_before: number;
+      /** Conversion After */
+      conversion_after: number;
+    };
+    /** WhatIfRequest */
+    WhatIfRequest: {
+      household: components["schemas"]["Household"];
+      /** Presets */
+      presets?: ("home_next_year" | "spouse_b_income_cut" | "retire_57" | "market_drop_30")[];
+      edits?: components["schemas"]["HouseholdEdits"];
+      /**
+       * N Paths
+       * @default 400
+       */
+      n_paths: number;
+      /**
+       * N Eval Paths
+       * @default 200
+       */
+      n_eval_paths: number;
+      /**
+       * Demo Mode
+       * @default true
+       */
+      demo_mode: boolean;
+      /** Seed */
+      seed?: number | null;
+      /**
+       * Risk Aversion
+       * @default 3
+       */
+      risk_aversion: number;
+      /**
+       * Planning Style
+       * @default equity_first
+       * @enum {string}
+       */
+      planning_style: "balanced" | "equity_first" | "liability_matched";
+      /**
+       * Adaptive
+       * @default true
+       */
+      adaptive: boolean;
+      /**
+       * Adaptive Rollouts
+       * @default 32
+       */
+      adaptive_rollouts: number;
+      shock?: components["schemas"]["MarketShock"] | null;
+    };
+    /** WhatIfResponse */
+    WhatIfResponse: {
+      /** Changes */
+      changes: components["schemas"]["Change"][];
+      household: components["schemas"]["Household"];
+      shock: components["schemas"]["MarketShock"] | null;
+      plan: components["schemas"]["PlanResponse"];
+    };
+    /**
+     * YearDecisionView
+     * @description Why this year: what the adaptive planner chose along the plan path, and what it weighed.
+     */
+    YearDecisionView: {
+      /** Year Index */
+      year_index: number;
+      /** Age */
+      age: number;
+      chosen: components["schemas"]["ActionView"];
+      fixed: components["schemas"]["ActionView"];
+      /** Departs */
+      departs: boolean;
+      /** Departures */
+      departures: string[];
+      /** Alternatives */
+      alternatives: components["schemas"]["AlternativeView"][];
+      /** Ce Chosen */
+      ce_chosen: number;
+      /** Ce Fixed */
+      ce_fixed: number;
+      /** Candidates Scored */
+      candidates_scored: number;
+      /** Changes Proposed */
+      changes_proposed: number;
+      /** Changes Kept */
+      changes_kept: number;
+      /** Ce Chosen Fresh */
+      ce_chosen_fresh: number;
+      /** Ce Fixed Fresh */
+      ce_fixed_fresh: number;
+      /** Why */
+      why: string;
+      /** Facts */
+      facts: {
+        [key: string]: number;
+      };
+    };
+    /** YearDetail */
+    YearDetail: {
+      /** Year Index */
+      year_index: number;
+      /** Age */
+      age: number;
+      /** Decisions */
+      decisions: components["schemas"]["Decision"][];
+      /** Tax Lines */
+      tax_lines: components["schemas"]["TaxLine"][];
+      tax_return: components["schemas"]["TaxReturn"];
+      /** Wealth At Year End */
+      wealth_at_year_end: number;
+    };
+    /** YearDetailRequest */
+    YearDetailRequest: {
+      household: components["schemas"]["Household"];
+      /** Choices */
+      choices: {
+        [key: string]: string;
+      };
+      /** Year Index */
+      year_index: number;
+      shock?: components["schemas"]["MarketShock"] | null;
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    load_sample_portal_documents_sample_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PortalDocuments"];
-                };
-            };
-        };
+  load_sample_portal_documents_sample_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    upload_portal_documents_upload_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_upload_portal_documents_upload_post"];
-            };
+        content: {
+          "application/json": components["schemas"]["PortalDocuments"];
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PortalDocuments"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+      };
     };
-    document_file_portal_documents__doc_id__file_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                doc_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  upload_portal_documents_upload_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    create_household_portal_household_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PortalHouseholdRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PortalHouseholdResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_upload_portal_documents_upload_post"];
+      };
     };
-    defaults_portal_defaults_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PortalAnswers"];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["PortalDocuments"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
     };
-    health_health_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
-                };
-            };
-        };
+  };
+  document_file_portal_documents__doc_id__file_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        doc_id: string;
+      };
+      cookie?: never;
     };
-    models_status_models_status_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ModelsStatus"];
-                };
-            };
+        content: {
+          "application/json": unknown;
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
     };
-    load_sample_documents_documents_sample_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DocumentList"];
-                };
-            };
-        };
+  };
+  create_household_portal_household_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    upload_documents_documents_upload_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_upload_documents_documents_upload_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DocumentList"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PortalHouseholdRequest"];
+      };
     };
-    parse_document_documents__doc_id__parse_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                doc_id: string;
-            };
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ParseResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["PortalHouseholdResponse"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
     };
-    document_file_documents__doc_id__file_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                doc_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  defaults_portal_defaults_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    create_household_household_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["HouseholdRequest"];
-            };
+        content: {
+          "application/json": components["schemas"]["PortalAnswers"];
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HouseholdProfile"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+      };
     };
-    income_forecast_forecast_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ForecastRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForecastResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  health_health_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    make_plan_plan_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PlanRequest"];
-            };
+        content: {
+          "application/json": {
+            [key: string]: string;
+          };
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlanResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+      };
     };
-    adaptive_job_plan_adaptive__job_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdaptiveJob"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  models_status_models_status_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    cancel_adaptive_job_plan_adaptive__job_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["ModelsStatus"];
         };
+      };
     };
-    year_detail_plan_year_detail_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["YearDetailRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["YearDetail"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  load_sample_documents_documents_sample_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    plan_whatif_plan_whatif_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WhatIfRequest"];
-            };
+        content: {
+          "application/json": components["schemas"]["DocumentList"];
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WhatIfResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+      };
     };
-    get_showcase_showcase_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ShowcaseResponse"];
-                };
-            };
-        };
+  };
+  upload_documents_documents_upload_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    showcase_analysis_showcase_analysis_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ShowcaseRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ShowcaseWaterfall"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_upload_documents_documents_upload_post"];
+      };
     };
-    get_showcase_scenarios_showcase_scenarios_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScenarioInfo"][];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["DocumentList"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
     };
-    get_showcase_scenario_showcase_scenarios__key__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ShowcaseScenario"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  parse_document_documents__doc_id__parse_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        doc_id: string;
+      };
+      cookie?: never;
     };
-    portal_invest_portal_invest_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["InvestRequest"];
-            };
+        content: {
+          "application/json": components["schemas"]["ParseResponse"];
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Plan"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
         };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
     };
-    portal_plan_portal_plan__plan_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                plan_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Plan"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  document_file_documents__doc_id__file_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        doc_id: string;
+      };
+      cookie?: never;
     };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_household_household_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["HouseholdRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HouseholdProfile"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  income_forecast_forecast_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ForecastRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ForecastResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  make_plan_plan_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PlanRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlanResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  adaptive_job_plan_adaptive__job_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdaptiveJob"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  cancel_adaptive_job_plan_adaptive__job_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  year_detail_plan_year_detail_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["YearDetailRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["YearDetail"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  plan_whatif_plan_whatif_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WhatIfRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WhatIfResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_showcase_showcase_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ShowcaseResponse"];
+        };
+      };
+    };
+  };
+  showcase_analysis_showcase_analysis_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ShowcaseRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ShowcaseWaterfall"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_showcase_scenarios_showcase_scenarios_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScenarioInfo"][];
+        };
+      };
+    };
+  };
+  get_showcase_scenario_showcase_scenarios__key__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ShowcaseScenario"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  portal_invest_portal_invest_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["InvestRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Plan"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  portal_plan_portal_plan__plan_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        plan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Plan"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
 }

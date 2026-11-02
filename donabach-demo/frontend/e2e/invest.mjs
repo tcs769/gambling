@@ -272,8 +272,9 @@ export async function runInvest({ browser, base, check }) {
     );
   }
   check(
-    (await page.getByText("Illustrative", { exact: true }).count()) === (h.illustrative ? 2 : 0),
-    "two Illustrative tags (sector and region)",
+    (await page.getByText("Illustrative", { exact: true }).count()) ===
+      (h.illustrative ? 2 + (h.largest_stocks?.length ? 1 : 0) : 0),
+    "an Illustrative tag on the sector bars, the region bars and (when shown) the largest stocks",
   );
 
   // --- Taxes

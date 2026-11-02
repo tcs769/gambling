@@ -16,6 +16,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from app import builder, forecast, showcase, showcase_scenarios, warmup, whatif
+from app.portal import engine_view as portal_plans
+from app.portal.documents_api import router as portal_documents_router
+from app.portal.models import InvestRequest, Plan
 from app.api_models import (
     AdaptiveJob,
     DocumentList,
@@ -50,12 +53,12 @@ async def lifespan(_: FastAPI):
     # Compile (or load from cache) the simulation kernels so the first request is fast, then start
     # computing the demo household's adaptive plan in the background so the Plan screen can show it at once.
     warmup.warm()
-    warmup.precompute_demo()
-    warmup.precompute_showcase()
+    warmup.precompute_portal()
     yield
 
 
-app = FastAPI(title="Donabach demo API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Waramoug demo API", version="0.1.0", lifespan=lifespan)
+app.include_router(portal_documents_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -260,3 +263,21 @@ def get_showcase_scenario(key: str) -> ShowcaseScenario:
     if key not in showcase_scenarios.SCENARIOS:
         raise HTTPException(status_code=404, detail=f"unknown scenario {key!r}; expected one of {sorted(showcase_scenarios.SCENARIOS)}")
     return showcase_scenarios.scenario(key)
+
+
+@app.post("/portal/invest", response_model=Plan)
+def portal_invest(request: InvestRequest) -> Plan:
+    """The portfolio for the household (and the event), with what changed against the plan the customer saw before. A plan that was
+    precomputed (demo mode) comes straight from the cache; any other change runs the real planner on the changed household."""
+    try:
+        return portal_plans.get_plan(request.household, request.event, request.previous_plan_id, request.change_label)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/portal/plan/{plan_id}", response_model=Plan)
+def portal_plan(plan_id: str) -> Plan:
+    plan = portal_plans.lookup(plan_id)
+    if plan is None:
+        raise HTTPException(status_code=404, detail=f"No plan with id {plan_id}")
+    return plan

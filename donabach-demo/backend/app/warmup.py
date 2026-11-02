@@ -61,3 +61,16 @@ def precompute_showcase() -> None:
 
     showcase.precompute()
     showcase_scenarios.precompute()
+
+
+def precompute_portal() -> None:
+    """Work out the customer portal's plans before the first request: John Smith's base plan and every change the demo shows (a job
+    loss, a raise, retiring at 65, a home purchase, higher retirement spending, lower wages), each by running the real planner, so
+    that none of them waits on a simulation on camera. Set DONABACH_NO_PRECOMPUTE=1 to skip it."""
+    import os
+
+    if os.environ.get("DONABACH_NO_PRECOMPUTE"):
+        return
+    from app.portal import presets
+
+    presets.precompute()

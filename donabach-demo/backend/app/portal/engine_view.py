@@ -20,7 +20,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from app.api_models import DocumentInfo  # noqa: F401  (kept importable for the portal modules)
+
 from app.planner.baseline import RIA_BASELINE
 from app.planner.plan import EVAL_SEED_OFFSET, VALIDATION_PATHS, VALIDATION_SEED_OFFSET
 from app.planner.search import FORCED_SALE_LIMIT, search_matched
@@ -48,7 +48,6 @@ from app.portal.models import (
     MixShare,
     Move,
     MoveChange,
-    Opportunity,
     Overview,
     Plan,
     Portfolio,
@@ -123,6 +122,28 @@ def plan_id(household: Household, event: str, previous_id: str | None) -> str:
     return hashlib.sha1(key.encode()).hexdigest()[:12]
 
 
+def content_id(household: Household, event: str) -> str:
+    return hashlib.sha1(f"{_canon(apply_event(household, event))}|{event}".encode()).hexdigest()[:12]
+
+
+def normalize(household: Household) -> Household:
+    """Money to the cent and shares to six places, so a household read from the documents and the same household from the fixture are one."""
+    data = household.model_dump()
+    for person in data["people"]:
+        person["wages"] = round(person["wages"], 2)
+        person["pretax_401k"] = round(person["pretax_401k"], 2)
+    for key in ("brokerage_value", "brokerage_basis", "pretax_balance", "roth_balance", "cash"):
+        data["accounts"][key] = round(data["accounts"][key], 2)
+    for key in ("pretax_equity_share", "roth_equity_share"):
+        data["accounts"][key] = round(data["accounts"][key], 6)
+    for key in ("home_down_payment", "college_annual_cost", "retirement_spending", "charitable_giving"):
+        data["goals"][key] = round(data["goals"][key], 2)
+    data["social_security"]["annual_benefit"] = round(data["social_security"]["annual_benefit"], 2)
+    data["snapshot"] = None  # what the tax form printed feeds the profile only, never the plan
+    data["estimated"] = []
+    return Household.model_validate(data)
+
+
 def apply_event(household: Household, event: str) -> Household:
     """A raise changes the household's wages; a job loss is applied to the simulated futures, not to the household."""
     if event == "raise":
@@ -168,9 +189,11 @@ def compute_plan(household: Household, event: str, anchor: Strategy | None = Non
     kept = False
     if anchor is not None and anchor != strategy:
         batch = run_batch(evaluation, [anchor.policy(), strategy.policy(), RIA_BASELINE])
-        held_ok = float(np.mean(batch.forced_years[0] > 0)) <= FORCED_SALE_LIMIT and float(np.mean(batch.unfunded[0] > 0)) <= float(
-            np.mean(batch.unfunded[2] > 0)
-        )
+        # The current strategy still meets the limits it was chosen under when it is no worse on them than the searched one on these same
+        # futures (a chance measured on 2,000 futures is only good to about a point, so the limit itself is not applied to it alone).
+        held_forced, new_forced = float(np.mean(batch.forced_years[0] > 0)), float(np.mean(batch.forced_years[1] > 0))
+        held_ruin, new_ruin, advisor_ruin = (float(np.mean(batch.unfunded[i] > 0)) for i in (0, 1, 2))
+        held_ok = held_forced <= max(FORCED_SALE_LIMIT, new_forced) and held_ruin <= max(advisor_ruin, new_ruin)
         better = metrics.compare(batch.wealth[1], batch.wealth[0], years, with_range=True, median_only=True)
         if held_ok and better.median_range[0] <= 0.0:
             strategy, kept = anchor, True
@@ -250,16 +273,11 @@ def initial_allocation(household: Household, policy: S.Policy, det: S.SimInputs)
 
 
 def _split_stocks(alloc: Allocation) -> dict[str, dict[str, float]]:
-    """US / international stocks by account: the international part of all stocks sits in the Roth first, then the 401(k)/IRA, then
-    the brokerage account (a fixed illustrative rule: international funds go where their dividend withholding credit is lost least)."""
-    stocks = {k: alloc.account(k)["stocks"] for k, _ in ACCOUNTS}
-    intl_left = sum(stocks.values()) * (1.0 - ill.US_SHARE_OF_STOCKS)
-    intl = {}
-    for key in ("roth", "pretax", "brokerage"):
-        put = min(stocks[key], intl_left)
-        intl[key] = put
-        intl_left -= put
-    return {k: {"us_stocks": stocks[k] - intl[k], "intl_stocks": intl[k]} for k in stocks}
+    """US / international stocks by account: the same illustrative split in every account (the engine holds one stock class)."""
+    return {
+        k: {"us_stocks": alloc.account(k)["stocks"] * ill.US_SHARE_OF_STOCKS, "intl_stocks": alloc.account(k)["stocks"] * (1.0 - ill.US_SHARE_OF_STOCKS)}
+        for k, _ in ACCOUNTS
+    }
 
 
 def asset_matrix(alloc: Allocation) -> dict[str, dict[str, float]]:
@@ -410,7 +428,7 @@ def build_plan(c: Computed, previous: Plan | None = None, change_label: str | No
     if conv > 0:
         moves.append(
             Move(
-                key="conversion", title="Roth conversion", amount=conv, timing="This year",
+                key="conversion", title="Roth conversion", amount=conv, timing="This year", age=int(log["age"][0]),
                 status="needs_ok" if conv >= CONVERSION_NEEDS_OK else "scheduled", detail=f"Tax {_money(conv_tax)}",
             )
         )
@@ -418,7 +436,7 @@ def build_plan(c: Computed, previous: Plan | None = None, change_label: str | No
         big = next_conv >= SCHEDULED_BIG_FACTOR * max(conv, 1.0) and next_conv >= CONVERSION_NEEDS_OK
         moves.append(
             Move(
-                key="conversion_next", title="Roth conversion", amount=next_conv, timing=f"Next year (age {int(log['age'][1])})",
+                key="conversion_next", title="Roth conversion", amount=next_conv, timing=f"Next year (age {int(log['age'][1])})", age=int(log["age"][1]),
                 status="needs_ok" if big else "scheduled", detail=f"Tax {_money(float(log['conv_tax'][1]))}",
             )
         )
@@ -446,7 +464,7 @@ def build_plan(c: Computed, previous: Plan | None = None, change_label: str | No
     markers.append(GoalMarker(key="social_security", label="Social Security", start_age=h.social_security.start_age))
 
     # --- holdings
-    holdings = _holdings(h, alloc, matrix, policy, accounts_total, harvest)
+    holdings = _holdings(alloc, matrix, policy, location)
 
     # --- retirement income
     rows = _income_rows(h, log)
@@ -518,18 +536,16 @@ def _account_lines(location: Location) -> list[str]:
     return lines
 
 
-def _holdings(h: Household, alloc: Allocation, matrix, policy: S.Policy, accounts_total, harvest: float) -> HoldingsTab:
-    a = h.accounts
+def _holdings(alloc: Allocation, matrix, policy: S.Policy, location: Location) -> HoldingsTab:
     stock_gain_total = max(0.0, alloc.stock_value - alloc.stock_basis)
     stock_total = sum(matrix["us_stocks"].values()) + sum(matrix["intl_stocks"].values())
     accounts: list[AccountHoldings] = []
     taxation = {"brokerage": "Taxable", "pretax": "Taxed when withdrawn", "roth": "Tax-free"}
     labels = {"brokerage": "Brokerage", "pretax": "401(k)/IRA", "roth": "Roth IRA"}
-    cents = {k: round_to_total([matrix[c][k] for c, _ in ASSETS], accounts_total[k]) for k, _ in ACCOUNTS}
     for acct, _ in ACCOUNTS:
-        balance = float(round(accounts_total[acct]))
+        balance = float(getattr(location.total, acct))
         rows: list[HoldingRow] = []
-        values = dict(zip([c for c, _ in ASSETS], cents[acct], strict=True))
+        values = {r.key: getattr(r, acct) for r in location.rows}
         for key, _label in ASSETS:
             v = values[key]
             if v <= 0:
@@ -560,11 +576,14 @@ def _holdings(h: Household, alloc: Allocation, matrix, policy: S.Policy, account
                 if r.gain is not None:
                     r.gain = float(fixed[k])
                 k += 1
-            whole_gain = float(round(stock_gain_total))
+            whole_gain = float(sum(fixed))
         accounts.append(
             AccountHoldings(
                 key=acct, label=labels[acct], balance=balance, taxation=taxation[acct],
-                cost_basis=float(round(alloc.stock_basis)) if acct == "brokerage" else None, unrealized_gain=whole_gain, holdings=rows,
+                cost_basis=(
+                    float(sum(r.value for r in rows if r.gain is not None) - (whole_gain or 0.0)) if acct == "brokerage" else None
+                ),
+                unrealized_gain=whole_gain, holdings=rows,
             )
         )
     stocks_amount = float(round(stock_total))
@@ -709,7 +728,7 @@ def _next_conversion(plan: Plan) -> tuple[int | None, float]:
 
 
 def _move_title(m: Move) -> str:
-    return f"{m.title} ({m.timing.lower()})" if m.key.startswith("conversion") else m.title
+    return f"{m.title} at {m.age}" if m.key.startswith("conversion") and m.age is not None else m.title
 
 
 def _move_text(m: Move) -> str:
@@ -725,22 +744,27 @@ _lock = threading.RLock()
 _plans: dict[str, Plan] = {}
 _strategies: dict[str, Strategy] = {}
 _computed_seconds: dict[str, float] = {}
+_content: dict[str, str] = {}
 
 
 def get_plan(household: Household, event: str = "none", previous_id: str | None = None, change_label: str | None = None) -> Plan:
     """The plan for the household (and event), from the cache when it was precomputed, else the real planner, live."""
+    household = normalize(household)
     pid = plan_id(apply_event(household, event), event, previous_id)
     with _lock:
         hit = _plans.get(pid)
         if hit is not None:
             return hit
         previous = _plans.get(previous_id) if previous_id else None
+        if previous is not None and _content.get(previous.plan_id) == content_id(household, event):
+            return previous  # nothing was changed: the plan the customer already has
         anchor = _strategies.get(previous_id) if previous_id else None
         computed = compute_plan(household, event, anchor)
         plan = build_plan(computed, previous, change_label)
         _plans[plan.plan_id] = plan
         _strategies[plan.plan_id] = computed.strategy
         _computed_seconds[plan.plan_id] = computed.seconds
+        _content[plan.plan_id] = content_id(household, event)
         return plan
 
 
@@ -758,3 +782,4 @@ def reset() -> None:
         _plans.clear()
         _strategies.clear()
         _computed_seconds.clear()
+        _content.clear()

@@ -71,6 +71,7 @@ class Move(BaseModel):
     title: str
     amount: float | None = None
     timing: str  # "This year", "Next year (age 51)"
+    age: int | None = None  # the age of the year it happens in
     status: MoveStatus
     detail: str | None = None  # labels only: "Tax $14,057"
 

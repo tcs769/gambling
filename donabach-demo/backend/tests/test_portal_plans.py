@@ -31,14 +31,15 @@ def plan(request, plans):
     return plans[request.param]
 
 
-def test_the_base_plan_has_the_deck_figures(plans):
+def test_the_base_plan_has_the_figures_the_demo_quotes(plans):
     base = plans["base"]
     s = base.portfolio.summary
-    assert round(s.projected_wealth) == 2_383_673
+    assert round(s.projected_wealth) == 2_426_567
     assert s.invested_today == TOTAL
     assert round(base.comparison.advisor.wealth_80) == 1_297_356
-    assert round(base.comparison.dollars_more) == 1_086_316
-    assert base.comparison.rate_per_year == pytest.approx(0.020484, abs=5e-7)
+    assert round(base.comparison.dollars_more) == 1_129_210
+    assert base.comparison.rate_per_year == pytest.approx(0.021091, abs=5e-7)
+    assert base.portfolio.holdings.accounts[0].holdings[0].name == "Direct-indexed US stocks" and base.portfolio.holdings.accounts[0].holdings[0].positions == 100
     assert s.fee_rate == 0.0035 and round(s.fee_dollars) == 4_176
 
 
@@ -175,10 +176,10 @@ def test_what_changed_is_shown_against_the_previous_plan_with_its_own_numbers(pl
             assert (m.before, m.after) == (before, after)
 
 
-def test_job_loss_changes_the_conversion_at_51_as_in_the_deck(plans):
+def test_job_loss_changes_the_conversion_at_51(plans):
     w = plans["job_loss"].what_changed
     assert w.conversion_age == 51
-    assert round(w.conversion_before) == 62_324 and round(w.conversion_after) == 243_600
+    assert round(w.conversion_before) == 65_324 and round(w.conversion_after) == 246_600
     added = {m.title: m for m in w.moves}
     assert added["Roth conversion at 51"].after.endswith("Needs your OK")
     assert plans["job_loss"].event == "job_loss"

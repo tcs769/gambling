@@ -13,6 +13,7 @@ the strategy by less than the noise of the measurement does not rebuild the port
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import threading
@@ -61,6 +62,7 @@ from app.portal.models import (
     WhatChanged,
 )
 from app.schemas import HORIZON_AGE, Household, JobLoss
+from app.sim import diag as D
 from app.sim import markets
 from app.sim import simulate as S
 from app.sim.simulate import build_inputs, run_batch, run_detail
@@ -75,6 +77,7 @@ JOB_LOSS = JobLoss(year=1, years=1, keep=0.0)  # the engine's existing job-loss 
 CONVERSION_NEEDS_OK = 25_000.0  # a Roth conversion at least this large waits for the customer's OK
 SCHEDULED_BIG_FACTOR = 2.0  # next year's conversion needs the OK when it is this many times this year's
 PROJECTED_RETIREMENT_ROWS = 8
+HARVEST_SHOWN = 500.0  # first-year harvested losses below this are shown as none
 YEAR0 = P.TAX_YEAR
 
 ASSETS = (
@@ -172,7 +175,35 @@ class Computed:
     plan_log: dict[str, np.ndarray]
     advisor_log: dict[str, np.ndarray]
     det: S.SimInputs
+    harvest_plan: float = 0.0  # losses harvested in the first year (mean over futures)
+    harvest_advisor: float = 0.0
     seconds: float = 0.0
+
+
+REQUIRE_DIRECT_INDEXING = True  # Waramoug holds the taxable stocks as a direct-indexed book whenever the plan stays within its limits
+
+
+def expected_harvest(planned: Household, policies: list[S.Policy], kwargs: dict) -> list[float]:
+    """The losses each policy harvests in the first year, averaged over the 2,000 evaluation futures (the engine's one-year run, so the
+    stocks' own movements are in it: the single expected path has none and would show nothing)."""
+    inputs = build_inputs(
+        planned, n_paths=EVAL_PATHS, seed=SEED + EVAL_SEED_OFFSET, options=S.ModelOptions(horizon_age=planned.primary_age + 1), **kwargs
+    )
+    batch = run_batch(inputs, policies, diagnostics=True)
+    return [float(-np.mean(batch.diag[i][:, D.D_GAIN + D.P_HARVEST])) for i in range(len(policies))]
+
+
+def with_direct_indexing(strategy: Strategy, validation: S.SimInputs) -> Strategy:
+    """The search's strategy with direct indexing switched on (everything else it chose is kept), when that still meets the limits it was
+    chosen under: on the validation futures it is no worse than the strategy without it on the stock-sale limit and on ruin."""
+    if not REQUIRE_DIRECT_INDEXING or strategy.direct_indexing:
+        return strategy
+    candidate = dataclasses.replace(strategy, direct_indexing=True)
+    batch = run_batch(validation, [strategy.policy(), candidate.policy(), RIA_BASELINE])
+    forced = [float(np.mean(batch.forced_years[i] > 0)) for i in (0, 1)]
+    ruin = [float(np.mean(batch.unfunded[i] > 0)) for i in (0, 1, 2)]
+    ok = forced[1] <= max(FORCED_SALE_LIMIT, forced[0]) and ruin[1] <= max(ruin[2], ruin[0])
+    return candidate if ok else strategy
 
 
 def compute_plan(household: Household, event: str, anchor: Strategy | None = None) -> Computed:
@@ -183,7 +214,7 @@ def compute_plan(household: Household, event: str, anchor: Strategy | None = Non
     kwargs = {"job_loss": JOB_LOSS} if event == "job_loss" else {}
     futures = build_inputs(planned, n_paths=SEARCH_PATHS, seed=SEED, **kwargs)
     validation = build_inputs(planned, n_paths=VALIDATION_PATHS, seed=SEED + VALIDATION_SEED_OFFSET, **kwargs)
-    strategy = search_matched(futures, validation, menu(style="liability_matched"))[1].strategy
+    strategy = with_direct_indexing(search_matched(futures, validation, menu(style="liability_matched"))[1].strategy, validation)
     evaluation = build_inputs(planned, n_paths=EVAL_PATHS, seed=SEED + EVAL_SEED_OFFSET, **kwargs)
     years = evaluation.n_years
     kept = False
@@ -201,6 +232,7 @@ def compute_plan(household: Household, event: str, anchor: Strategy | None = Non
         kept = True
     batch = run_batch(evaluation, [strategy.policy(), RIA_BASELINE], record_paths=True)
     det = build_inputs(planned, deterministic=True, **kwargs)
+    harvests = expected_harvest(planned, [strategy.policy(), RIA_BASELINE], kwargs)
     return Computed(
         household=planned,
         event=event,
@@ -213,6 +245,8 @@ def compute_plan(household: Household, event: str, anchor: Strategy | None = Non
         plan_log=run_detail(det, strategy.policy()).log,
         advisor_log=run_detail(det, RIA_BASELINE).log,
         det=det,
+        harvest_plan=harvests[0],
+        harvest_advisor=harvests[1],
         seconds=time.perf_counter() - started,
     )
 
@@ -378,19 +412,17 @@ def build_plan(c: Computed, previous: Plan | None = None, change_label: str | No
     # --- this year's taxes
     conv = float(log["conv"][0])
     conv_tax = float(log["conv_tax"][0])
-    harvest = float(log["harvest"][0])
+    harvest = c.harvest_plan if c.harvest_plan >= HARVEST_SHOWN else 0.0  # a few dollars of harvest is not shown as a move
     net = float(log["net_gain"][0])
-    carried = max(0.0, float(log["cf_out"][0]) - float(log["cf_in"][0]))
-    if net >= 0.0:
-        offset, deducted = harvest, 0.0
-        carried = 0.0
-    else:
-        offset = max(0.0, net + harvest)
-        deducted = max(0.0, harvest - offset - carried)
+    gross_gains = max(0.0, net + float(log["harvest"][0]))  # gains realized this year before any harvest (the expected path)
+    offset = min(harvest, gross_gains)
+    deducted = min(harvest - offset, P.CAP_LOSS_LIMIT)
+    carried = harvest - offset - deducted
     interest_kept = (alloc.pretax["bonds"] + alloc.roth["bonds"]) * markets.BOND_INTEREST_YIELD + (
         alloc.pretax["private_credit"] + alloc.roth["private_credit"]
     ) * markets.PRIVATE_CREDIT_INCOME_YIELD
     tax_saved = float(alog["total_tax"][0]) - (float(log["total_tax"][0]) - conv_tax)
+    tax_saved += deducted * (float(log["marginal_rate"][0]) + P.IL_RATE)  # what the $3,000 deduction saves at this year's rates (the offset of gains is in the tax above)
     taxes_this_year = TaxesThisYear(
         roth_conversion=conv, conversion_tax=conv_tax, losses_harvested=harvest, gains_offset=offset,
         deducted_from_income=deducted, carried_forward=carried, interest_kept_out=interest_kept, tax_saved=tax_saved,
@@ -424,7 +456,7 @@ def build_plan(c: Computed, previous: Plan | None = None, change_label: str | No
         Move(key="lots", title="Sell the highest-cost lots first", timing="Ongoing", status="ongoing"),
     ]
     if policy.tax_loss_harvesting:
-        moves.append(Move(key="harvest", title="Harvest losses", amount=harvest if harvest > 0 else None, timing="Ongoing", status="ongoing"))
+        moves.append(Move(key="harvest", title="Harvest losses" + (" stock by stock" if policy.direct_indexing else ""), amount=round(harvest) if harvest > 0.5 else None, timing="Ongoing", status="ongoing"))
     if conv > 0:
         moves.append(
             Move(
@@ -500,7 +532,7 @@ def build_plan(c: Computed, previous: Plan | None = None, change_label: str | No
             title="Standard wealth advisor", wealth_80=adv_med, bar=adv_med / top,
             mix=[MixShare(key=r.key, label=r.label, share=r.share) for r in adv_mix.rows],
             accounts=["Same mix in every account"],
-            harvesting="Fund-level, in large down years", harvested_so_far=float(alog["harvest"][0]),
+            harvesting="Fund-level, in large down years", harvested_so_far=c.harvest_advisor if c.harvest_advisor >= HARVEST_SHOWN else 0.0,
             roth_conversion=float(alog["conv"][0]), fee_dollars=advisor_fee, fee_rate=advisor_fee / total_savings if total_savings else 0.0,
         ),
         waramoug=AdvisorCard(

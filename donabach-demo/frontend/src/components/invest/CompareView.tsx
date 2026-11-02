@@ -52,7 +52,7 @@ function CompareCard({ card, side, horizon }: { card: Card; side: "advisor" | "w
         <Row label="Harvesting losses">
           {card.harvesting}
           {card.harvested_so_far !== null && card.harvested_so_far !== undefined && card.harvested_so_far > 0 && (
-            <span className={`${styles.extra} num`}>so far {dollarsWhole(card.harvested_so_far)}</span>
+            <span className={`${styles.extra} num`}>this year {dollarsWhole(card.harvested_so_far)}</span>
           )}
         </Row>
         <Row label="Roth conversion this year">

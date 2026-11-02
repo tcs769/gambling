@@ -1,85 +1,51 @@
-# Donabach demo
+# Waramoug customer portal (demo)
 
-A clickable demo of **Donabach**, a wealth-management platform that gives every household private-bank
-strategies and better judgment about when to use them. It is built to be screen-recorded for investors.
+A clickable demo of the **Waramoug** customer portal: a customer drops a PDF of their financial documents, sees it read, reviews what was
+read, answers a few goal questions, and gets an **Invest** page (the portfolio Waramoug builds, with this year's moves, holdings, taxes,
+retirement income and goals) and a **Compare** page against a standard wealth advisor. It is built to be screen-recorded for investors.
 
-The flow: upload a household's documents, read the numbers off them, forecast income, recommend a strategy
-with a year-by-year plan, compare it with a typical advisor, and run what-ifs.
-
-> **Everything is fictional.** The household, documents, names, SSNs (`000-00-0000`) and accounts (`XXXX-1234`)
-> are invented. The market is simulated. This is a prototype for illustration, not investment or tax advice.
-
-Machine-learning models are built separately and plug in through the interfaces in `backend/app/ml/`: a strategy
-recommender, an income forecaster, and a policy model and a value model that will speed up the year-by-year
-planner's search. **Until they are connected the UI says "Model not connected" and never shows a stand-in
-prediction.** Every other number on screen (tax, simulation, planner, comparison) is computed by the code, not
-typed into the UI.
+> **Everything is fictional.** The customer (John Smith), his documents, SSNs (`000-00-0000`) and accounts (`XXXX-1234`) are invented.
+> The market is simulated. This is a prototype for illustration, not investment or tax advice. Every number on screen comes from the
+> engine (`backend/app`), never from the UI. Where a figure is finer-grained than the engine (fund names, sector and region weights, the
+> US / international split) it comes from a fixed illustrative mapping (`backend/app/portal/illustrative.py`) and the screen marks it
+> "Illustrative". No machine-learning model is connected; nothing on screen is a prediction.
 
 ## Run it
 
-Needs Python 3.11+ and Node 20+ (developed on Python 3.13, Node 22).
+Needs Python 3.11+ and Node 20+ (developed on Python 3.13, Node 22). Run all commands from this folder (`donabach-demo`).
 
 ```bash
-make install     # backend virtualenv + dependencies, frontend npm install
-make backend     # API on http://localhost:8000   (interactive docs at /docs)
-make frontend    # app on http://localhost:3000
+python3 -m venv backend/.venv
+backend/.venv/bin/pip install -r backend/requirements.txt          # Windows: backend\.venv\Scripts\pip install -r backend\requirements.txt
+cd frontend && npm install && BACKEND_URL=http://localhost:8000 npm run build && cd ..
 ```
 
-Without `make`:
+Terminal 1, the API (wait for `Application startup complete.`; the first start on a fresh clone compiles the simulation kernels with
+numba, a few minutes, then everything the demo shows is precomputed; later starts take about a minute):
 
 ```bash
-# backend
-cd backend && python3 -m venv .venv && . .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --reload-dir app --port 8000
-
-# frontend (second terminal)
-cd frontend && npm install && npm run dev
+cd backend && .venv/bin/uvicorn app.main:app --port 8000          # Windows: .venv\Scripts\uvicorn app.main:app --port 8000
 ```
 
-The first start compiles the simulation kernels with numba (about 20 seconds, then cached in
-`backend/.numba_cache/`); the API warms them up before it accepts requests, so the first plan is as fast as the
-rest (measured on 4 cores: 21 s to start with an empty cache, which was 10.6 s before tax lots, and 0.6 s with it, then about
-0.7 s per plan). The browser talks to the
-API through a same-origin proxy (`/api/*` to `http://localhost:8000`, see `frontend/next.config.ts`). To point it
-elsewhere set `BACKEND_URL` before `npm run dev`, or before `npm run build` for a production build (Next bakes
-rewrites in at build time).
+Terminal 2, the app: `cd frontend && npm run start -- -p 3000`, then open http://localhost:3000.
 
-**Demo mode** (the switch in the header, on by default) preloads the three sample documents and fixes the random
-seed, so every run on camera produces identical numbers. Turn it off to draw a fresh set of futures each time.
+**Demo mode** is what the API does at start-up unless `DONABACH_NO_PRECOMPUTE=1` is set: it works out John Smith's portfolio and every
+change the demo shows (a job loss, a raise, retiring at 65, a home purchase, higher retirement spending, 20% lower wages) by running the
+real planner, so each step is instant and identical on every take. Any other change runs the planner live (about 6 seconds, "Building
+your portfolio…"). Check it is on: `curl -s -o /dev/null -w "%{time_total}\n" localhost:8000/portal/defaults` and then a drop of the sample
+PDF answers in well under a second.
 
-## The seven screens
+## The screens (in order)
 
-1. **Upload**: drop zone, plus "Use sample documents" so recording is reliable. Each file shows its upload and
-   reading state.
-2. **Review**: the extracted numbers grouped by document with confidence badges, next to the PDF. Click a field
-   and the viewer jumps to its page and highlights the value. One field is deliberately flagged (the brokerage
-   statement's holdings add up to $149,999 against a stated total of $150,000) so the demo can show a correction.
-3. **A few questions**: tap-to-select chips for goals, with sensible defaults. Values the documents do not
-   contain (Roth balance, cash, Social Security) are labelled *Estimated*.
-4. **Household profile**: balances by account, this year's computed tax picture, goals.
-5. **Forecast**: income fan chart (p10 to p90 band, median line). While the forecaster model is not connected
-   it is labelled "Model not connected, placeholder forecast".
-6. **Plan**: the recommended strategy in a sentence with a computed reason, the model panel (or its not-connected
-   state), and a year-by-year table. The fixed plan appears at once; a "Refining plan…" state follows while the
-   year-by-year (adaptive) plan is computed in the background (the demo household's is precomputed), and then the
-   table can show either: the years where the planner departs from the fixed strategy are highlighted. Click a row for
-   that year's decisions, full tax return and, for the adaptive plan, **"Why this year"**: the action chosen, the two
-   next best alternatives and the score gap between them, from the rollout results.
-7. **Compare**: the median and risk-adjusted advantage over a good RIA and over a typical advisor, fan chart with
-   the two advisors, the best fixed strategy and the adaptive planner, the four strategies side by side, what judgment
-   over time adds, "where the advantage comes from", and every strategy searched, ranked.
+1. **Documents** (`/`): drop `fixtures/smith_documents.pdf` (or "Use sample documents"). 2. **Reading** (`/reading`): the documents found,
+one by one. 3. **Review** (`/review`): every value read, grouped by document, the source highlighted on the PDF, one value flagged to
+confirm. 4. **Goals** (`/goals`): retirement age, college, home purchase, retirement spending, income changes. 5. **Invest** (`/invest`):
+summary strip and the tabs Overview, Holdings, Taxes, Retirement income, Goals; "What changed" appears when a change rebuilds it.
+6. **Compare** (`/compare`): the standard advisor against Waramoug.
 
-A **What-if** panel (from Plan and Compare) re-plans with preset events or edited inputs.
-
-**The showcase flow** is a separate three-screen path (`/showcase`, linked from the first screen) about one household:
-1. **Household**: a summary card (who, what they have by account with the taxable account's gain, what they are saving
-   for on a timeline, what stands out).
-2. **Strategies**: a waterfall from the good advisor's median after-tax wealth at 80 to Donabach's, one bar per strategy,
-   each in percent a year and dollars at 80, every strategy a switch: turn one off and the whole chain is re-run on the same
-   simulated futures and the total recomputed.
-3. **Wealth**: median and 10th-percentile wealth by age against the advisor, the headline advantage and the
-   risk-adjusted advantage labelled and explained in one line (it follows the switches chosen on screen 2).
+Browser tests: `cd frontend && BASE_URL=http://localhost:3000 CHROMIUM_PATH=<path to Chrome/Chromium> npm run e2e` (Playwright; install a
+browser with `npx playwright install chromium` and omit `CHROMIUM_PATH`). `npm run e2e:screenshots` writes full-page screenshots.
+The older showcase, plan and compare screens are kept under `frontend/src/app/_legacy` and `frontend/e2e/legacy` (not routed, not run).
 
 ## How the numbers are produced
 
@@ -95,7 +61,7 @@ All dollars are **real 2026 dollars**; tax brackets are held constant in 2026 do
 | Baselines | `planner/baseline.py` | A **good RIA** (age-based 80% to 50% glide path, same mix in every account, breakpoint fees falling from 1.0% to 0.5%, fund-level harvesting, goals from brokerage, no conversions, pro rata withdrawals, oldest tax lots sold first) and a **typical advisor** (flat 1.0% fee, no harvesting, accounts managed separately, 80% to 50% glide, no conversions, proportional withdrawals, oldest tax lots sold first). Each is shown with its definition. |
 | Year-by-year planner | `backend/app/sim/adaptive.py`, `planner/adaptive_plan.py`, `adaptive_service.py` | Each year, after that year's returns, scores candidate actions by rollouts and takes the best (below). |
 | Explanations | `planner/explain.py` | The seven-step "where the advantage comes from" (switch decisions on one at a time from the baseline, same futures) and, per year, the value of each decision found by re-running the plan with only that decision removed for that year. |
-| Showcase | `backend/app/showcase.py`, `planner/waterfall.py` | One household (`fixtures/showcase.json`) planned once and measured on 2,000 futures it never saw: its summary card, the **waterfall** from the good advisor's result to Donabach's (one bar per strategy of the plan, switched on in sequence on the same futures; any subset can be switched off and the chain is re-run, so the bars always add up to the total) and its wealth over time against the advisor. |
+| Showcase | `backend/app/showcase.py`, `planner/waterfall.py` | One household (`fixtures/showcase.json`) planned once and measured on 2,000 futures it never saw: its summary card, the **waterfall** from the good advisor's result to Waramoug's (one bar per strategy of the plan, switched on in sequence on the same futures; any subset can be switched off and the chain is re-run, so the bars always add up to the total) and its wealth over time against the advisor. |
 
 The simulation and the planner are explained in detail in the docstrings of `sim/simulate.py` and
 `planner/strategies.py`.
@@ -136,7 +102,7 @@ The measurements behind the numbers are scripts, not hand-typed tables (run from
 | The same studies for the equity-first planning style, the app's default (`household_study_equity_first/`, `adaptive_evaluation_equity_first.md`) | `python -m app.study.household_study --per-type 50 --n-eval 1000 --style equity_first --skill --heirs-rates 0.24 0.32 --adaptive-paths 200 --checkpoint /tmp/study_ef.csv --out-dir ../reports/household_study_equity_first`; `python -m app.study.adaptive_evaluation --paths 2000 --style equity_first --out ../reports/adaptive_evaluation_equity_first.md` |
 | Update 4: the 300 households against the good RIA, the typical advisor and a do-it-yourself investor, both valuations, for the equity-first and the liability-matched styles (`household_study_equity_first/`, `household_study_liability_matched/`) | `python -m app.study.household_study --style equity_first --valuations --out-dir ../reports/household_study_equity_first --checkpoint /tmp/ef.csv` and the same with `--style liability_matched`; `--horizon-age 90` runs to 90 and also reports at 80 |
 | Update 4: the biggest gap two ways, over every strategy of every style (`max_gap/`) | `python -m app.study.max_gap --per-type 4 --out ../reports/max_gap` |
-| Update 4: what flatters Donabach, one assumption changed at a time (`overstatement.md`) | `python -m app.study.overstatement --out ../reports/overstatement.md` |
+| Update 4: what flatters Waramoug, one assumption changed at a time (`overstatement.md`) | `python -m app.study.overstatement --out ../reports/overstatement.md` |
 | Update 4: what each strategy does, and the showcase household's waterfall bars beside their order-free Shapley shares (`benefit_explainer.md`) | `python -m app.study.explainer --out ../reports/benefit_explainer.md` |
 | Update 4: Social Security claiming age, and what a change of the engine did to the answer | `python -m app.study.tools claiming`; `python -m app.study.steps survivor` (or `flat_valuation`) |
 
@@ -251,7 +217,7 @@ AMT, no state tax credits. Beyond that, choices made where the spec was silent, 
   $34,000 single, none indexed), not at a flat 85%.
 * **The advisors' own costs** (the typical advisor only): a fee schedule of 1.15% on the first $500,000 falling to 0.6% above $5M, funds that
   charge 0.60% on stocks and 0.45% on bonds, 3% of the portfolio in cash (0.5% real), and capital-gain distributions of 5.5% a year.
-  The good RIA and Donabach hold index funds, whose 0.03% to 0.10% is left out. A **do-it-yourself** baseline (index funds, no fee, the
+  The good RIA and Waramoug hold index funds, whose 0.03% to 0.10% is left out. A **do-it-yourself** baseline (index funds, no fee, the
   glide path, no advice, and a behavior gap of half a point a year, Morningstar's "Mind the Gap") is the third baseline of the studies.
 * **Liability matching.** The simulator counts the years in which stocks were sold to pay for goals or spending in a year they fell (a
   forced sale). With a spending reserve the bonds and private credit of every account are spent first in such a year; goals due within
@@ -269,7 +235,7 @@ AMT, no state tax credits. Beyond that, choices made where the spec was silent, 
 * **Asset location.** Private credit, then bonds, fill the pre-tax account first; the Roth holds stocks (after
   any private credit); the brokerage account takes the remainder (including overflow bonds).
 * **Tax lots.** The taxable account's stock is the opening position (long-term, at the account's basis) plus one lot per
-  simulated year, which takes that year's reinvested dividends, rebalancing purchases and savings at cost. Donabach's
+  simulated year, which takes that year's reinvested dividends, rebalancing purchases and savings at cost. Waramoug's
   strategies sell the lot bought at the highest price first (the least gain per dollar sold: "highest cost first"); the
   good RIA and the typical advisor sell the oldest lot first (first in, first out). A gain on a lot sold in the year it
   was bought is short-term, on one sold the next year half short-term (purchases and sales are spread through a year, so
@@ -367,7 +333,7 @@ measurement and the command that regenerates it).
   wealth any plan on either menu produces for the sample household is **+1.74% a year** over the good RIA: a 2-year reserve,
   a 5% private credit sleeve and direct indexing, 94% stocks today and 95% from 70 against the advisor's 80% falling to 50%.
   It runs out of money in 1.1% of futures against 0.6% and its risk-adjusted advantage is -0.38%. About +0.83% of it is
-  Donabach's tools (fee, asset location, tax lots, conversions, withdrawal order, goal funding; +0.80% for the typical household
+  Waramoug's tools (fee, asset location, tax lots, conversions, withdrawal order, goal funding; +0.80% for the typical household
   of the 300); the rest is only a larger stock share than the advisor's, which an advisor could hold too. **No choice on the
   menus reaches 2%**; borrowing to hold more than 100% stocks is not among the strategies. From the ceiling, 2% takes one of
   these (each an assumption or more risk; none is in the app): an equity return of 6.3% real instead of 5.5% (7.7% for 2.5%,

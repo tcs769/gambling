@@ -89,7 +89,10 @@ export async function runCompare({ browser, base, check }) {
       (await t(`fee-${side}`)) === feeLine(card.fee_dollars, card.fee_rate, two),
       `${side}: fee ${feeLine(card.fee_dollars, card.fee_rate, two)}`,
     );
-    check(card.harvested_so_far > 0 === /this year \$/.test(txt), `${side}: a harvest amount shows only above 0`);
+    check(
+      card.harvested_so_far > 0 === /(Fund-level, in large down years|Stock by stock|None)\s*this year \$/.test(txt),
+      `${side}: a harvest amount shows only above 0`,
+    );
   }
   const widths = await page
     .locator("[data-side] > span[aria-hidden], article [aria-hidden='true'] > span[data-side]")

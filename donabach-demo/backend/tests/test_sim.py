@@ -136,6 +136,11 @@ def test_log_constants_match_column_names():
         "fund_distribution": sim.L_FUNDDIST, "fund_distribution_short_term": sim.L_FUNDDIST_ST,
         "gift_cash": sim.L_GIFTCASH, "gift_stock": sim.L_GIFTSTOCK, "charitable_deduction": sim.L_CHARITY,
         "deduction": sim.L_DEDUCTION, "itemized": sim.L_ITEMIZED,
+        "pretax_equity": sim.L_PE, "pretax_bonds": sim.L_PB, "pretax_credit": sim.L_PP,
+        "roth_equity": sim.L_RE, "roth_bonds": sim.L_RB, "roth_credit": sim.L_RP,
+        "brokerage_equity": sim.L_BE, "brokerage_bonds": sim.L_BB, "brokerage_credit": sim.L_BP,
+        "withdrawn_brokerage": sim.L_WD_BROKERAGE, "withdrawn_roth": sim.L_WD_ROTH,
+        "conv_tax": sim.L_CONVTAX, "conv_il_tax": sim.L_CONVILTAX,
     }
     assert set(expected) == set(sim.LOG_COLUMNS)
     for name, index in expected.items():

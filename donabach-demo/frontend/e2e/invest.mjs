@@ -95,6 +95,7 @@ export async function runInvest({ browser, base, check }) {
 
   // --- Overview
   const ov = pf.overview;
+  await page.getByTestId("projection-chart").locator("svg.recharts-surface").first().waitFor({ timeout: 5000 });
   check(
     (await page.getByTestId("projection-chart").locator("svg.recharts-surface").count()) > 0,
     "the wealth chart draws",

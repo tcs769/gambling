@@ -2,8 +2,9 @@
 
 Values come from the parsed documents unless the user corrected them (`overrides`). A value the
 parser could not read, and the user did not supply, is reported rather than silently defaulted.
-Roth balance, cash and the Social Security estimate are not on any document; they come from the
-answers and are labelled "Estimated".
+The Roth balance and cash are read from a Roth IRA statement and from the brokerage statement's cash
+line when the documents have them; otherwise, like the Social Security estimate (never on a document),
+they come from the answers and are labelled "Estimated".
 """
 
 from __future__ import annotations
@@ -19,8 +20,6 @@ from app.schemas import (
     SocialSecurity,
 )
 from app.tax.picture import current_tax_return
-
-ESTIMATED = ("roth_balance", "cash", "social_security")
 
 # Plain-language names for the values the household cannot be built without, for the case where no
 # uploaded document contained the field at all (so there is no parsed label to borrow).
@@ -61,6 +60,22 @@ class _Fields:
             self.missing[key] = MissingField(key=key, label=label)
         return default
 
+    def meta_text(self, key: str) -> str:
+        """A text field's value ("" when absent), with the user's correction applied."""
+        value = self.overrides.get(key)
+        if value is None and key in self.by_key:
+            value = self.by_key[key].value
+        return str(value).strip() if value is not None else ""
+
+    def equity_share(self, prefix: str) -> float | None:
+        """Stock share of an allocation table (`alloc` or `roth_alloc`); None when there is none."""
+        keys = [f"{prefix}_{i}_value" for i in range(1, 20) if self.has(f"{prefix}_{i}_value")]
+        allocated = sum(self.number(k, required=False) for k in keys)
+        if allocated <= 0:
+            return None
+        equity = sum(self.number(k, required=False) for k in keys if self.meta(k, "asset_class") == "equity")
+        return min(1.0, max(0.0, equity / allocated))
+
     def meta(self, key: str, name: str) -> str | float | None:
         field = self.by_key.get(key)
         return field.meta.get(name) if field is not None else None
@@ -75,7 +90,8 @@ def build_household(
     primary_age = int(f.number("taxpayer_age"))
     taxpayer_deferral = f.number("k401_contrib_taxpayer", required=False)
     taxpayer_wages = f.number("w2_wages_taxpayer") + taxpayer_deferral
-    people = [Person(name="", age=primary_age or 18, wages=taxpayer_wages, pretax_401k=taxpayer_deferral)]
+    name = f.meta_text("taxpayer_name")
+    people = [Person(name=name, age=primary_age or 18, wages=taxpayer_wages, pretax_401k=taxpayer_deferral)]
     if f.has("spouse_age"):
         spouse_deferral = f.number("k401_contrib_spouse", required=False)
         spouse_wages = f.number("w2_wages_spouse") + spouse_deferral
@@ -87,22 +103,25 @@ def build_household(
     children = [child_age] * n_children
 
     # --- accounts
-    equity_value = sum(
-        f.number(f"alloc_{i}_value", required=False)
-        for i in range(1, 20)
-        if f.has(f"alloc_{i}_value") and f.meta(f"alloc_{i}_value", "asset_class") == "equity"
-    )
-    allocated = sum(f.number(f"alloc_{i}_value", required=False) for i in range(1, 20) if f.has(f"alloc_{i}_value"))
     pretax_total = f.number("k401_total_balance", required=False)
-    equity_share = equity_value / allocated if allocated > 0 else 0.75
+    pretax_share = f.equity_share("alloc")
+    roth_from_docs = f.has("roth_total_balance")
+    cash_from_docs = f.has("brokerage_cash")
+    roth_share = f.equity_share("roth_alloc")
     accounts = Accounts(
         brokerage_value=f.number("brokerage_total_value", required=False),
         brokerage_basis=f.number("brokerage_cost_basis", required=False),
         pretax_balance=pretax_total,
-        pretax_equity_share=min(1.0, max(0.0, equity_share)),
-        roth_balance=answers.roth_balance,
-        cash=answers.cash,
+        pretax_equity_share=0.75 if pretax_share is None else pretax_share,
+        roth_balance=f.number("roth_total_balance", required=False) if roth_from_docs else answers.roth_balance,
+        roth_equity_share=1.0 if roth_share is None else roth_share,
+        cash=f.number("brokerage_cash", required=False) if cash_from_docs else answers.cash,
     )
+    estimated = [
+        *([] if roth_from_docs else ["roth_balance"]),
+        *([] if cash_from_docs else ["cash"]),
+        "social_security",
+    ]
 
     # Without a tax form there is no reported income: leave the snapshot empty so the profile's tax
     # picture is estimated from the wages and balances (and says so) rather than shown as all zeros.
@@ -140,7 +159,7 @@ def build_household(
             annual_benefit=answers.social_security_annual, start_age=answers.social_security_start_age
         ),
         snapshot=snapshot,
-        estimated=list(ESTIMATED),
+        estimated=estimated,
     )
 
 
@@ -162,8 +181,18 @@ def household_profile(household: Household) -> HouseholdProfile:
             amount=a.brokerage_value,
             detail=f"Cost basis {_money(a.brokerage_basis)}, unrealized gain {_money(unrealized)}",
         ),
-        AccountLine(label="Roth IRA", amount=a.roth_balance, estimated=True, detail="Estimated"),
-        AccountLine(label="Cash", amount=a.cash, estimated=True, detail="Estimated"),
+        AccountLine(
+            label="Roth IRA",
+            amount=a.roth_balance,
+            estimated="roth_balance" in household.estimated,
+            detail="Estimated" if "roth_balance" in household.estimated else f"{a.roth_equity_share * 100:.0f}% stocks, Roth",
+        ),
+        AccountLine(
+            label="Cash",
+            amount=a.cash,
+            estimated="cash" in household.estimated,
+            detail="Estimated" if "cash" in household.estimated else "From the brokerage statement",
+        ),
     ]
     goals: list[GoalLine] = []
     if g.home_purchase_in_years is not None:

@@ -34,7 +34,7 @@ from app.docs.models import (
     ParsedField,
 )
 
-__all__ = ["apply_cross_checks", "parse_document"]
+__all__ = ["apply_cross_checks", "parse_bundle", "parse_document"]
 
 _ROW_TOLERANCE = 3.0  # points: words whose vertical centres are this close share a text row
 _CELL_GAP = 7.0  # points: a wider gap between two words starts a new table cell
@@ -257,6 +257,7 @@ class _Reader:
 
     def __init__(self, pages: Sequence[_Page]) -> None:
         self.pages = pages
+        self._by_number = {p.number: p for p in pages}  # page numbers are absolute in the PDF
         self.rows = [row for page in pages for row in page.rows]
 
     # -- one-line fields --------------------------------------------------------------------
@@ -308,7 +309,7 @@ class _Reader:
         words: Sequence[_Word],
         meta: dict[str, str | float] | None = None,
     ) -> ParsedField:
-        page = self.pages[words[0].page - 1]
+        page = self._by_number[words[0].page]
         bbox = BBox(
             x0=round(max(0.0, min(w.x0 for w in words) - _BBOX_PAD), 2),
             top=round(max(0.0, min(w.top for w in words) - _BBOX_PAD), 2),
@@ -414,12 +415,35 @@ _FORM_1040_SPECS: tuple[_Spec, ...] = (
 
 
 def _extract_form_1040(reader: _Reader) -> list[ParsedField]:
+    # A household with no spouse prints no spouse row at all: then no spouse field is reported (a
+    # spouse row that is present but unreadable is still a low-confidence missing field).
+    has_spouse = _find_row(reader.rows, "Spouse") is not None or _find_row(reader.rows, "W-2 wages, spouse") is not None
     fields: list[ParsedField] = []
+    name = _taxpayer_name(reader)
+    if name is not None:
+        fields.append(name)
     for spec in _FORM_1040_SPECS:
+        if spec.key in _SPOUSE_1040_KEYS and not has_spouse:
+            continue
         fields.append(reader.line(spec))
         if spec.key == "children_under_17":
             fields.extend(_child_ages(reader))
     return fields
+
+
+_SPOUSE_1040_KEYS = frozenset({"spouse_age", "w2_wages_spouse"})
+
+
+def _taxpayer_name(reader: _Reader) -> ParsedField | None:
+    """The name on the 'Taxpayer  Name  SSN 000-00-0000' row; optional (None when not printed)."""
+    spec = _Spec("taxpayer_name", "Taxpayer name", "Household", "text")
+    for row in reader.rows:
+        words = row.words
+        if len(words) > 2 and _norm(words[0].text) == "taxpayer" and any(w.text == "SSN" for w in words):
+            end = next(i for i, w in enumerate(words) if w.text == "SSN")
+            if end > 1:
+                return reader.found(spec, " ".join(w.text for w in words[1:end]), words[1:end])
+    return None
 
 
 def _child_ages(reader: _Reader) -> list[ParsedField]:
@@ -448,6 +472,9 @@ _BROKERAGE_SPECS: tuple[_Spec, ...] = (
     _Spec("brokerage_cost_basis", "Total cost basis", _SUMMARY, "money", "Total cost basis"),
     _Spec("brokerage_unrealized_gain", "Unrealized gain", _SUMMARY, "money", "Unrealized gain"),
 )
+_CASH_SPEC = _Spec(
+    "brokerage_cash", "Cash balance", _SUMMARY, "money", "Cash balance (not in total above)"
+)
 _HOLDING_COLS = (
     _Col("name", "Fund", "left"),
     _Col("ticker", "Ticker", "left"),
@@ -468,6 +495,9 @@ def _row_meta(cols: dict[str, _Cell], index: int, keys: Sequence[str]) -> dict[s
 
 def _extract_brokerage(reader: _Reader) -> list[ParsedField]:
     fields = [reader.line(spec) for spec in _BROKERAGE_SPECS]
+    # Optional: only statements that print a cash balance line get this field.
+    if _find_row(reader.rows, _CASH_SPEC.phrase) is not None:
+        fields.append(reader.line(_CASH_SPEC))
     rows: list[dict[str, _Cell]] = []
     table = reader.table(_HOLDING_COLS)
     if table is not None:
@@ -538,8 +568,13 @@ def _extract_401k(reader: _Reader) -> list[ParsedField]:
                 if hit:
                     by_role.setdefault(role, cols)
 
+    # No "(spouse)" participant at all: no spouse fields. A missing table is reported in full.
+    has_spouse = table is None or "spouse" in by_role
+
     fields: list[ParsedField] = []
     for key, label, group, role, column in _K401_PARTICIPANT_FIELDS:
+        if role == "spouse" and not has_spouse:
+            continue
         spec = _Spec(key, label, group, "money")
         if role in by_role:
             fields.append(reader.cell(spec, by_role[role].get(column)))
@@ -551,6 +586,13 @@ def _extract_401k(reader: _Reader) -> list[ParsedField]:
             )
             fields.append(reader.missing(spec, _not_found(spec, why)))
 
+    fields.extend(_allocation_fields(reader, "alloc"))
+    return fields
+
+
+def _allocation_fields(reader: _Reader, prefix: str) -> list[ParsedField]:
+    """The fund allocation table as `{prefix}_{i}_value` / `{prefix}_{i}_pct` fields."""
+    fields: list[ParsedField] = []
     rows: list[dict[str, _Cell]] = []
     allocation = reader.table(_ALLOCATION_COLS)
     if allocation is not None:
@@ -561,14 +603,28 @@ def _extract_401k(reader: _Reader) -> list[ParsedField]:
     if not rows:
         why = "because the fund allocation table is missing from the statement"
         for key, what, kind in _ALLOCATION_FIELDS:
-            spec = _Spec(f"alloc_1_{key}", f"Fund 1: {what}", "Fund allocation", kind)
+            spec = _Spec(f"{prefix}_1_{key}", f"Fund 1: {what}", "Fund allocation", kind)
             fields.append(reader.missing(spec, _not_found(spec, why)))
     for i, cols in enumerate(rows, start=1):
         meta = _row_meta(cols, i, ("asset_class",))
         for key, what, kind in _ALLOCATION_FIELDS:
-            spec = _Spec(f"alloc_{i}_{key}", f"{meta['name']}: {what}", "Fund allocation", kind)
+            spec = _Spec(f"{prefix}_{i}_{key}", f"{meta['name']}: {what}", "Fund allocation", kind)
             fields.append(reader.cell(spec, cols.get(key), meta))
     return fields
+
+
+# =============================================================================================
+# Roth IRA statement
+# =============================================================================================
+
+_ROTH_SPECS: tuple[_Spec, ...] = (
+    _Spec("roth_total_balance", "Roth IRA balance", _BAL, "money", "Total balance"),
+    _Spec("roth_contrib_ytd", "Roth contributions, year to date", _CON, "money", "Contributions, year to date"),
+)
+
+
+def _extract_roth(reader: _Reader) -> list[ParsedField]:
+    return [*(reader.line(spec) for spec in _ROTH_SPECS), *_allocation_fields(reader, "roth_alloc")]
 
 
 # =============================================================================================
@@ -692,7 +748,7 @@ def _form_1040_checks(by_key: dict[str, ParsedField]) -> list[_Check]:
         ),
         _sum_check(
             "W-2 wages add up to line 1a",
-            ["w2_wages_taxpayer", "w2_wages_spouse"],
+            [k for k in ("w2_wages_taxpayer", "w2_wages_spouse") if k in by_key],
             "wages_1a",
             "W-2 wages",
             "line 1a wages",
@@ -729,7 +785,7 @@ def _k401_checks(by_key: dict[str, ParsedField]) -> list[_Check]:
     return [
         _sum_check(
             "Participant balances add up to the total balance",
-            ["k401_balance_taxpayer", "k401_balance_spouse"],
+            [k for k in ("k401_balance_taxpayer", "k401_balance_spouse") if k in by_key],
             "k401_total_balance",
             "Participant balances",
             "the total balance",
@@ -745,10 +801,24 @@ def _k401_checks(by_key: dict[str, ParsedField]) -> list[_Check]:
     ]
 
 
+def _roth_checks(by_key: dict[str, ParsedField]) -> list[_Check]:
+    return [
+        _sum_check(
+            "Fund allocation adds up to the Roth IRA balance",
+            _numbered(by_key, "roth_alloc_{}_value"),
+            "roth_total_balance",
+            "Fund values",
+            "the Roth IRA balance",
+        ),
+        _percent_check(_numbered(by_key, "roth_alloc_{}_pct")),
+    ]
+
+
 _CHECKS: dict[str, Callable[[dict[str, ParsedField]], list[_Check]]] = {
     "form_1040": _form_1040_checks,
     "brokerage_statement": _brokerage_checks,
     "retirement_401k": _k401_checks,
+    "roth_ira": _roth_checks,
 }
 
 
@@ -792,16 +862,18 @@ _KIND_TITLES: tuple[tuple[DocKind, re.Pattern[str]], ...] = (
     ("form_1040", re.compile(r"Form 1040 \(2026 projection\), simplified", re.IGNORECASE)),
     ("brokerage_statement", re.compile(r"Brokerage Account Statement", re.IGNORECASE)),
     ("retirement_401k", re.compile(r"401\(k\) Plan Statement", re.IGNORECASE)),
+    ("roth_ira", re.compile(r"Roth IRA Statement", re.IGNORECASE)),
 )
 _EXTRACTORS: dict[str, Callable[[_Reader], list[ParsedField]]] = {
     "form_1040": _extract_form_1040,
     "brokerage_statement": _extract_brokerage,
     "retirement_401k": _extract_401k,
+    "roth_ira": _extract_roth,
 }
 
 
 def _detect_kind(first_page: _Page | None) -> tuple[DocKind, str]:
-    """Document kind and printed title, from the title text near the top of page 1."""
+    """Document kind and printed title, from the title text near the top of a page."""
     if first_page is None or not first_page.rows:
         return "unknown", "Unrecognised document"
     for row in first_page.rows[:6]:
@@ -812,37 +884,79 @@ def _detect_kind(first_page: _Page | None) -> tuple[DocKind, str]:
     return "unknown", first_page.rows[0].text[:80]  # the first line is the best hint
 
 
-def parse_document(source: Path | bytes) -> ParsedDocument:
-    """Parse a sample PDF given as a path or as raw bytes.
-
-    Unrecognised or unreadable PDFs come back as kind "unknown" with no fields and no checks
-    instead of raising. Only page 1 is read to decide the kind, so an unrelated PDF costs
-    almost nothing however long it is.
-    """
+def _open(source: Path | bytes) -> pdfplumber.PDF:
     stream = (
         io.BytesIO(bytes(source))
         if isinstance(source, (bytes, bytearray, memoryview))
         else Path(source)
     )
-    try:
-        with pdfplumber.open(stream) as pdf:
-            sizes = [(float(p.width), float(p.height)) for p in pdf.pages]
-            first = _read_page(pdf.pages[0], 1) if pdf.pages else None
-            kind, title = _detect_kind(first)
-            if first is None or kind == "unknown":
-                return ParsedDocument(
-                    doc_kind="unknown", title=title, page_sizes=sizes, fields=[], checks=[]
-                )
-            pages = [first, *(_read_page(p, n) for n, p in enumerate(pdf.pages[1:], start=2))]
-    except (PdfminerException, PSException):
-        return ParsedDocument(
-            doc_kind="unknown", title="Unreadable file", page_sizes=[], fields=[], checks=[]
-        )
+    return pdfplumber.open(stream)
+
+
+def _unknown(title: str, sizes: list[tuple[float, float]]) -> ParsedDocument:
+    return ParsedDocument(doc_kind="unknown", title=title, page_sizes=sizes, fields=[], checks=[])
+
+
+def _build(kind: DocKind, title: str, sizes: list[tuple[float, float]], pages: Sequence[_Page]) -> ParsedDocument:
     fields = _EXTRACTORS[kind](_Reader(pages))
     return ParsedDocument(
         doc_kind=kind,
         title=title,
         page_sizes=sizes,
+        first_page=pages[0].number,
+        last_page=pages[-1].number,
         fields=fields,
         checks=apply_cross_checks(kind, fields),
     )
+
+
+def parse_document(source: Path | bytes) -> ParsedDocument:
+    """Parse a sample PDF given as a path or as raw bytes, as one document.
+
+    Unrecognised or unreadable PDFs come back as kind "unknown" with no fields and no checks
+    instead of raising. Only page 1 is read to decide the kind, so an unrelated PDF costs
+    almost nothing however long it is. (For a PDF made of several documents use `parse_bundle`.)
+    """
+    try:
+        with _open(source) as pdf:
+            sizes = [(float(p.width), float(p.height)) for p in pdf.pages]
+            first = _read_page(pdf.pages[0], 1) if pdf.pages else None
+            kind, title = _detect_kind(first)
+            if first is None or kind == "unknown":
+                return _unknown(title, sizes)
+            pages = [first, *(_read_page(p, n) for n, p in enumerate(pdf.pages[1:], start=2))]
+    except (PdfminerException, PSException):
+        return ParsedDocument(
+            doc_kind="unknown", title="Unreadable file", page_sizes=[], fields=[], checks=[]
+        )
+    return _build(kind, title, sizes, pages)
+
+
+def parse_bundle(source: Path | bytes) -> list[ParsedDocument]:
+    """Split a PDF into its documents by the title printed on each page and parse each one.
+
+    A document runs from its title page to the page before the next title page; pages before the
+    first title are ignored. Every field's `page` is the absolute page of the whole PDF, and each
+    document carries `first_page` / `last_page` and the sizes of all the PDF's pages. A PDF with
+    no recognised title gives one "unknown" document; a single-document PDF gives one document.
+    """
+    try:
+        with _open(source) as pdf:
+            sizes = [(float(p.width), float(p.height)) for p in pdf.pages]
+            pages = [_read_page(p, n) for n, p in enumerate(pdf.pages, start=1)]
+    except (PdfminerException, PSException):
+        return [
+            ParsedDocument(
+                doc_kind="unknown", title="Unreadable file", page_sizes=[], fields=[], checks=[]
+            )
+        ]
+    sections: list[tuple[DocKind, str, list[_Page]]] = []
+    for page in pages:
+        kind, title = _detect_kind(page)
+        if kind != "unknown":
+            sections.append((kind, title, [page]))
+        elif sections:
+            sections[-1][2].append(page)
+    if not sections:
+        return [_unknown(_detect_kind(pages[0] if pages else None)[1], sizes)]
+    return [_build(kind, title, sizes, section) for kind, title, section in sections]

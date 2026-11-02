@@ -497,7 +497,11 @@ def test_a_blank_document_of_the_right_kind_is_all_low(kind):
     assert doc.doc_kind == kind and doc.title == TITLES[kind]
     keys = {f.key for f in doc.fields}
     # Row-based fields are reported once (holding_1_*, alloc_1_*) as a placeholder.
-    assert {k for k in REQUIRED_KEYS[kind] if not re.search(r"_[2-9]_", k)} <= keys
+    # (spouse fields are only reported when the document has some spouse row; a blank page has none)
+    required = {k for k in REQUIRED_KEYS[kind] if not re.search(r"_[2-9]_", k) and not (kind == "form_1040" and "spouse" in k)}
+    assert required <= keys
+    if kind == "form_1040":
+        assert not {k for k in keys if "spouse" in k}
     for f in doc.fields:
         assert_missing(f)
     assert doc.checks

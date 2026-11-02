@@ -345,6 +345,21 @@ LOG_COLUMNS = (
     "charitable_deduction",
     "deduction",
     "itemized",
+    # Read-only additions for the customer view (nothing above is computed from them): the year-end balance of each account by asset
+    # class, what the year's spending and tax drew from the taxable and Roth accounts, and the tax the Roth conversion caused.
+    "pretax_equity",
+    "pretax_bonds",
+    "pretax_credit",
+    "roth_equity",
+    "roth_bonds",
+    "roth_credit",
+    "brokerage_equity",
+    "brokerage_bonds",
+    "brokerage_credit",
+    "withdrawn_brokerage",
+    "withdrawn_roth",
+    "conv_tax",
+    "conv_il_tax",
 )
 NLOG = len(LOG_COLUMNS)
 (
@@ -408,6 +423,19 @@ NLOG = len(LOG_COLUMNS)
     L_CHARITY,
     L_DEDUCTION,
     L_ITEMIZED,
+    L_PE,
+    L_PB,
+    L_PP,
+    L_RE,
+    L_RB,
+    L_RP,
+    L_BE,
+    L_BB,
+    L_BP,
+    L_WD_BROKERAGE,
+    L_WD_ROTH,
+    L_CONVTAX,
+    L_CONVILTAX,
 ) = range(NLOG)
 
 # --------------------------------------------------------------------------------------------
@@ -1423,6 +1451,8 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, single, want
         be_mark = st[S_BE]
 
     # 4. Withdraw retirement spending (net of Social Security) and the part of the gift that spare wages did not pay.
+    brokerage_before_spending = st[S_BE] + st[S_BB] + st[S_BP]
+    roth_before_spending = st[S_RE] + st[S_RB] + st[S_RP]
     need_spend = _need_of(tv, t, single)
     need = need_spend + gift_portfolio
     spend_share = need_spend / need if need > 0.0 else 1.0
@@ -1489,6 +1519,8 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, single, want
         st[S_UNFUNDED] += _shortfall(remaining)
     if rmd_cash > 0.0:
         st[S_BB] += rmd_cash  # an RMD that exceeds spending is reinvested in the taxable account
+    withdrawn_brokerage = max(0.0, brokerage_before_spending - (st[S_BE] + st[S_BB] + st[S_BP]))
+    withdrawn_roth = max(0.0, roth_before_spending - (st[S_RE] + st[S_RB] + st[S_RP]))
     if ys[Y_EQRET] < 0.0 and equity_before - (st[S_PE] + st[S_RE] + st[S_BE]) > 1.0:
         st[S_FSALE] += 1.0  # stocks were sold to pay for goals or spending in a year they fell
     if track:
@@ -1651,6 +1683,12 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, single, want
     st[S_STACC] = 0.0
     r = tax_core(wages_taxable, interest, dividends, dividends + dist_st, realized, ret_dist, conv, ss, early_base, kids, deps, cf_in, aged, realized_st, gift_cash, gift_stock, single)
     total_tax = r.total_tax
+    conv_tax_logged = 0.0
+    conv_il_tax_logged = 0.0
+    if do_log and conv > 0.0:
+        without_conversion = tax_core(wages_taxable, interest, dividends, dividends + dist_st, realized, ret_dist, 0.0, ss, early_base, kids, deps, cf_in, aged, realized_st, gift_cash, gift_stock, single)
+        conv_tax_logged = total_tax - without_conversion.total_tax
+        conv_il_tax_logged = r.illinois_tax - without_conversion.illinois_tax
     if track:
         diag[D_PENALTY] += r.early_withdrawal_penalty
         diag[D_EARLY] += early_base
@@ -1866,6 +1904,19 @@ def _year_rest(st, ys, tv, t, hhc, row, act, w, k, wt_pre, wt_roth, single, want
         log[t, L_CHARITY] = r.charitable_deduction
         log[t, L_DEDUCTION] = r.deduction
         log[t, L_ITEMIZED] = r.itemized
+        log[t, L_PE] = st[S_PE]
+        log[t, L_PB] = st[S_PB]
+        log[t, L_PP] = st[S_PP]
+        log[t, L_RE] = st[S_RE]
+        log[t, L_RB] = st[S_RB]
+        log[t, L_RP] = st[S_RP]
+        log[t, L_BE] = st[S_BE]
+        log[t, L_BB] = st[S_BB]
+        log[t, L_BP] = st[S_BP]
+        log[t, L_WD_BROKERAGE] = withdrawn_brokerage
+        log[t, L_WD_ROTH] = withdrawn_roth
+        log[t, L_CONVTAX] = conv_tax_logged
+        log[t, L_CONVILTAX] = conv_il_tax_logged
     return wealth, total_tax
 
 

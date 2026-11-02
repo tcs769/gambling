@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 Confidence = Literal["high", "medium", "low"]
 FieldKind = Literal["money", "integer", "percent", "text"]
-DocKind = Literal["form_1040", "brokerage_statement", "retirement_401k", "unknown"]
+DocKind = Literal["form_1040", "brokerage_statement", "retirement_401k", "roth_ira", "unknown"]
 
 
 class BBox(BaseModel):
@@ -53,6 +53,8 @@ class CrossCheck(BaseModel):
 class ParsedDocument(BaseModel):
     doc_kind: DocKind
     title: str
-    page_sizes: list[tuple[float, float]]  # (width, height) per page, in points
+    page_sizes: list[tuple[float, float]]  # (width, height) per page of the whole PDF, in points
+    first_page: int | None = None  # 1-based, absolute: where this document starts in the PDF
+    last_page: int | None = None  # 1-based, absolute: the last page of this document
     fields: list[ParsedField]
     checks: list[CrossCheck]

@@ -43,6 +43,7 @@ TITLES: dict[str, str] = {
     "retirement_401k": "401(k) Plan Statement",
 }
 FOOTER_TEXT = "SAMPLE – FICTIONAL"
+FOOTER_NOTE = "Fictional document created for the Waramoug demo. Not a real form, statement or account."
 FILING_STATUS_LABELS = {"married_filing_jointly": "Married filing jointly"}
 
 # Form 1040 lines shown, as (field key, line number, description). Lines in BOLD_LINES are totals.
@@ -176,9 +177,11 @@ def allocation_percent(value: float, total: float) -> float:
 
 
 def _usd(amount: float) -> str:
-    """Whole dollars as printed on the documents; losses in parentheses."""
-    whole = round(amount)
-    return f"${whole:,}" if whole >= 0 else f"(${-whole:,})"
+    """Whole dollars as printed on the documents (cents only when the amount has them); losses in parentheses."""
+    if abs(amount - round(amount)) < 0.005:
+        whole = round(amount)
+        return f"${whole:,}" if whole >= 0 else f"(${-whole:,})"
+    return f"${amount:,.2f}" if amount >= 0 else f"(${-amount:,.2f})"
 
 
 class _Omit:
@@ -249,7 +252,7 @@ def _footer(s: _Sheet) -> None:
     s.text(
         PAGE_W / 2,
         PAGE_H - 36,
-        "Fictional document created for the Donabach demo. Not a real form, statement or account.",
+        FOOTER_NOTE,
         size=7,
         gray=0.45,
         align="center",
@@ -535,8 +538,8 @@ def build_documents(
         buf = io.BytesIO()
         canvas = Canvas(buf, pagesize=letter, invariant=1, pageCompression=0)
         canvas.setTitle(TITLES[kind])
-        canvas.setAuthor("Donabach demo (fictional sample)")
-        canvas.setSubject("Fictional sample document for the Donabach demo")
+        canvas.setAuthor("Waramoug demo (fictional sample)")
+        canvas.setSubject("Fictional sample document for the Waramoug demo")
         sheet = _Sheet(canvas)
         draw(sheet, household, skip)
         _footer(sheet)

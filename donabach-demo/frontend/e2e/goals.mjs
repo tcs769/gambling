@@ -134,7 +134,7 @@ export async function runGoals({ browser, base, check }) {
     "the invest request carries the household the API built",
   );
   check(
-    (await page.getByTestId("plan-id").innerText()) === first.answered.invest.plan_id,
+    (await page.locator("[data-plan-id]").getAttribute("data-plan-id")) === first.answered.invest.plan_id,
     "the Invest screen has the API's plan id",
   );
   check(first.answered.invest.what_changed === null, "the first result has no what-changed");

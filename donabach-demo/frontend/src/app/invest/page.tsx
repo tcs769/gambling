@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { InvestView } from "@/components/invest/InvestView";
 import { Screen } from "@/components/portal/Screen";
 import { useGuard } from "@/components/portal/useGuard";
+import { DISCLAIMER } from "@/lib/invest-format";
 import { usePortal } from "@/lib/portal-state";
-import styles from "../Placeholder.module.css";
+import styles from "../Disclaimer.module.css";
 
-// A placeholder: the Invest screen is built next. The state it needs (the Plan result and approved[plan_id][move_key]) is in the provider.
 export default function InvestPage() {
   const { state } = usePortal();
   const router = useRouter();
@@ -17,11 +18,9 @@ export default function InvestPage() {
       title="Invest"
       back={{ onClick: () => router.push("/goals") }}
       next={{ label: "Compare", onClick: () => router.push("/compare") }}
-      footer={<p className={styles.disclaimer}>Illustration based on simulated outcomes. Not investment advice.</p>}
+      footer={<p className={styles.disclaimer}>{DISCLAIMER}</p>}
     >
-      <p className={`${styles.id} num`} data-testid="plan-id">
-        {state.plan.plan_id}
-      </p>
+      <InvestView plan={state.plan} />
     </Screen>
   );
 }

@@ -1,0 +1,95 @@
+.year {
+  display: block;
+  max-width: 520px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+}
+
+.pair {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.pair:last-child {
+  border-bottom: 0;
+}
+.pair dt {
+  color: var(--ink);
+}
+.pair dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.total {
+  background: var(--panel);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.total dt,
+.total dd {
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.bar {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 20px;
+}
+
+.step {
+  flex-basis: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 0 0;
+}
+
+.rate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  border-radius: 5px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.step[data-filled] .rate {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--white);
+  height: 46px;
+  margin-top: -8px;
+}
+
+.floor {
+  font-size: 0.8rem;
+  color: var(--ink-2);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.step[data-filled] .floor {
+  color: var(--navy);
+  font-weight: 700;
+}
+
+.values {
+  margin-top: 4px;
+}
+
+@media (max-width: 700px) {
+  .floor {
+    display: none;
+  }
+}

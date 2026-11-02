@@ -1,0 +1,63 @@
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+.card {
+  display: grid;
+  gap: 6px;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+}
+
+.label {
+  font-size: 1.15rem;
+}
+
+.target {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.timing {
+  color: var(--ink-2);
+}
+
+.track {
+  height: 10px;
+  margin-top: 12px;
+  border-radius: 5px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: var(--navy);
+}
+.fill[data-status="Close"] {
+  background: var(--brown);
+}
+.fill[data-status="Behind"] {
+  background: var(--bad);
+}
+
+.status {
+  font-weight: 600;
+  color: var(--good);
+}
+.status[data-status="Close"] {
+  color: var(--brown-dark);
+}
+.status[data-status="Behind"] {
+  color: var(--bad);
+}

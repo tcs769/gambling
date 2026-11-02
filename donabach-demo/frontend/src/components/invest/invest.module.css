@@ -1,0 +1,159 @@
+/* Shared by the Invest and Compare screens: sections, tables, tags. */
+.section {
+  margin-top: 36px;
+}
+.section:first-child {
+  margin-top: 0;
+}
+
+.heading {
+  font-size: 1.2rem;
+  margin-bottom: 14px;
+}
+
+.subheading {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-bottom: 8px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.table th,
+.table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.table thead th {
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.table tbody tr:last-child > th,
+.table tbody tr:last-child > td {
+  border-bottom: 0;
+}
+
+.table tbody th {
+  font-weight: 500;
+}
+
+.table .right {
+  text-align: right;
+}
+
+.table tfoot th,
+.table tfoot td {
+  font-weight: 700;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  border-bottom: 0;
+}
+
+.dash {
+  color: var(--ink-2);
+}
+
+.muted {
+  color: var(--ink-2);
+}
+
+/* a row (or a cell) that moved after a change */
+.changedRow > th,
+.changedRow > td {
+  background: var(--brown-wash);
+}
+.changedRow > :first-child {
+  box-shadow: inset 3px 0 0 var(--brown-dark);
+}
+
+.tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border: 1px solid var(--brown-dark);
+  border-radius: 4px;
+  color: var(--brown-dark);
+  background: var(--white);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.tagQuiet {
+  composes: tag;
+  border-color: var(--line);
+  color: var(--ink-2);
+  margin-left: 10px;
+}
+
+.lines {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 28px;
+  font-variant-numeric: tabular-nums;
+}
+.lines dt {
+  color: var(--ink-2);
+}
+.lines dd {
+  margin: 0;
+  font-weight: 600;
+}
+.lines dd.strong {
+  color: var(--navy);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+}
+
+.quiet {
+  color: var(--ink-2);
+}
+
+@media (max-width: 900px) {
+  .section {
+    margin-top: 28px;
+  }
+  .table th,
+  .table td {
+    padding: 8px 10px;
+  }
+}

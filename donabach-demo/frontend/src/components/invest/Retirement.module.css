@@ -1,0 +1,35 @@
+.scroll {
+  max-height: 560px;
+  overflow: auto;
+}
+.scroll:focus-visible {
+  outline-offset: 2px;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.table th,
+.table td {
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.total {
+  font-weight: 600;
+}
+
+.order {
+  margin: 0;
+  padding-left: 24px;
+  display: grid;
+  gap: 6px;
+}
+
+.note {
+  margin-top: 12px;
+  color: var(--ink-2);
+}

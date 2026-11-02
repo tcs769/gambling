@@ -1,0 +1,58 @@
+.tableGap {
+  margin-top: 18px;
+}
+
+.bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: 220px minmax(80px, 1fr) 56px 96px;
+  align-items: center;
+  gap: 14px;
+}
+
+.barLabel {
+  min-width: 0;
+}
+
+.track {
+  height: 12px;
+  border-radius: 3px;
+  background: var(--panel);
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--navy);
+}
+
+.barShare,
+.barAmount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.barAmount {
+  color: var(--ink-2);
+}
+
+@media (max-width: 700px) {
+  .barRow {
+    grid-template-columns: 1fr 52px 84px;
+  }
+  .track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .barLabel {
+    grid-row: 1;
+  }
+}

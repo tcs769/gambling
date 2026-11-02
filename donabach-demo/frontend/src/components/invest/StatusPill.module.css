@@ -1,0 +1,37 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.icon {
+  flex: none;
+}
+.done {
+  color: var(--good);
+  border-color: #b9d3c3;
+  background: #f2f8f4;
+}
+.ongoing,
+.scheduled {
+  color: var(--navy);
+  border-color: #c3cfdf;
+  background: var(--panel);
+}
+.needs_ok {
+  color: var(--warn);
+  border-color: #e3c79d;
+  background: #fbf3e6;
+}
+.your_step {
+  color: var(--brown-dark);
+  border-color: #dccbb6;
+  background: var(--brown-wash);
+}

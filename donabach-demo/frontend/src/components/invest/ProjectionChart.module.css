@@ -1,0 +1,28 @@
+.frame {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+  padding: 8px 8px 0;
+}
+.chart {
+  height: 340px;
+  width: 100%;
+}
+.chart[hidden] {
+  display: none;
+}
+.tableScroll {
+  max-height: 340px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+.toggle {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+@media (max-width: 600px) {
+  .chart {
+    height: 280px;
+  }
+}

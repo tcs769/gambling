@@ -323,7 +323,7 @@ def _mix_rows(matrix: dict[str, dict[str, float]], accounts_total: dict[str, flo
     total = sum(accounts_total.values())
     whole = round_to_total(raw, total)
     rows = [
-        AssetRow(key=k, label=label, amount=float(whole[i]), share=raw[i] / total if total else 0.0, expected_return=EXPECTED_RETURN[k])
+        AssetRow(key=k, label=label, amount=float(whole[i]), share=round(max(0.0, raw[i]) / total, 9) if total else 0.0, expected_return=EXPECTED_RETURN[k])
         for i, (k, label) in enumerate(ASSETS)
     ]
     return Mix(rows=rows, total=float(round(total)))

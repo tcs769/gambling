@@ -20,6 +20,8 @@ const FORBIDDEN = [
 const DISCLAIMER = "Illustration based on simulated outcomes. Not investment advice.";
 
 async function sweep(page, label, check, { disclaimer = false } = {}) {
+  // Next.js clears the title for a moment after a client-side navigation: wait for it to settle (a title that never comes fails below).
+  await page.waitForFunction(() => document.title === "Waramoug", null, { timeout: 3000 }).catch(() => {});
   const { text, attrs, title } = await visibleText(page);
   const all = [text, ...attrs];
   const hits = FORBIDDEN.flatMap((re) =>

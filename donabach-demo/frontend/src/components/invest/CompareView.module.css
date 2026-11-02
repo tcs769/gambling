@@ -1,0 +1,150 @@
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 36px;
+  margin-bottom: 24px;
+  padding: 20px 26px;
+  border-radius: var(--radius);
+  background: var(--navy);
+  color: var(--white);
+}
+
+.stripLead {
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #d5dee9;
+}
+
+.stripBig {
+  font-family: var(--font-serif);
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.stripRate {
+  margin-left: auto;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: stretch;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+  overflow: hidden;
+}
+.card[data-side="waramoug"] {
+  border: 2px solid var(--navy);
+}
+
+.cardHead {
+  margin: 0;
+  padding: 14px 22px;
+  font-size: 1.15rem;
+  background: #e7ebf0;
+  color: var(--ink);
+}
+.card[data-side="waramoug"] .cardHead {
+  background: var(--navy);
+  color: var(--white);
+}
+
+.rows {
+  margin: 0;
+  padding: 4px 22px 10px;
+}
+
+.row {
+  display: grid;
+  gap: 6px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.row:last-child {
+  border-bottom: 0;
+}
+
+.rowLabel {
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+
+.rowValue {
+  margin: 0;
+  font-weight: 600;
+  display: grid;
+  gap: 8px;
+}
+
+.wealth {
+  font-family: var(--font-serif);
+  font-size: 1.9rem;
+  line-height: 1.1;
+  color: var(--navy);
+}
+.card[data-side="advisor"] .wealth {
+  color: var(--ink);
+}
+
+.barTrack {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--panel);
+}
+.barFill {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+}
+.barFill[data-side="advisor"] {
+  background: #8592a3;
+}
+.barFill[data-side="waramoug"] {
+  background: var(--navy);
+}
+
+.mixText {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.accounts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.extra {
+  margin-left: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+@media (max-width: 900px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+  .stripRate {
+    margin-left: 0;
+  }
+  .stripBig {
+    font-size: 1.7rem;
+  }
+}

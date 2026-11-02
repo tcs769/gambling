@@ -1,0 +1,57 @@
+.mixTable {
+  margin-top: 18px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 10px;
+  border-radius: 2px;
+  vertical-align: baseline;
+}
+
+.cell {
+  min-width: 110px;
+}
+
+.movedLocation > th {
+  background: var(--brown-wash);
+  box-shadow: inset 3px 0 0 var(--brown-dark);
+}
+
+.moves .title {
+  max-width: 420px;
+  line-height: 1.35;
+}
+
+.amount {
+  white-space: nowrap;
+}
+
+.detail {
+  margin-left: 10px;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+
+.statusCell {
+  white-space: nowrap;
+}
+
+.approve {
+  min-height: 32px;
+  margin-left: 12px;
+  padding: 0 14px;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 700px) {
+  .moves .title {
+    min-width: 200px;
+  }
+}
+
+.when {
+  white-space: nowrap;
+}

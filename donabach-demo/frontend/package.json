@@ -10,7 +10,7 @@
     "gen:api": "openapi-typescript http://localhost:8000/openapi.json -o src/lib/api-schema.d.ts",
     "typecheck": "tsc --noEmit",
     "postinstall": "node scripts/copy-pdf-worker.mjs",
-    "e2e": "for m in documents reading review goals navigation wording; do node e2e/$m.mjs || exit 1; done"
+    "e2e": "node e2e/recording.mjs && for m in documents reading review goals invest compare navigation wording; do node e2e/$m.mjs || exit 1; done"
   },
   "dependencies": {
     "next": "16.4.0",

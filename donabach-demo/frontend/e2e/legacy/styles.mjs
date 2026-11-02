@@ -19,7 +19,7 @@ import {
   signedPercent,
   squash,
   years,
-} from "./lib.mjs";
+} from "../lib.mjs";
 
 const STYLES = ["equity_first", "balanced", "liability_matched"];
 const NAME = { equity_first: "Equity-first", balanced: "Balanced", liability_matched: "Liability-matched" };

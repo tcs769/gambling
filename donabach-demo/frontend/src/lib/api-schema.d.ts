@@ -4,6 +4,94 @@
  */
 
 export interface paths {
+    "/portal/documents/sample": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Load Sample */
+        post: operations["load_sample_portal_documents_sample_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/documents/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload */
+        post: operations["upload_portal_documents_upload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/documents/{doc_id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Document File */
+        get: operations["document_file_portal_documents__doc_id__file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/household": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Household */
+        post: operations["create_household_portal_household_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/defaults": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Defaults
+         * @description The goal answers prefilled with John Smith's (from fixtures/showcase.json).
+         */
+        get: operations["defaults_portal_defaults_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -294,10 +382,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/portal/invest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Portal Invest
+         * @description The portfolio for the household (and the event), with what changed against the plan the customer saw before. A plan that was
+         *     precomputed (demo mode) comes straight from the cache; any other change runs the real planner on the changed household.
+         */
+        post: operations["portal_invest_portal_invest_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/plan/{plan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Portal Plan */
+        get: operations["portal_plan_portal_plan__plan_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccountHoldings */
+        AccountHoldings: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "brokerage" | "pretax" | "roth";
+            /** Label */
+            label: string;
+            /** Balance */
+            balance: number;
+            /** Taxation */
+            taxation: string;
+            /** Cost Basis */
+            cost_basis?: number | null;
+            /** Unrealized Gain */
+            unrealized_gain?: number | null;
+            /** Holdings */
+            holdings: components["schemas"]["HoldingRow"][];
+        };
         /** AccountLine */
         AccountLine: {
             /** Label */
@@ -550,6 +696,29 @@ export interface components {
             /** Risk Adjusted High */
             risk_adjusted_high: number;
         };
+        /** AdvisorCard */
+        AdvisorCard: {
+            /** Title */
+            title: string;
+            /** Wealth 80 */
+            wealth_80: number;
+            /** Bar */
+            bar: number;
+            /** Mix */
+            mix: components["schemas"]["MixShare"][];
+            /** Accounts */
+            accounts: string[];
+            /** Harvesting */
+            harvesting: string;
+            /** Harvested So Far */
+            harvested_so_far?: number | null;
+            /** Roth Conversion */
+            roth_conversion: number;
+            /** Fee Dollars */
+            fee_dollars: number;
+            /** Fee Rate */
+            fee_rate: number;
+        };
         /** AlternativeView */
         AlternativeView: {
             action: components["schemas"]["ActionView"];
@@ -627,6 +796,22 @@ export interface components {
              */
             social_security_start_age: number;
         };
+        /** AssetRow */
+        AssetRow: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "us_stocks" | "intl_stocks" | "bonds" | "private_credit" | "cash";
+            /** Label */
+            label: string;
+            /** Amount */
+            amount: number;
+            /** Share */
+            share: number;
+            /** Expected Return */
+            expected_return: number;
+        };
         /**
          * BBox
          * @description Rectangle in PDF points, origin at the top-left of the page (pdfplumber convention).
@@ -640,6 +825,15 @@ export interface components {
             x1: number;
             /** Bottom */
             bottom: number;
+        };
+        /** BarRow */
+        BarRow: {
+            /** Label */
+            label: string;
+            /** Share */
+            share: number;
+            /** Amount */
+            amount: number;
         };
         /**
          * BaselineView
@@ -674,6 +868,37 @@ export interface components {
         Body_upload_documents_documents_upload_post: {
             /** Files */
             files: string[];
+        };
+        /** Body_upload_portal_documents_upload_post */
+        Body_upload_portal_documents_upload_post: {
+            /** File */
+            file: string;
+        };
+        /** BracketStep */
+        BracketStep: {
+            /** Rate */
+            rate: number;
+            /** Floor */
+            floor: number;
+            /** Ceiling */
+            ceiling: number | null;
+            /** Filled */
+            filled: boolean;
+        };
+        /** BracketView */
+        BracketView: {
+            /** Brackets */
+            brackets: components["schemas"]["BracketStep"][];
+            /** Taxable Before */
+            taxable_before: number;
+            /** Conversion */
+            conversion: number;
+            /** Fills To */
+            fills_to: number;
+            /** Marginal Rate */
+            marginal_rate: number;
+            /** Illinois Tax On Conversion */
+            illinois_tax_on_conversion: number;
         };
         /** CardAccount */
         CardAccount: {
@@ -740,6 +965,42 @@ export interface components {
             /** Distribution */
             distribution?: components["schemas"]["OptionProbability"][] | null;
         };
+        /** Comparison */
+        Comparison: {
+            /** Dollars More */
+            dollars_more: number;
+            /** Rate Per Year */
+            rate_per_year: number;
+            advisor: components["schemas"]["AdvisorCard"];
+            waramoug: components["schemas"]["AdvisorCard"];
+        };
+        /** ConversionRow */
+        ConversionRow: {
+            /** Year */
+            year: number;
+            /** Age */
+            age: number;
+            /** Amount */
+            amount: number;
+            /** Tax */
+            tax: number;
+            /** Bracket Rate */
+            bracket_rate: number;
+        };
+        /**
+         * Correction
+         * @description One value the customer changed, with what the document said.
+         */
+        Correction: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Document Value */
+            document_value: number | string | null;
+            /** Corrected Value */
+            corrected_value: number | string;
+        };
         /**
          * CrossCheck
          * @description One consistency check between fields of a document.
@@ -783,7 +1044,7 @@ export interface components {
             /** Pages */
             pages: number;
             /** Kind */
-            kind?: ("form_1040" | "brokerage_statement" | "retirement_401k" | "unknown") | null;
+            kind?: ("form_1040" | "brokerage_statement" | "retirement_401k" | "roth_ira" | "unknown") | null;
         };
         /** DocumentList */
         DocumentList: {
@@ -854,6 +1115,29 @@ export interface components {
             /** Top Factors */
             top_factors?: components["schemas"]["Factor"][];
         };
+        /** GoalCard */
+        GoalCard: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "college" | "retirement" | "home";
+            /** Label */
+            label: string;
+            /** Target */
+            target: number;
+            /** Target Label */
+            target_label: string;
+            /** Timing */
+            timing: string;
+            /** Progress */
+            progress: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "On track" | "Close" | "Behind";
+        };
         /** GoalLine */
         GoalLine: {
             /** Label */
@@ -865,6 +1149,20 @@ export interface components {
              * @default false
              */
             estimated: boolean;
+        };
+        /** GoalMarker */
+        GoalMarker: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "college" | "retirement" | "social_security" | "home";
+            /** Label */
+            label: string;
+            /** Start Age */
+            start_age: number;
+            /** End Age */
+            end_age?: number | null;
         };
         /** Goals */
         Goals: {
@@ -912,10 +1210,46 @@ export interface components {
              */
             charitable_giving: number;
         };
+        /** GoalsTab */
+        GoalsTab: {
+            /** Cards */
+            cards: components["schemas"]["GoalCard"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HoldingRow */
+        HoldingRow: {
+            /** Name */
+            name: string;
+            /** Positions */
+            positions: number;
+            /** Value */
+            value: number;
+            /** Gain */
+            gain?: number | null;
+            /** Yield Rate */
+            yield_rate?: number | null;
+            /** Share */
+            share: number;
+        };
+        /** HoldingsTab */
+        HoldingsTab: {
+            /** Accounts */
+            accounts: components["schemas"]["AccountHoldings"][];
+            /** Largest Stocks */
+            largest_stocks?: components["schemas"]["StockRow"][] | null;
+            /** Sectors */
+            sectors: components["schemas"]["BarRow"][];
+            /** Regions */
+            regions: components["schemas"]["BarRow"][];
+            /**
+             * Illustrative
+             * @default true
+             */
+            illustrative: boolean;
         };
         /** Household */
         Household: {
@@ -1043,6 +1377,29 @@ export interface components {
             /** Top Factors */
             top_factors?: components["schemas"]["Factor"][];
         };
+        /** IncomeRow */
+        IncomeRow: {
+            /** Age */
+            age: number;
+            /** Year */
+            year: number;
+            /** Social Security */
+            social_security: number;
+            /** From Pretax */
+            from_pretax: number;
+            /** From Taxable */
+            from_taxable: number;
+            /** From Roth */
+            from_roth: number;
+            /** Total Sources */
+            total_sources: number;
+            /** Spending */
+            spending: number;
+            /** Tax */
+            tax: number;
+            /** Total Uses */
+            total_uses: number;
+        };
         /**
          * IncomeSnapshot
          * @description This year's income as reported on the tax form (feeds the profile's tax picture).
@@ -1073,6 +1430,26 @@ export interface components {
              * @default 0
              */
             net_capital_gain: number;
+        };
+        /** InvestRequest */
+        InvestRequest: {
+            household: components["schemas"]["Household"];
+            /**
+             * Event
+             * @default none
+             * @enum {string}
+             */
+            event: "none" | "job_loss" | "raise";
+            /**
+             * Previous Plan Id
+             * @description The plan the customer saw before this change (what changed is shown against it)
+             */
+            previous_plan_id?: string | null;
+            /**
+             * Change Label
+             * @description Words for the value that was changed, e.g. 'Income: job loss next year'
+             */
+            change_label?: string | null;
         };
         /**
          * LiabilityView
@@ -1105,6 +1482,27 @@ export interface components {
                 number
             ][];
         };
+        /** Location */
+        Location: {
+            /** Rows */
+            rows: components["schemas"]["LocationRow"][];
+            total: components["schemas"]["LocationRow"];
+        };
+        /** LocationRow */
+        LocationRow: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Brokerage */
+            brokerage: number;
+            /** Pretax */
+            pretax: number;
+            /** Roth */
+            roth: number;
+            /** Total */
+            total: number;
+        };
         /**
          * MarketShock
          * @description A one-off equity shock applied to every simulated future (a what-if).
@@ -1121,6 +1519,40 @@ export interface components {
              * @default -0.3
              */
             equity_return: number;
+        };
+        /** Mix */
+        Mix: {
+            /** Rows */
+            rows: components["schemas"]["AssetRow"][];
+            /** Total */
+            total: number;
+            /**
+             * Illustrative Split
+             * @default true
+             */
+            illustrative_split: boolean;
+        };
+        /** MixChange */
+        MixChange: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Before */
+            before: number;
+            /** After */
+            after: number;
+            /** Moved */
+            moved: boolean;
+        };
+        /** MixShare */
+        MixShare: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Share */
+            share: number;
         };
         /** ModelStatus */
         ModelStatus: {
@@ -1143,6 +1575,53 @@ export interface components {
             policy: components["schemas"]["ModelStatus"];
             value: components["schemas"]["ModelStatus"];
         };
+        /** Move */
+        Move: {
+            /** Key */
+            key: string;
+            /** Title */
+            title: string;
+            /** Amount */
+            amount?: number | null;
+            /** Timing */
+            timing: string;
+            /** Age */
+            age?: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "done" | "ongoing" | "scheduled" | "needs_ok" | "your_step";
+            /** Detail */
+            detail?: string | null;
+        };
+        /** MoveChange */
+        MoveChange: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "added" | "removed" | "changed";
+            /** Title */
+            title: string;
+            /** Before */
+            before?: string | null;
+            /** After */
+            after?: string | null;
+        };
+        /** Opportunity */
+        Opportunity: {
+            /** Name */
+            name: string;
+            /** Value */
+            value: number;
+            /** Cost */
+            cost: number;
+            /** Loss */
+            loss: number;
+            /** Replacement */
+            replacement: string;
+        };
         /** OptionProbability */
         OptionProbability: {
             /** Option */
@@ -1161,6 +1640,17 @@ export interface components {
             /** Score */
             score: number;
         };
+        /** Overview */
+        Overview: {
+            /** Projection */
+            projection: components["schemas"]["ProjectionPoint"][];
+            /** Markers */
+            markers: components["schemas"]["GoalMarker"][];
+            mix: components["schemas"]["Mix"];
+            location: components["schemas"]["Location"];
+            /** Moves */
+            moves: components["schemas"]["Move"][];
+        };
         /** ParseResponse */
         ParseResponse: {
             document: components["schemas"]["DocumentInfo"];
@@ -1172,7 +1662,7 @@ export interface components {
              * Doc Kind
              * @enum {string}
              */
-            doc_kind: "form_1040" | "brokerage_statement" | "retirement_401k" | "unknown";
+            doc_kind: "form_1040" | "brokerage_statement" | "retirement_401k" | "roth_ira" | "unknown";
             /** Title */
             title: string;
             /** Page Sizes */
@@ -1180,6 +1670,10 @@ export interface components {
                 number,
                 number
             ][];
+            /** First Page */
+            first_page?: number | null;
+            /** Last Page */
+            last_page?: number | null;
             /** Fields */
             fields: components["schemas"]["ParsedField"][];
             /** Checks */
@@ -1243,6 +1737,21 @@ export interface components {
              * @default 0
              */
             pretax_401k: number;
+        };
+        /** Plan */
+        Plan: {
+            /** Plan Id */
+            plan_id: string;
+            household: components["schemas"]["Household"];
+            portfolio: components["schemas"]["Portfolio"];
+            comparison: components["schemas"]["Comparison"];
+            what_changed?: components["schemas"]["WhatChanged"] | null;
+            /**
+             * Event
+             * @default none
+             * @enum {string}
+             */
+            event: "none" | "job_loss" | "raise";
         };
         /** PlanRequest */
         PlanRequest: {
@@ -1437,6 +1946,106 @@ export interface components {
              */
             heirs_note: string;
         };
+        /**
+         * PortalAnswers
+         * @description The goal questions the customer answers (same limits as `app.api_models.Answers`).
+         */
+        PortalAnswers: {
+            /** Retirement Age */
+            retirement_age: number;
+            /** Retirement Spending */
+            retirement_spending: number;
+            /** College Starts In Years */
+            college_starts_in_years?: number | null;
+            /**
+             * College Annual Cost
+             * @default 0
+             */
+            college_annual_cost: number;
+            /**
+             * College Years
+             * @default 4
+             */
+            college_years: number;
+            /** Home Purchase In Years */
+            home_purchase_in_years?: number | null;
+            /**
+             * Home Down Payment
+             * @default 0
+             */
+            home_down_payment: number;
+            /** Social Security Annual */
+            social_security_annual: number;
+            /**
+             * Social Security Start Age
+             * @default 67
+             */
+            social_security_start_age: number;
+            /**
+             * Charitable Giving
+             * @default 0
+             */
+            charitable_giving: number;
+            /**
+             * Income Change
+             * @default none
+             * @enum {string}
+             */
+            income_change: "none" | "job_loss" | "raise";
+        };
+        /**
+         * PortalDocuments
+         * @description One uploaded PDF and the documents found in it (pages are absolute in this PDF).
+         */
+        PortalDocuments: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Pages */
+            pages: number;
+            /** Documents */
+            documents: components["schemas"]["ParsedDocument"][];
+        };
+        /** PortalHouseholdRequest */
+        PortalHouseholdRequest: {
+            /** Document Id */
+            document_id: string;
+            /**
+             * Overrides
+             * @description Values the customer corrected, by field key
+             */
+            overrides?: {
+                [key: string]: number;
+            };
+            answers: components["schemas"]["PortalAnswers"];
+        };
+        /** PortalHouseholdResponse */
+        PortalHouseholdResponse: {
+            household: components["schemas"]["Household"];
+            /** Corrections */
+            corrections: components["schemas"]["Correction"][];
+            /** Documents */
+            documents: components["schemas"]["ParsedDocument"][];
+        };
+        /** Portfolio */
+        Portfolio: {
+            summary: components["schemas"]["Summary"];
+            overview: components["schemas"]["Overview"];
+            holdings: components["schemas"]["HoldingsTab"];
+            taxes: components["schemas"]["TaxesTab"];
+            retirement: components["schemas"]["RetirementTab"];
+            goals: components["schemas"]["GoalsTab"];
+        };
+        /** ProjectionPoint */
+        ProjectionPoint: {
+            /** Age */
+            age: number;
+            /** Wealth */
+            wealth: number;
+        };
         /** RankedRow */
         RankedRow: {
             /** Rank */
@@ -1485,6 +2094,25 @@ export interface components {
             agrees?: boolean | null;
             /** Candidates */
             candidates?: components["schemas"]["RankedRow"][];
+        };
+        /** RequiredWithdrawals */
+        RequiredWithdrawals: {
+            /** Start Age */
+            start_age: number;
+            /** First Amount */
+            first_amount: number;
+            /** Covered */
+            covered: boolean;
+            /** Note */
+            note: string;
+        };
+        /** RetirementTab */
+        RetirementTab: {
+            /** Rows */
+            rows: components["schemas"]["IncomeRow"][];
+            /** Withdrawal Order */
+            withdrawal_order: string[];
+            required: components["schemas"]["RequiredWithdrawals"];
         };
         /** ScenarioChange */
         ScenarioChange: {
@@ -1818,6 +2446,15 @@ export interface components {
              */
             ria_forced_sale_chance: number;
         };
+        /** StockRow */
+        StockRow: {
+            /** Name */
+            name: string;
+            /** Value */
+            value: number;
+            /** Gain */
+            gain: number;
+        };
         /**
          * StrategyOutcome
          * @description One of the four strategies, measured on the same evaluation futures.
@@ -1852,6 +2489,23 @@ export interface components {
             /** Sentence */
             sentence: string;
             outcome: components["schemas"]["OutcomeView"];
+        };
+        /** Summary */
+        Summary: {
+            /** Horizon Age */
+            horizon_age: number;
+            /** Age */
+            age: number;
+            /** Projected Wealth */
+            projected_wealth: number;
+            /** Invested Today */
+            invested_today: number;
+            /** Fee Dollars */
+            fee_dollars: number;
+            /** Fee Rate */
+            fee_rate: number;
+            /** Tax Saved */
+            tax_saved: number;
         };
         /** TaxLine */
         TaxLine: {
@@ -1958,6 +2612,39 @@ export interface components {
             /** Capital Loss Carryforward Out */
             capital_loss_carryforward_out: number;
         };
+        /** TaxesTab */
+        TaxesTab: {
+            this_year: components["schemas"]["TaxesThisYear"];
+            bracket: components["schemas"]["BracketView"];
+            /** Opportunities */
+            opportunities: components["schemas"]["Opportunity"][];
+            /**
+             * Opportunities Illustrative
+             * @default true
+             */
+            opportunities_illustrative: boolean;
+            /** Conversions */
+            conversions: components["schemas"]["ConversionRow"][];
+        };
+        /** TaxesThisYear */
+        TaxesThisYear: {
+            /** Roth Conversion */
+            roth_conversion: number;
+            /** Conversion Tax */
+            conversion_tax: number;
+            /** Losses Harvested */
+            losses_harvested: number;
+            /** Gains Offset */
+            gains_offset: number;
+            /** Deducted From Income */
+            deducted_from_income: number;
+            /** Carried Forward */
+            carried_forward: number;
+            /** Interest Kept Out */
+            interest_kept_out: number;
+            /** Tax Saved */
+            tax_saved: number;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -1983,6 +2670,25 @@ export interface components {
             advisor_median: number[];
             /** Advisor P10 */
             advisor_p10: number[];
+        };
+        /** WhatChanged */
+        WhatChanged: {
+            /** Changed */
+            changed: string;
+            /** Mix */
+            mix: components["schemas"]["MixChange"][];
+            /** Wealth Before */
+            wealth_before: number;
+            /** Wealth After */
+            wealth_after: number;
+            /** Moves */
+            moves: components["schemas"]["MoveChange"][];
+            /** Conversion Age */
+            conversion_age: number;
+            /** Conversion Before */
+            conversion_before: number;
+            /** Conversion After */
+            conversion_after: number;
         };
         /** WhatIfRequest */
         WhatIfRequest: {
@@ -2110,6 +2816,143 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    load_sample_portal_documents_sample_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalDocuments"];
+                };
+            };
+        };
+    };
+    upload_portal_documents_upload_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_portal_documents_upload_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalDocuments"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    document_file_portal_documents__doc_id__file_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_household_portal_household_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalHouseholdRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalHouseholdResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    defaults_portal_defaults_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalAnswers"];
+                };
+            };
+        };
+    };
     health_health_get: {
         parameters: {
             query?: never;
@@ -2583,6 +3426,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ShowcaseScenario"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portal_invest_portal_invest_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portal_plan_portal_plan__plan_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
                 };
             };
             /** @description Validation Error */

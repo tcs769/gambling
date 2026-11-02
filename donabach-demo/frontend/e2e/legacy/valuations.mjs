@@ -22,7 +22,7 @@ import {
   signedMoney,
   signedPercent,
   squash,
-} from "./lib.mjs";
+} from "../lib.mjs";
 
 const against = { good_ria: "a good RIA", typical_advisor: "a typical advisor" };
 const MEASURES = [

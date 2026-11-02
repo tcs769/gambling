@@ -214,3 +214,56 @@ def test_the_api_serves_precomputed_plans_at_once_and_an_unchanged_household_ret
     assert client.get(f"/portal/plan/{base.plan_id}").json()["plan_id"] == base.plan_id
     assert client.get("/portal/plan/nope").status_code == 404
     assert re.fullmatch(r"[0-9a-f]{12}", base.plan_id)
+
+
+# --- from the documents to the precomputed plans ----------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def client():
+    from app.main import app
+
+    return TestClient(app)
+
+
+def _household_from(client, document_id, overrides=None, **answers):
+    body = client.get("/portal/defaults").json() | answers
+    r = client.post("/portal/household", json={"document_id": document_id, "overrides": overrides or {}, "answers": body})
+    assert r.status_code == 200, r.text
+    return r.json()["household"]
+
+
+def test_the_sample_documents_and_a_dropped_copy_give_the_precomputed_base_plan_at_once(plans, client):
+    from app.docs import smith
+
+    sample = client.post("/portal/documents/sample").json()
+    with open(smith.DEFAULT_OUT, "rb") as f:
+        dropped = client.post("/portal/documents/upload", files={"file": ("smith_documents.pdf", f.read(), "application/pdf")}).json()
+    assert [d["doc_kind"] for d in sample["documents"]] == [d["doc_kind"] for d in dropped["documents"]]
+    assert sample["documents"] == dropped["documents"]
+    ids = set()
+    for doc in (sample, dropped):
+        household = _household_from(client, doc["id"])
+        r = client.post("/portal/invest", json={"household": household})
+        assert r.status_code == 200 and r.elapsed.total_seconds() < 1.0
+        ids.add(r.json()["plan_id"])
+    assert ids == {plans["base"].plan_id}
+
+
+def test_changes_made_through_the_review_and_goals_screens_hit_the_precomputed_plans(plans, client):
+    sample = client.post("/portal/documents/sample").json()
+    base = plans["base"].plan_id
+    cases = {
+        "retire_65": ({}, {"retirement_age": 65}, "none"),
+        "spending_120k": ({}, {"retirement_spending": 120_000.0}, "none"),
+        "home_3y": ({}, {"home_purchase_in_years": 3, "home_down_payment": 150_000.0}, "none"),
+        "wages_minus_20": ({"w2_wages_taxpayer": 163_414.5}, {}, "none"),
+        "job_loss": ({}, {}, "job_loss"),
+        "raise": ({}, {}, "raise"),
+    }
+    for key, (overrides, answers, event) in cases.items():
+        household = _household_from(client, sample["id"], overrides, **answers)
+        r = client.post("/portal/invest", json={"household": household, "event": event, "previous_plan_id": base})
+        assert r.status_code == 200 and r.elapsed.total_seconds() < 1.0, key
+        assert r.json()["plan_id"] == plans[key].plan_id, key
+        assert r.json()["what_changed"]["changed"] == next(p.label for p in presets.PRESETS if p.key == key)

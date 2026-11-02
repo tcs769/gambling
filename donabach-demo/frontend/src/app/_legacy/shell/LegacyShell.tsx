@@ -4,12 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { inShowcase } from "@/lib/steps";
-import { DemoToggle } from "./DemoToggle";
-import { ShowcaseNav } from "./ShowcaseNav";
-import { StepNav } from "./StepNav";
-import styles from "./Shell.module.css";
+import { DemoToggle } from "@/components/shell/DemoToggle";
+import { ShowcaseNav } from "@/components/shell/ShowcaseNav";
+import { StepNav } from "@/components/shell/StepNav";
+import styles from "./LegacyShell.module.css";
 
-export function Shell({ children }: { children: ReactNode }) {
+export function LegacyShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   // The showcase flow (/showcase) has its own four steps in the header, and none of the demo's switches: its numbers
   // are fixed on the API's side, so Demo mode has nothing to do there.

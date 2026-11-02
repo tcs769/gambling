@@ -1,0 +1,56 @@
+/* Chart and account colours of the previous flow (not used by the current screens).
+   Kept so the legacy code under src/app/_legacy and src/components keeps its colours if it is ever routed again. */
+:root {
+  /* Chart series (validated for color-blind separation and >= 3:1 against the panel, #f1e8d4).
+     amber vs blue: Delta E 25.1 normal, 22.8 protan, 25.8 deutan, 20.0 tritan; contrast on the panel 3.15 and 4.17.
+
+     --series-typical is the third series (the typical advisor). It is ALWAYS drawn dashed as well, so the
+     line style carries identity and colour never has to. Picked by computing OKLab Delta E x100 (Machado
+     2009 simulations at severity 1.0, the dataviz validator's model) over a hue / lightness / chroma grid,
+     keeping only colours >= 3:1 on the panel, in the validator's lightness band (OKLCH L >= 0.43) with
+     chroma >= 0.10, and avoiding the good / bad status hues (green 154, red 29). The hue farthest from both
+     amber (79) and blue (254) is about 346; at the validator's lightness floor the best worst-case separation
+     came at 352, so that is the one used. The lightness band forces it darker than both lines, so it differs
+     in lightness as well as hue:
+       #822a57  OKLCH L 0.431, C 0.130, hue 352 (87 degrees from amber, 98 from blue)
+       contrast  7.13:1 on the panel, 8.12:1 on cream, 6.3:1 on the 13% amber band, 6.5:1 on the 8% blue band
+       Delta E vs amber / vs blue: normal 24.7 / 22.1, protan 25.9 / 20.1, deutan 22.0 / 15.2, tritan 18.8 / 25.7
+       lightness gap (OKLab L x100) vs amber / vs blue: normal 17.9 / 10.9, protan 20.4 / 18.8,
+                                                        deutan 18.3 / 9.1, tritan 18.1 / 11.4
+     Worst case is deutan against blue at 15.2: above the validator's 8 target for CVD and its 15 floor for
+     normal vision. The gates were checked once with (the dataviz
+     validator, `validate_palette.js "#a87a1f,#3570b5,#822a57" --surface "#f1e8d4" --pairs all`, passes too). */
+  /* --series-adaptive is the fourth series (the adaptive, year-by-year planner). It is ALWAYS drawn dotted as well
+     (round dots, a little thicker than the other lines) in the chart, its end key, the tooltip and every legend
+     swatch, so the line style carries identity and colour never has to (the typical advisor is dashed, the other two
+     are solid). With amber, blue and plum placed, the gates leave few colours: scanning OKLCH L 0.43 to 0.70 and
+     C 0.10 to 0.30 at every degree of hue, keeping colours >= 3:1 on the panel, normal-vision Delta E >= 15 and every
+     colour-blind Delta E >= 8 against all three, the survivors are the greens and olives (hue 114 to 146), a royal
+     violet only at chroma about 0.2 (hue 264 to 311) and hot pink-reds at chroma about 0.2 or more (hue 339 to 35).
+     The violet sits at plum's lightness 58 degrees of hue away (one purple family at a glance) and the pink-reds sit
+     beside plum and the bad-status red, so the olive was taken; hue 127 has the best margin on both gates:
+       #476500  OKLCH L 0.466, C 0.120, hue 127 (48 degrees from amber, 127 from blue, 135 from plum)
+       contrast  5.51:1 on the panel, 6.28:1 on cream, 4.85:1 on the 13% amber band, 5.08:1 on the 7% blue band
+       Delta E vs amber / blue / plum: normal 17.4 / 23.1 / 23.3, protan 10.6 / 22.7 / 17.2,
+                                       deutan 15.2 / 22.3 / 10.3, tritan 19.1 / 10.8 / 17.0
+       lightness gap (OKLab L x100) vs amber / blue / plum: normal 14.5 / 7.4 / 3.5
+     Worst colour-blind pair is deutan against plum at 10.3 (target 8) and worst normal-vision pair is amber at 17.4
+     (floor 15). Against plum it differs by hue only, which is why the dotted style is not optional. It sits about 6
+     Delta E from the status green (--good), so it is used for the adaptive line, its keys and swatches only: never
+     for a fill, a row tint or text, where it could read as "good". */
+  --series-donabach: #a87a1f;
+  --series-ria: #3570b5;
+  --series-typical: #822a57;
+  --series-adaptive: #476500;
+
+  /* Savings by account on the showcase household card: a stacked bar, so neighbours sit side by side. It reuses the
+     validated series colours instead of adding a palette of its own, in the one order (plum, amber, blue, then the
+     de-emphasis gray for cash) whose neighbouring pairs clear the gates: amber next to plum and blue next to gray are
+     fine, while plum next to the gray (and amber next to it) are not. On the later showcase charts amber and blue name
+     Donabach and the advisor, and every chart's legend says which is which. --series-adaptive (whose olive must not
+     stand in for a status) is not used as a fill. The gates were checked on each neighbouring pair. */
+  --account-taxable: var(--series-typical);
+  --account-pretax: var(--series-donabach);
+  --account-roth: var(--series-ria);
+  --account-cash: var(--muted);
+}

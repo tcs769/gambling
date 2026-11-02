@@ -9,7 +9,7 @@
 //   BASE_URL=http://localhost:3000 CHROMIUM_PATH=... node e2e/whatif.mjs
 
 import { mkdirSync } from "node:fs";
-import { isMain, layoutOf, money, moreOrLess, openPage, pct1, ratePct, runAlone, signedMoney, squash } from "./lib.mjs";
+import { isMain, layoutOf, money, moreOrLess, openPage, pct1, ratePct, runAlone, signedMoney, squash } from "../lib.mjs";
 import { lowContrast } from "./showcase.mjs";
 
 const DECISIONS = ["wages", "roth_conversion", "gains_harvested_tax_free", "losses_harvested", "stock_share"];

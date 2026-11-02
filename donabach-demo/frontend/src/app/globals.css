@@ -1,95 +1,42 @@
-/* Design tokens from the investor deck. Text on the muted token fails AA below large sizes, so small
-   secondary copy uses --muted-text (5.8:1 on cream, 5.1:1 on panels); --muted is for lines and icons. */
+/* Waramoug customer portal: design tokens. Light theme only. */
 :root {
-  /* The demo is light only, whatever the system asks for: form controls and scrollbars are drawn light too. */
   color-scheme: light;
 
-  --cream: #fbf7ee;
-  --panel: #f1e8d4;
-  --espresso: #2b2418;
-  --brown: #5a4521;
-  --gold: #b8892b;
-  --muted: #8c7b63;
-  --line: #e3d7bd;
+  --white: #ffffff;
+  --panel: #eef2f7; /* light-blue panels */
+  --line: #d5dee9;
+  --ink: #1e2430;
+  --ink-2: #5b6472; /* secondary text: 5.9:1 on white, 5.2:1 on the panel */
+  --navy: #1f3a5f; /* brand */
+  --navy-deep: #172c49;
+  --brown: #b8946a; /* accent, for lines and marks */
+  --brown-dark: #6b4a2e; /* accent text: 8.4:1 on white */
+  --brown-wash: #f6efe6;
 
-  --muted-text: #6f5f49;
-  --panel-deep: #e9ddc2;
-  --gold-wash: rgba(184, 137, 43, 0.14);
-
-  /* Status colors always travel with an icon and a word (never color alone). */
   --good: #2e7048;
-  --warn: #9a5200;
+  --warn: #8a4b00;
   --bad: #ae3a2e;
+
+  --font-serif: Cambria, "Palatino Linotype", Georgia, serif;
+  --font-sans: Calibri, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --radius: 8px;
+  --radius-sm: 6px;
+  --rail-width: 240px;
+  --content-width: 1040px;
+
+  /* Names the components kept from the previous flow still use, on the new palette. */
+  --cream: var(--white);
+  --espresso: var(--ink);
+  --gold: var(--navy);
+  --muted: #8592a3;
+  --muted-text: var(--ink-2);
+  --panel-deep: #e1e8f1;
+  --gold-wash: rgba(31, 58, 95, 0.1);
   --good-wash: rgba(46, 112, 72, 0.12);
-  --warn-wash: rgba(154, 82, 0, 0.12);
+  --warn-wash: rgba(138, 75, 0, 0.12);
   --bad-wash: rgba(174, 58, 46, 0.1);
-
-  /* Chart series (validated for color-blind separation and >= 3:1 against the panel, #f1e8d4).
-     amber vs blue: Delta E 25.1 normal, 22.8 protan, 25.8 deutan, 20.0 tritan; contrast on the panel 3.15 and 4.17.
-
-     --series-typical is the third series (the typical advisor). It is ALWAYS drawn dashed as well, so the
-     line style carries identity and colour never has to. Picked by computing OKLab Delta E x100 (Machado
-     2009 simulations at severity 1.0, the dataviz validator's model) over a hue / lightness / chroma grid,
-     keeping only colours >= 3:1 on the panel, in the validator's lightness band (OKLCH L >= 0.43) with
-     chroma >= 0.10, and avoiding the good / bad status hues (green 154, red 29). The hue farthest from both
-     amber (79) and blue (254) is about 346; at the validator's lightness floor the best worst-case separation
-     came at 352, so that is the one used. The lightness band forces it darker than both lines, so it differs
-     in lightness as well as hue:
-       #822a57  OKLCH L 0.431, C 0.130, hue 352 (87 degrees from amber, 98 from blue)
-       contrast  7.13:1 on the panel, 8.12:1 on cream, 6.3:1 on the 13% amber band, 6.5:1 on the 8% blue band
-       Delta E vs amber / vs blue: normal 24.7 / 22.1, protan 25.9 / 20.1, deutan 22.0 / 15.2, tritan 18.8 / 25.7
-       lightness gap (OKLab L x100) vs amber / vs blue: normal 17.9 / 10.9, protan 20.4 / 18.8,
-                                                        deutan 18.3 / 9.1, tritan 18.1 / 11.4
-     Worst case is deutan against blue at 15.2: above the validator's 8 target for CVD and its 15 floor for
-     normal vision. `npm run check:colors` re-runs these gates on the tokens in this file (the dataviz
-     validator, `validate_palette.js "#a87a1f,#3570b5,#822a57" --surface "#f1e8d4" --pairs all`, passes too). */
-  /* --series-adaptive is the fourth series (the adaptive, year-by-year planner). It is ALWAYS drawn dotted as well
-     (round dots, a little thicker than the other lines) in the chart, its end key, the tooltip and every legend
-     swatch, so the line style carries identity and colour never has to (the typical advisor is dashed, the other two
-     are solid). With amber, blue and plum placed, the gates leave few colours: scanning OKLCH L 0.43 to 0.70 and
-     C 0.10 to 0.30 at every degree of hue, keeping colours >= 3:1 on the panel, normal-vision Delta E >= 15 and every
-     colour-blind Delta E >= 8 against all three, the survivors are the greens and olives (hue 114 to 146), a royal
-     violet only at chroma about 0.2 (hue 264 to 311) and hot pink-reds at chroma about 0.2 or more (hue 339 to 35).
-     The violet sits at plum's lightness 58 degrees of hue away (one purple family at a glance) and the pink-reds sit
-     beside plum and the bad-status red, so the olive was taken; hue 127 has the best margin on both gates:
-       #476500  OKLCH L 0.466, C 0.120, hue 127 (48 degrees from amber, 127 from blue, 135 from plum)
-       contrast  5.51:1 on the panel, 6.28:1 on cream, 4.85:1 on the 13% amber band, 5.08:1 on the 7% blue band
-       Delta E vs amber / blue / plum: normal 17.4 / 23.1 / 23.3, protan 10.6 / 22.7 / 17.2,
-                                       deutan 15.2 / 22.3 / 10.3, tritan 19.1 / 10.8 / 17.0
-       lightness gap (OKLab L x100) vs amber / blue / plum: normal 14.5 / 7.4 / 3.5
-     Worst colour-blind pair is deutan against plum at 10.3 (target 8) and worst normal-vision pair is amber at 17.4
-     (floor 15). Against plum it differs by hue only, which is why the dotted style is not optional. It sits about 6
-     Delta E from the status green (--good), so it is used for the adaptive line, its keys and swatches only: never
-     for a fill, a row tint or text, where it could read as "good". */
-  --series-donabach: #a87a1f;
-  --series-ria: #3570b5;
-  --series-typical: #822a57;
-  --series-adaptive: #476500;
-
-  /* Savings by account on the showcase household card: a stacked bar, so neighbours sit side by side. It reuses the
-     validated series colours instead of adding a palette of its own, in the one order (plum, amber, blue, then the
-     de-emphasis gray for cash) whose neighbouring pairs clear the gates: amber next to plum and blue next to gray are
-     fine, while plum next to the gray (and amber next to it) are not. On the later showcase charts amber and blue name
-     Donabach and the advisor, and every chart's legend says which is which. --series-adaptive (whose olive must not
-     stand in for a status) is not used as a fill. `npm run check:colors` checks each neighbouring pair. */
-  --account-taxable: var(--series-typical);
-  --account-pretax: var(--series-donabach);
-  --account-roth: var(--series-ria);
-  --account-cash: var(--muted);
-
-  --font-serif: Cambria, Georgia, "Times New Roman", serif;
-  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-
-  --radius: 14px;
-  --radius-sm: 9px;
-  --shadow: 0 1px 2px rgba(90, 69, 33, 0.06), 0 6px 18px rgba(90, 69, 33, 0.05);
-  --content-width: 1280px;
-}
-
-/* Inside the showcase flow whatever takes focus is scrolled to below the sticky header (Shift+Tab up the page, or a script
-   scrolling to a control), never under it. */
-[data-showcase] :is(a, button, input, [tabindex]) {
-  scroll-margin-top: 130px;
+  --shadow: 0 1px 2px rgba(30, 36, 48, 0.05);
 }
 
 *,
@@ -105,8 +52,8 @@ html {
 
 body {
   margin: 0;
-  background: var(--cream);
-  color: var(--espresso);
+  background: var(--white);
+  color: var(--ink);
   font-family: var(--font-sans);
   font-size: 1rem;
   line-height: 1.5;
@@ -118,20 +65,19 @@ h2,
 h3,
 h4 {
   font-family: var(--font-serif);
-  color: var(--brown);
+  color: var(--navy);
   font-weight: 700;
   line-height: 1.2;
   margin: 0;
-  letter-spacing: -0.005em;
 }
 h1 {
-  font-size: 2rem;
+  font-size: 1.9rem;
 }
 h2 {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
 }
 h3 {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
 }
 
 p {
@@ -139,7 +85,7 @@ p {
 }
 
 a {
-  color: var(--brown);
+  color: var(--navy);
 }
 
 button,
@@ -155,18 +101,17 @@ button {
 }
 
 :focus-visible {
-  outline: 3px solid var(--gold);
+  outline: 3px solid var(--navy);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-/* Columns of numbers align; big standalone figures do not use tabular digits. */
 .num {
   font-variant-numeric: tabular-nums;
 }
 
 .muted {
-  color: var(--muted-text);
+  color: var(--ink-2);
 }
 
 .sr-only {

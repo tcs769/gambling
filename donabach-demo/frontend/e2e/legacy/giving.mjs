@@ -5,7 +5,7 @@
 // The household request and the what-if request are read from what the browser itself sends; the profile and the what-if's change
 // are compared with the API's own answers to them.
 
-import { isMain, layoutOf, openPage, runAlone, squash, exact } from "./lib.mjs";
+import { isMain, layoutOf, openPage, runAlone, squash, exact } from "../lib.mjs";
 
 /** The one line of help the question carries, as the brief words it. */
 const HELP =

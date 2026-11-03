@@ -24,6 +24,7 @@ from pathlib import Path
 import numpy as np
 
 from app.planner.baseline import RIA_BASELINE
+from app.planner.search import FORCED_SALE_LIMIT
 from app.planner.plan import EVAL_SEED_OFFSET
 from app.planner.strategies import Strategy
 from app.schemas import Accounts, Goals, Household, Person, SocialSecurity
@@ -196,7 +197,7 @@ def _futures(h: Household, n: int, offset: int = 0, job_loss=None):
 
 QUICK_STRATEGIES = [
     Strategy(1.0, conv, 0.15, di, False, "pretax", "sell", reserve_years=years)
-    for years in (2, 6)
+    for years in (2, 6, 12)
     for conv in ("fill22_every", "fill24_every")
     for di in (False, True)
 ]
@@ -213,15 +214,20 @@ def quick_score(p: Profile, n: int = 300) -> dict:
     advisor_ruin = float(np.mean(adv.unfunded[0] > 0))
     off = [s for s in QUICK_STRATEGIES if not s.direct_indexing]
     on = [s for s in QUICK_STRATEGIES if s.direct_indexing]
-    b_off = run_batch(fut, [s.policy() for s in off])
-    medians = [(float(np.median(b_off.wealth[i])), off[i]) for i in range(len(off))]
-    if tax >= 0.0 and on:
-        futd = _futures(hd, n, EVAL_SEED_OFFSET)
-        b_on = run_batch(futd, [s.policy() for s in on])
-        medians += [(float(np.median(b_on.wealth[i])), on[i]) for i in range(len(on))]
-    best, strategy = max(medians, key=lambda m: m[0])
-    rate = (best / advisor) ** (1.0 / years) - 1.0 if best > 0 and advisor > 0 else -1.0
-    return {"rate": rate, "wealth": best, "advisor": advisor, "advisor_ruin": advisor_ruin, "spending": h.goals.retirement_spending, "tax": tax, "strategy": strategy.key}
+    # the planner's own limits, screened on these few futures with slack: the chance of selling stocks in a falling year for goals or spending
+    # at most 2% (+1 point for noise), and the chance of running out of money no higher than the advisor's (+1 point)
+    candidates = []
+    for batch, strategies in ((run_batch(fut, [s.policy() for s in off]), off),) + (
+        ((run_batch(_futures(hd, n, EVAL_SEED_OFFSET), [s.policy() for s in on]), on),) if tax >= 0.0 and on else ()
+    ):
+        for i, strat_ in enumerate(strategies):
+            ok = float(np.mean(batch.forced_years[i] > 0)) <= FORCED_SALE_LIMIT + 0.01 and float(np.mean(batch.unfunded[i] > 0)) <= advisor_ruin + 0.01
+            candidates.append((float(np.median(batch.wealth[i])), strat_, ok))
+    pool = [c for c in candidates if c[2]]
+    feasible = bool(pool)
+    best, strategy, _ = max(pool or candidates, key=lambda m: m[0])
+    rate = (best / advisor) ** (1.0 / years) - 1.0 if feasible and best > 0 and advisor > 0 else -1.0
+    return {"rate": rate, "wealth": best, "advisor": advisor, "advisor_ruin": advisor_ruin, "spending": h.goals.retirement_spending, "tax": tax, "strategy": strategy.key, "feasible": feasible}
 
 
 ADVISOR_CUSHION = 10.0  # the standard advisor's median wealth at 80 must be at least this many years of retirement spending ...
@@ -231,7 +237,7 @@ ADVISOR_MAX_RUIN = 0.10  # ... and it may run out of money in at most this share
 
 def funded(row: dict) -> bool:
     """Is the household one the standard advisor can actually fund? (rows scored before the ruin was recorded are judged on the cushion alone)"""
-    return row["advisor"] >= ADVISOR_CUSHION * row["spending"] and row.get("advisor_ruin", 0.0) <= ADVISOR_MAX_RUIN
+    return row.get("feasible", False) and row["advisor"] >= ADVISOR_CUSHION * row["spending"] and row.get("advisor_ruin", 0.0) <= ADVISOR_MAX_RUIN
 
 
 # --- sampling ---------------------------------------------------------------------------------------------------------------------------
@@ -306,6 +312,22 @@ def cmd_sample(args: list[str]) -> None:
                 print(f"shard {shard}: {done}/{n} scored ({tried} drawn)", flush=True)
 
 
+def cmd_rescore(args: list[str]) -> None:
+    """rescore IN OUT SHARD SHARDS: score the profiles of IN again (this module's current rules) and write them to OUT."""
+    src, out, shard, shards = Path(args[0]), Path(args[1]), int(args[2]), int(args[3])
+    rows = [json.loads(line) for line in src.read_text().splitlines() if line.strip()][shard::shards]
+    with out.open("a") as f:
+        for i, r in enumerate(rows):
+            try:
+                sc = quick_score(from_json(r["profile"]))
+            except Exception:
+                continue
+            f.write(json.dumps({"profile": r["profile"], **sc}) + "\n")
+            f.flush()
+            if (i + 1) % 25 == 0:
+                print(f"shard {shard}: {i + 1}/{len(rows)}", flush=True)
+
+
 def cmd_climb(args: list[str]) -> None:
     """climb IN OUT TOP ROUNDS: from the best profiles in IN, score neighbours (plausible ones) and keep improving."""
     src, out, top, rounds = Path(args[0]), Path(args[1]), int(args[2]), int(args[3])
@@ -340,4 +362,4 @@ def cmd_climb(args: list[str]) -> None:
 
 
 if __name__ == "__main__":
-    {"sample": cmd_sample, "climb": cmd_climb}[sys.argv[1]](sys.argv[2:])
+    {"sample": cmd_sample, "climb": cmd_climb, "rescore": cmd_rescore}[sys.argv[1]](sys.argv[2:])

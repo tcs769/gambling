@@ -9,6 +9,8 @@ import styles from "./ReviewRow.module.css";
 
 interface Props {
   field: ParsedField;
+  /** The name to show instead of the field's own (the friendly rows). */
+  label?: string;
   /** The value in effect: the customer's edit, or what was read. */
   value: number | string | null;
   edited: boolean;
@@ -30,6 +32,7 @@ const CONFIDENCE_LABEL = { high: "High confidence", medium: "Medium confidence",
 /** One extracted field: its label, an editable value, how sure the reading was, and (when flagged) the way to confirm it. */
 export function ReviewRow({
   field,
+  label,
   value,
   edited,
   flagged,
@@ -42,41 +45,39 @@ export function ReviewRow({
   onConfirm,
 }: Props) {
   const { title: rawTitle, sub: rawSub } = splitLabel(field);
-  const title = customerLabel(rawTitle);
-  const sub = rawSub ? customerLabel(rawSub) : undefined;
+  const title = label ?? customerLabel(rawTitle);
+  const sub = !label && rawSub ? customerLabel(rawSub) : undefined;
   const inputId = useId();
   const editable = field.kind !== "text";
   const waiting = flagged && !resolved;
 
   return (
     <li
-      className={styles.item}
+      className={styles.field}
       data-field-key={field.key}
       data-selected={selected}
       data-flagged={flagged}
       data-waiting={waiting}
+      aria-current={selected ? "true" : undefined}
+      onClick={onSelect}
     >
-      <div className={styles.row} onClick={onSelect}>
-        <span className={styles.dot} data-confidence={field.confidence}>
-          <span className="sr-only">{CONFIDENCE_LABEL[field.confidence]}</span>
-        </span>
-        <label className={styles.label} htmlFor={editable ? inputId : undefined}>
-          <span className={styles.title}>{title}</span>
-          {sub && <span className={styles.sub}>{sub}</span>}
-        </label>
-        {editable ? (
-          <ValueInput
-            id={inputId}
-            field={field}
-            value={typeof value === "number" ? value : null}
-            onFocus={onSelect}
-            onCommit={onEdit}
-            data-edited={edited}
-          />
-        ) : (
-          <span className={`${styles.text} num`}>{formatField(field.kind, value)}</span>
-        )}
-      </div>
+      <label className={styles.label} htmlFor={editable ? inputId : undefined}>
+        <span className={styles.title}>{title}</span>
+        {sub && <span className={styles.sub}>{sub}</span>}
+      </label>
+      <span className="sr-only">{CONFIDENCE_LABEL[field.confidence]}</span>
+      {editable ? (
+        <ValueInput
+          id={inputId}
+          field={field}
+          value={typeof value === "number" ? value : null}
+          onFocus={onSelect}
+          onCommit={onEdit}
+          data-edited={edited}
+        />
+      ) : (
+        <span className={`${styles.text} num`}>{formatField(field.kind, value)}</span>
+      )}
 
       {(flagged || edited) && (
         <div className={styles.note}>
@@ -148,7 +149,7 @@ function ValueInput({
         id={id}
         type="text"
         inputMode={field.kind === "integer" ? "numeric" : "decimal"}
-        className={`${styles.field} num`}
+        className={`${styles.fieldbox} num`}
         value={draft ?? shown}
         autoComplete="off"
         spellCheck={false}

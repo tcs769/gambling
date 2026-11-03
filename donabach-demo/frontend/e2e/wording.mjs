@@ -23,7 +23,8 @@ async function sweep(page, label, check, { disclaimer = false } = {}) {
   // Next.js clears the title for a moment after a client-side navigation: wait for it to settle (a title that never comes fails below).
   await page.waitForFunction(() => document.title === "Waramoug", null, { timeout: 3000 }).catch(() => {});
   const { text, attrs, title } = await visibleText(page);
-  const all = [text, ...attrs];
+  // "No plans" is the mockup's own chip for buying a home (ordinary English, not the product): the one use of the word allowed.
+  const all = [text, ...attrs].map((t) => t.replace(/\bNo plans\b/g, "No"));
   const hits = FORBIDDEN.flatMap((re) =>
     all
       .filter((t) => re.test(t) && !(disclaimer && t.includes(DISCLAIMER) && !re.test(t.replace(DISCLAIMER, ""))))

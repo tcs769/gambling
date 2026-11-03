@@ -2,28 +2,45 @@
 :root {
   color-scheme: light;
 
-  --white: #ffffff;
-  --panel: #eef2f7; /* light-blue panels */
+  /* The design mockup's tokens (design/waramoug_mockup.html). */
+  --paper: #ffffff;
+  --surface: #ffffff;
+  --stone: #eef2f7;
   --line: #d5dee9;
   --ink: #1e2430;
-  --ink-2: #5b6472; /* secondary text: 5.9:1 on white, 5.2:1 on the panel */
-  --navy: #1f3a5f; /* brand */
+  --ink-soft: #5b6472; /* 5.9:1 on white, 5.2:1 on the stone */
+  --porphyry: #1f3a5f; /* navy, the brand */
+  --porphyry-wash: rgba(31, 58, 95, 0.07);
+  --bronze: #8a6440;
+  --bronze-wash: rgba(184, 148, 106, 0.16);
+  --good: #2f6b47;
+  --warn: #8a5a12;
+  --seg1: #1f3a5f;
+  --seg2: #b8946a;
+  --seg3: #6b4a2e;
+  --seg4: #c9ced6;
+  --seg5: #5b7fae;
+  --advisor: #8a8f96;
+  --serif: Cambria, "Palatino Linotype", Georgia, serif;
+  --sans: Calibri, "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+
+  --rail-width: 240px;
+  --content-width: 1040px;
+  --radius: 8px;
+  --radius-sm: 6px;
+
+  /* Names the code from the first rounds still uses, on the same palette. */
+  --white: var(--paper);
+  --panel: var(--stone);
+  --ink-2: var(--ink-soft);
+  --navy: var(--porphyry);
   --navy-deep: #172c49;
   --brown: #b8946a; /* accent, for lines and marks */
   --brown-dark: #6b4a2e; /* accent text: 8.4:1 on white */
   --brown-wash: #f6efe6;
-
-  --good: #2e7048;
-  --warn: #8a4b00;
   --bad: #ae3a2e;
-
-  --font-serif: Cambria, "Palatino Linotype", Georgia, serif;
-  --font-sans: Calibri, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-
-  --radius: 8px;
-  --radius-sm: 6px;
-  --rail-width: 240px;
-  --content-width: 1040px;
+  --font-serif: var(--serif);
+  --font-sans: var(--sans);
 
   /* Names the components kept from the previous flow still use, on the new palette. */
   --cream: var(--white);
@@ -33,8 +50,8 @@
   --muted-text: var(--ink-2);
   --panel-deep: #e1e8f1;
   --gold-wash: rgba(31, 58, 95, 0.1);
-  --good-wash: rgba(46, 112, 72, 0.12);
-  --warn-wash: rgba(138, 75, 0, 0.12);
+  --good-wash: rgba(47, 107, 71, 0.12);
+  --warn-wash: rgba(138, 90, 18, 0.12);
   --bad-wash: rgba(174, 58, 46, 0.1);
   --shadow: 0 1px 2px rgba(30, 36, 48, 0.05);
 }
@@ -71,7 +88,11 @@ h4 {
   margin: 0;
 }
 h1 {
-  font-size: 1.9rem;
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--ink);
 }
 h2 {
   font-size: 1.3rem;
@@ -101,13 +122,19 @@ button {
 }
 
 :focus-visible {
-  outline: 3px solid var(--navy);
+  outline: 3px solid var(--bronze);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .num {
   font-variant-numeric: tabular-nums;
+}
+
+.lede {
+  color: var(--ink-soft);
+  margin: 0 0 32px;
+  font-size: 17px;
 }
 
 .muted {
@@ -126,10 +153,21 @@ button {
   border: 0;
 }
 
+@keyframes in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes page-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;

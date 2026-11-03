@@ -30,6 +30,11 @@ export async function runDocuments({ browser, base, check }) {
     const { context, page, issues } = await newPage(browser);
     await page.goto(`${base}/`, { waitUntil: "networkidle" });
     check((await page.title()) === "Waramoug", "the tab title is Waramoug");
+    check((await page.locator("main h1").innerText()) === "Add your documents", "the heading is 'Add your documents'");
+    check(
+      await page.getByText("Your latest tax return and account statements, as PDFs.", { exact: true }).isVisible(),
+      "the lede is the mockup's",
+    );
     check(
       await page.getByText("Drop your PDFs here", { exact: true }).isVisible(),
       "the drop area says 'Drop your PDFs here'",
@@ -44,9 +49,49 @@ export async function runDocuments({ browser, base, check }) {
     const linkBox = await link.boundingBox();
     check(linkBox.y > dropBox.y + dropBox.height, "the sample link is below the drop area");
     check(
-      dropBox.height >= 240 && dropBox.width >= 600,
+      dropBox.height >= 360 && dropBox.width >= 600,
       `the drop area is large (${Math.round(dropBox.width)}x${Math.round(dropBox.height)})`,
     );
+    const look = await page.locator('[data-testid="drop-area"]').evaluate((el) => {
+      const s = getComputedStyle(el);
+      return {
+        style: s.borderTopStyle,
+        width: s.borderTopWidth,
+        radius: s.borderTopLeftRadius,
+        color: s.borderTopColor,
+      };
+    });
+    check(
+      look.style === "dashed" && look.width === "2px" && look.radius === "22px" && look.color === "rgb(138, 100, 64)",
+      `the drop area has a 2px dashed bronze border and a 22px radius (${JSON.stringify(look)})`,
+    );
+    const big = await page.getByText("Drop your PDFs here", { exact: true }).evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { size: s.fontSize, family: s.fontFamily };
+    });
+    check(big.size === "26px" && /Cambria/.test(big.family), `"Drop your PDFs here" is 26px serif (${big.size})`);
+    // drag over: the area changes style
+    await page.dispatchEvent('[data-testid="drop-area"]', "dragenter");
+    check(
+      (await page.locator('[data-testid="drop-area"]').getAttribute("data-over")) === "true",
+      "dragging over the area marks it (.over style)",
+    );
+    await page.dispatchEvent('[data-testid="drop-area"]', "dragleave");
+    check(
+      (await page.locator('[data-testid="drop-area"]').getAttribute("data-over")) === "false",
+      "and leaving clears it",
+    );
+    // keyboard: the area is a button that Enter and Space open the file chooser from
+    const area = page.getByRole("button", { name: "Drop PDFs here, or press Enter to choose files" });
+    await area.focus();
+    for (const key of ["Enter", " "]) {
+      const chooser = page.waitForEvent("filechooser", { timeout: 3000 }).then(
+        () => true,
+        () => false,
+      );
+      await page.keyboard.press(key);
+      check(await chooser, `pressing ${key === " " ? "Space" : key} on the drop area opens the file chooser`);
+    }
     check(
       (await page.locator('input[type="file"]').getAttribute("accept"))?.includes("pdf"),
       "the file chooser accepts PDFs",
@@ -120,15 +165,12 @@ export async function runDocuments({ browser, base, check }) {
   check(same(runs.sample.rows, runs.drop.rows), "dropping the PDF and the sample link give identical Review lists");
   check(same(runs.sample.rows, runs.choose.rows), "choosing the PDF and the sample link give identical Review lists");
 
-  // the list is the API's: same field keys in the same order
+  // the list is the API's: the same field keys (the friendly rows first, then the rest in the API's order)
   if (sample) {
     const keys = sample.documents.flatMap((d) => d.fields.map((f) => f.key));
     check(
-      same(
-        keys,
-        runs.sample.rows.map((r) => r[0]),
-      ),
-      `Review shows exactly the API's ${keys.length} fields, in order`,
+      same([...keys].sort(), runs.sample.rows.map((r) => r[0]).sort()),
+      `Review shows exactly the API's ${keys.length} fields`,
     );
   }
 

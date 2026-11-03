@@ -706,6 +706,8 @@ export interface components {
       bar: number;
       /** Mix */
       mix: components["schemas"]["MixShare"][];
+      /** Mix Text */
+      mix_text: string;
       /** Accounts */
       accounts: string[];
       /** Harvesting */
@@ -1121,7 +1123,7 @@ export interface components {
        * Key
        * @enum {string}
        */
-      key: "college" | "retirement" | "home";
+      key: "college" | "retirement" | "home" | "emergency";
       /** Label */
       label: string;
       /** Target */

@@ -1,6 +1,6 @@
 // Review (/review): the fields grouped by document, the flagged field highlighted and gated behind Confirm, clicking a field highlights
 // its source on the PDF (absolute page, bbox in PDF points), any field editable (edits are sent as overrides), values equal the API's.
-import { isMain, runAlone, newPage, apiPost, toReview, reviewRows, sessionState, docLabel, money2 } from "./portal.mjs";
+import { isMain, runAlone, newPage, apiPost, toReview, reviewRows, sessionState, openAll, money2 } from "./portal.mjs";
 
 const parse = (text) => Number(text.replace(/[$,%\s,]/g, ""));
 
@@ -14,12 +14,52 @@ export async function runReview({ browser, base, check }) {
   page.on("request", (r) => r.url().includes("/api/portal/household") && households.push(JSON.parse(r.postData())));
   await toReview(page, base);
 
-  // --- structure and values
+  // --- the copy and the curated rows of the mockup
+  check((await page.locator("main h1").innerText()) === "Check what we found", "the heading is 'Check what we found'");
+  check(
+    await page.getByText("Select any number to see where it came from.", { exact: true }).isVisible(),
+    "the lede is the mockup's",
+  );
   const headings = await page.locator("main h2").allInnerTexts();
   check(
-    JSON.stringify(headings) === JSON.stringify(api.documents.map(docLabel)),
-    `one section per document: ${headings.join(", ")}`,
+    JSON.stringify(headings) === JSON.stringify(["Tax return", "Accounts"]),
+    `two groups, like the mockup: ${headings.join(", ")}`,
   );
+  const CURATED = [
+    ["w2_wages_taxpayer", "Wages, after 401(k)"],
+    ["filing_status", "Filing status"],
+    ["qualified_dividends_3a", "Qualified dividends"],
+    ["brokerage_total_value", "Brokerage"],
+    ["brokerage_cost_basis", "Brokerage cost basis"],
+    ["k401_total_balance", "401(k) and IRA"],
+    ["k401_contrib_taxpayer", "401(k) contributions this year"],
+    ["roth_total_balance", "Roth IRA"],
+    ["brokerage_cash", "Cash"],
+  ];
+  const visibleRows = await page.$$eval('main section[aria-labelledby^="group-"] [data-field-key]', (items) =>
+    items.map((li) => [li.getAttribute("data-field-key"), li.querySelector("label")?.innerText.trim()]),
+  );
+  check(
+    JSON.stringify(visibleRows) === JSON.stringify(CURATED),
+    `the friendly rows, in order, with the mockup's labels (${visibleRows.length})`,
+  );
+  const details = page.locator("main details");
+  check(
+    (await details.locator("summary").innerText()) === "Show all fields" && !(await details.evaluate((e) => e.open)),
+    "a quiet 'Show all fields' disclosure holds the rest, closed",
+  );
+  check(
+    (await page.locator('[data-field-key="wages_1a"]').isVisible()) === false,
+    "a field that is not a friendly row is hidden until it is opened",
+  );
+  await openAll(page);
+  check(
+    await page.locator('[data-field-key="wages_1a"]').isVisible(),
+    "'Show all fields' shows every other parsed field",
+  );
+  const rest = await page.$$eval("main details [data-field-key]", (items) => items.length);
+  check(rest === fields.length - CURATED.length, `the disclosure lists the other ${rest} fields`);
+  await details.locator("summary").click();
   const rows = await reviewRows(page);
   check(rows.length === fields.length, `${rows.length} rows, the API has ${fields.length} fields`);
   let wrong = [];
@@ -31,6 +71,7 @@ export async function runReview({ browser, base, check }) {
     if (!ok) wrong.push(`${f.key}: ${shown} vs ${f.value}`);
   }
   check(wrong.length === 0, `every value equals the API's (${wrong.slice(0, 3).join("; ")})`);
+  await openAll(page);
   check(
     (await page.locator('[data-field-key="taxpayer_name"]').innerText()).includes("John Smith"),
     "text fields are shown as read",
@@ -45,7 +86,12 @@ export async function runReview({ browser, base, check }) {
   );
   const flagRow = page.locator(`[data-field-key="${flagged[0].key}"]`);
   check((await flagRow.getAttribute("data-waiting")) === "true", "the flagged field is highlighted as waiting");
+  check(flagged[0].key === "brokerage_total_value", "the flagged field is the Brokerage row");
   check((await flagRow.innerText()).includes(flagged[0].flag), "its flag text says why");
+  check(
+    (await flagRow.locator("p").evaluate((el) => getComputedStyle(el).color)) === "rgb(138, 90, 18)",
+    "the note is in the warn colour",
+  );
   check(
     (await flagRow.evaluate((el) => getComputedStyle(el).backgroundColor)) !== "rgba(0, 0, 0, 0)",
     "it has a tinted background",
@@ -59,6 +105,18 @@ export async function runReview({ browser, base, check }) {
 
   // --- clicking a field highlights its source
   const highlight = page.locator('[data-testid="highlight"]');
+  const card = await page.locator('section[aria-label="Document pages"]').evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { radius: s.borderTopLeftRadius, position: getComputedStyle(el.parentElement).position };
+  });
+  check(
+    card.radius === "14px" && card.position === "sticky",
+    `the document sits in a 14px card that stays in view (${JSON.stringify(card)})`,
+  );
+  check(
+    (await page.locator('section[aria-label="Document pages"] h3').innerText()) === "Brokerage statement",
+    "the card is titled with the document being shown",
+  );
   check((await highlight.count()) === 1, "the flagged field's source is highlighted on the PDF when Review opens");
   const wages = fields.find((f) => f.key === "w2_wages_taxpayer");
   await page.locator(`[data-field-key="${wages.key}"] label`).click();
@@ -80,6 +138,7 @@ export async function runReview({ browser, base, check }) {
     (await page.locator(`[data-page="${flagged[0].page}"][data-points] [data-testid="highlight"]`).count()) === 1,
     `the flagged field's box is on page ${flagged[0].page} of the same PDF`,
   );
+  check((await flagRow.getAttribute("aria-current")) === "true", "the selected row carries aria-current");
   const tabCurrent = await page.locator('section[aria-label="Document pages"] button[aria-current="true"]').innerText();
   check(tabCurrent === "Brokerage statement", `the document tab follows the selection (${tabCurrent})`);
 
@@ -103,11 +162,24 @@ export async function runReview({ browser, base, check }) {
   await box.press("Enter");
   saved = await sessionState(page);
   check(saved.overrides.w2_wages_taxpayer === 163415, "editing wages stores an override of 163415");
+  await openAll(page);
+  const other = page.locator('[data-field-key="wages_1a"] input');
+  await other.fill("150000");
+  await other.press("Enter");
+  saved = await sessionState(page);
+  check(saved.overrides.wages_1a === 150000, "a field inside 'Show all fields' can be edited too");
+  await page
+    .locator('[data-field-key="wages_1a"]')
+    .getByRole("button", { name: /^Reset to/ })
+    .click();
   check(
     await page.locator('[data-field-key="w2_wages_taxpayer"]').getByText("Edited").isVisible(),
     "an edited field says so",
   );
-  await page.getByRole("button", { name: /^Reset to/ }).click();
+  await page
+    .locator('[data-field-key="w2_wages_taxpayer"]')
+    .getByRole("button", { name: /^Reset to/ })
+    .click();
   saved = await sessionState(page);
   check(!("w2_wages_taxpayer" in saved.overrides), "Reset goes back to the document's value");
   await box.fill("abc");

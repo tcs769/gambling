@@ -1,13 +1,14 @@
+/* One screen of the flow, inside the shell's main column (which carries the padding and the 1040px width). */
 .screen {
-  max-width: var(--content-width);
-  margin: 0 auto 0 0;
-  padding: 40px 48px 48px;
-  animation: page-in 200ms ease-out;
+  animation: in 0.28s ease-out;
 }
 
 .title {
-  font-size: 1.9rem;
-  margin-bottom: 28px;
+  margin-bottom: 8px;
+}
+
+.lede {
+  margin: 0 0 32px;
 }
 
 .body {
@@ -19,30 +20,17 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-top: 32px;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
+  margin-top: 36px;
 }
 
 @media (max-width: 900px) {
-  .screen {
-    padding: 24px 20px 32px;
-  }
   .title {
-    font-size: 1.5rem;
-    margin-bottom: 20px;
+    font-size: 32px;
   }
 }
 
-.screen[data-wide] {
-  max-width: 1320px;
-}
-
-.screen[data-wide] .actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 4;
-  margin-top: 20px;
-  padding: 16px 0;
-  background: var(--white);
+@media (prefers-reduced-motion: reduce) {
+  .screen {
+    animation: none;
+  }
 }

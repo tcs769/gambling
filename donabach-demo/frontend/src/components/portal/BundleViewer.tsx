@@ -103,8 +103,11 @@ export function BundleViewer({ pdfId, pageSizes, docs, highlights, nonce, active
     if (scroller && page) scroller.scrollTo({ top: Math.max(0, page.offsetTop - 14), behavior: scrollBehavior() });
   };
 
+  const activeDoc = docs.find((d) => d.key === activeKey) ?? docs[0];
+
   return (
     <section className={styles.viewer} aria-label="Document pages">
+      <h3 className={styles.title}>{activeDoc?.label}</h3>
       <div className={styles.tabs} role="group" aria-label="Documents">
         {docs.map((doc) => (
           <button

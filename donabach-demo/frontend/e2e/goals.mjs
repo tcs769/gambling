@@ -1,9 +1,14 @@
-// Goals (/goals): the questions prefilled with the API's defaults, tap-to-select chips with an "Other" input, the income-change question,
+// Goals (/goals): the questions prefilled with the API's defaults, tap-to-select chips (the mockup's rows), the down payment box, the income-change question,
 // and what Invest sends (household, then invest with the event, the previous plan and the words for what changed).
-import { isMain, runAlone, newPage, apiGet, toGoals, toReview, dollarsWhole } from "./portal.mjs";
+import { isMain, runAlone, newPage, apiGet, toGoals, toReview, openAll, dollarsWhole } from "./portal.mjs";
 
-const checked = (page, legend) => page.getByRole("group", { name: legend }).locator("input:checked + span").innerText();
-const options = (page, legend) => page.getByRole("group", { name: legend }).locator("label").allInnerTexts();
+const group = (page, legend) => page.getByRole("radiogroup", { name: legend });
+const checked = (page, legend) => group(page, legend).locator("input:checked + span").innerText();
+const options = (page, legend) => group(page, legend).locator("label").allInnerTexts();
+const AGE = "When do you want to retire?";
+const COLLEGE = "College for your child";
+const HOME = "Buying a home?";
+const INCOME = "Any income changes coming?";
 const plural = (n, u) => `${n} ${u}${n === 1 ? "" : "s"}`;
 
 /** Press Invest and return what was sent and answered. */
@@ -32,85 +37,79 @@ export async function runGoals({ browser, base, check }) {
   const { context, page, issues } = await newPage(browser);
   await toGoals(page, base);
 
+  // --- the copy of the mockup
+  check((await page.locator("main h1").innerText()) === "A few questions", "the heading is 'A few questions'");
+  check(
+    await page.getByText("Your documents can't tell us these.", { exact: true }).isVisible(),
+    "the lede is 'Your documents can't tell us these.'",
+  );
+  const rowLabels = await page.locator("main [class*=qt]").allInnerTexts();
+  check(
+    JSON.stringify(rowLabels) === JSON.stringify([AGE, COLLEGE, HOME, INCOME, "Yearly spending in retirement"]),
+    `the questions, in the mockup's order: ${rowLabels.join(" | ")}`,
+  );
+  const labelBox = await page.getByText(AGE, { exact: true }).boundingBox();
+  const chipBox = await page.getByRole("radio", { name: "60", exact: true }).locator("..").boundingBox();
+  check(
+    Math.abs(chipBox.x - labelBox.x - 260 - 20) < 3,
+    `the chips start 280px after the question (${Math.round(chipBox.x - labelBox.x)})`,
+  );
+
   // --- prefilled with the defaults
+  check((await checked(page, AGE)) === String(d.retirement_age), `retirement age ${d.retirement_age} is selected`);
+  const spend = page.getByLabel("Yearly spending in retirement");
   check(
-    (await checked(page, "Retirement age")) === String(d.retirement_age),
-    `retirement age is ${d.retirement_age}, the API's default`,
+    (await spend.inputValue()) === Math.round(d.retirement_spending).toLocaleString("en-US"),
+    `spending is prefilled with ${Math.round(d.retirement_spending).toLocaleString("en-US")}`,
   );
-  check(
-    (await checked(page, "Retirement spending a year")) === dollarsWhole(d.retirement_spending),
-    `retirement spending is ${dollarsWhole(d.retirement_spending)}`,
-  );
-  const john = `In ${plural(d.college_starts_in_years, "year")}, ${dollarsWhole(d.college_annual_cost)} a year for ${plural(d.college_years, "year")}`;
-  check((await checked(page, "College")) === john, `college is "${john}"`);
-  check(
-    d.home_purchase_in_years === null && (await checked(page, "Home purchase")) === "None planned",
-    "home purchase is None planned",
-  );
-  check((await checked(page, "Any income changes coming?")) === "No", "income changes: No is selected");
+  const startsIn = `Starts in ${plural(d.college_starts_in_years, "year")}`;
+  check((await checked(page, COLLEGE)) === startsIn, `college is "${startsIn}"`);
+  check(d.home_purchase_in_years === null && (await checked(page, HOME)) === "No plans", "home is No plans");
+  check((await checked(page, INCOME)) === "No", "income changes: No is selected");
+  check((await page.getByLabel("Down payment").count()) === 0, "no down payment box while there are no home plans");
 
   // --- the chips
   check(
-    JSON.stringify(await options(page, "Retirement age")) ===
-      JSON.stringify(["55", "58", "60", "62", "65", "67", "70", "Other"]),
-    "retirement age chips: 55 58 60 62 65 67 70 Other",
+    JSON.stringify(await options(page, AGE)) === JSON.stringify(["60", "62", "65", "67"]),
+    "retirement age chips: 60 62 65 67",
   );
   check(
-    JSON.stringify(await options(page, "Retirement spending a year")) ===
-      JSON.stringify(["$75,000", dollarsWhole(d.retirement_spending), "$105,000", "$120,000", "Other"]),
-    "spending chips: $75,000, $90,015, $105,000, $120,000, Other",
+    JSON.stringify(await options(page, COLLEGE)) === JSON.stringify([startsIn, "Not planned"]),
+    "college chips: Starts in 8 years, Not planned",
   );
   check(
-    JSON.stringify(await options(page, "College")) === JSON.stringify(["None", john, "Other"]),
-    "college: None, John's, Other",
+    JSON.stringify(await options(page, HOME)) === JSON.stringify(["No plans", "Within 3 years", "Within 5 years"]),
+    "home chips: No plans, Within 3 years, Within 5 years",
   );
   check(
-    JSON.stringify(await options(page, "Home purchase")) ===
-      JSON.stringify(["None planned", "Within 3 years, $150,000 down payment", "Other"]),
-    "home: None planned, Within 3 years, Other",
-  );
-  check(
-    JSON.stringify(await options(page, "Any income changes coming?")) ===
-      JSON.stringify(["No", "Job loss next year", "A raise"]),
-    "income: No, Job loss next year, A raise",
+    JSON.stringify(await options(page, INCOME)) === JSON.stringify(["No", "Job loss next year", "A raise"]),
+    "income chips: No, Job loss next year, A raise",
   );
 
-  // --- tapping selects, Other opens a value box
+  // --- tapping selects; a home purchase asks for a down payment
   await page.getByRole("radio", { name: "65", exact: true }).check();
-  check((await checked(page, "Retirement age")) === "65", "tapping 65 selects it");
-  await page.getByRole("group", { name: "Retirement age" }).getByRole("radio", { name: "Other" }).check();
-  const other = page.getByLabel("Retirement age, other");
-  check(await other.isVisible(), "Other opens a value box");
-  await other.fill("62");
-  await other.press("Enter");
-  check(
-    (await checked(page, "Retirement age")) === "Other" && (await other.inputValue()) === "62",
-    "an Other value stays under Other",
-  );
+  check((await checked(page, AGE)) === "65", "tapping 65 selects it");
+  await page.getByRole("radio", { name: "Within 5 years" }).check();
+  const down = page.getByLabel("Down payment");
+  check((await down.inputValue()) === "150,000", "Within 5 years shows a Down payment box prefilled with 150,000");
+  await down.fill("175000");
+  await down.press("Enter");
+  check((await down.inputValue()) === "175,000", "the down payment can be edited");
+  await page.getByRole("radio", { name: "Within 3 years" }).check();
+  check((await down.inputValue()) === "175,000", "switching between 3 and 5 years keeps the down payment");
+  await page.getByRole("radio", { name: "No plans" }).check();
+  check((await page.getByLabel("Down payment").count()) === 0, "No plans takes the down payment box away");
+  await page.getByRole("radio", { name: "Not planned" }).check();
+  check((await checked(page, COLLEGE)) === "Not planned", "college can be set to Not planned");
+  await page.getByRole("radio", { name: startsIn }).check();
+  check((await checked(page, COLLEGE)) === startsIn, "and back to Starts in 8 years");
   await page.getByRole("radio", { name: "60", exact: true }).check();
-  await page.getByRole("group", { name: "Home purchase" }).getByRole("radio", { name: "Other" }).check();
-  check(
-    (await page.getByLabel("Home purchase in years, other").isVisible()) &&
-      (await page.getByLabel("Home down payment, other").isVisible()),
-    "home Other asks for years and a down payment",
-  );
-  await page.getByRole("radio", { name: "None planned" }).check();
-  await page.getByRole("group", { name: "College" }).getByRole("radio", { name: "Other" }).check();
-  check(
-    await page.getByLabel("College starts in years, other").isVisible(),
-    "college Other asks for start, cost and years",
-  );
-  await page.getByRole("radio", { name: john }).check();
-  check((await checked(page, "College")) === john, "John's college option can be picked again");
   // keyboard: the chips are radio buttons
   await page.getByRole("radio", { name: "No", exact: true }).focus();
   await page.keyboard.press("ArrowRight");
-  check(
-    (await checked(page, "Any income changes coming?")) === "Job loss next year",
-    "arrow keys move between the income options",
-  );
+  check((await checked(page, INCOME)) === "Job loss next year", "arrow keys move between the income options");
   await page.keyboard.press("ArrowLeft");
-  check((await checked(page, "Any income changes coming?")) === "No", "and back");
+  check((await checked(page, INCOME)) === "No", "and back");
 
   // --- Invest with John's values: the base portfolio
   const first = await invest(page);
@@ -143,7 +142,7 @@ export async function runGoals({ browser, base, check }) {
   await page.getByRole("button", { name: "Back" }).click();
   await page.waitForURL("**/goals");
   check(
-    (await checked(page, "Retirement age")) === "60" && (await checked(page, "Any income changes coming?")) === "No",
+    (await checked(page, AGE)) === "60" && (await checked(page, INCOME)) === "No",
     "Back from Invest keeps the answers",
   );
   await page.getByRole("radio", { name: "Job loss next year" }).check();
@@ -175,11 +174,10 @@ export async function runGoals({ browser, base, check }) {
   await page.waitForURL("**/goals");
   await page.getByRole("radio", { name: "No", exact: true }).check();
   await page.getByRole("radio", { name: "65", exact: true }).check();
-  // a spending nobody has asked for before (through Other), so the portfolio really is built now and not found in the cache
+  // a spending nobody has asked for before (typed in the box), so the portfolio really is built now and not found in the cache
   const spending = 111_000 + Math.floor(Math.random() * 8_000);
-  await page.getByRole("group", { name: "Retirement spending a year" }).getByRole("radio", { name: "Other" }).check();
-  await page.getByLabel("Retirement spending a year, other").fill(String(spending));
-  await page.getByLabel("Retirement spending a year, other").press("Enter");
+  await spend.fill(String(spending));
+  await spend.press("Enter");
   const live = page.getByRole("button", { name: "Invest", exact: true });
   const waiting = (async () => {
     await page.getByText("Building your portfolio…").waitFor({ timeout: 10_000 });
@@ -218,6 +216,7 @@ export async function runGoals({ browser, base, check }) {
     );
     await p.getByRole("link", { name: "Review" }).click();
     await p.waitForURL("**/review");
+    await openAll(p);
     const box = p.locator('[data-field-key="wages_1a"] input');
     await box.fill("163415");
     await box.press("Enter");
@@ -232,6 +231,27 @@ export async function runGoals({ browser, base, check }) {
     check(
       edited.sent.invest.previous_plan_id === base1.answered.invest.plan_id,
       "the edit is compared with the plan before it",
+    );
+    await s.context.close();
+  }
+
+  // --- an age that is not one of the four chips (here 58) shows as one more selected chip
+  {
+    const s = await newPage(browser);
+    const p = s.page;
+    await toGoals(p, base);
+    await p.evaluate(() => {
+      const key = "waramoug.portal.v1";
+      const saved = JSON.parse(window.sessionStorage.getItem(key));
+      saved.answers.retirement_age = 58;
+      window.sessionStorage.setItem(key, JSON.stringify(saved));
+    });
+    await p.reload({ waitUntil: "networkidle" });
+    await p.getByRole("radio", { name: "58", exact: true }).waitFor();
+    check(
+      JSON.stringify(await options(p, AGE)) === JSON.stringify(["58", "60", "62", "65", "67"]) &&
+        (await checked(p, AGE)) === "58",
+      "a retirement age outside the four chips is shown as an extra selected chip",
     );
     await s.context.close();
   }

@@ -3,13 +3,12 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 42px;
-  padding: 0 22px;
-  border-radius: var(--radius-sm);
+  padding: 12px 22px;
+  border-radius: 10px;
   border: 1px solid transparent;
   font-size: 1rem;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.5;
   white-space: nowrap;
   transition:
     background 140ms ease,
@@ -21,46 +20,50 @@
 }
 
 .primary {
-  background: var(--navy);
-  color: var(--white);
+  background: var(--porphyry);
+  color: #fff;
 }
 .primary:not(:disabled):hover {
   background: var(--navy-deep);
 }
 .primary:disabled {
   background: var(--panel-deep);
-  color: var(--ink-2);
+  color: var(--ink-soft);
 }
 .primary[aria-busy="true"] {
-  background: var(--navy);
-  color: var(--white);
+  background: var(--porphyry);
+  color: #fff;
   opacity: 0.85;
 }
 
+/* The mockup's ghost button: no fill, a hairline. Back is one. */
 .secondary {
-  background: var(--white);
-  color: var(--navy);
-  border-color: var(--navy);
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--line);
 }
 .secondary:not(:disabled):hover {
-  background: var(--panel);
+  background: var(--stone);
 }
 .secondary:disabled {
-  color: var(--ink-2);
-  border-color: var(--line);
+  color: var(--ink-soft);
 }
 
 .link {
-  background: transparent;
-  color: var(--navy);
-  padding: 0 4px;
-  min-height: 32px;
-  font-weight: 600;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--porphyry);
+  font-size: inherit;
+  font-weight: 400;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 .link:not(:disabled):hover {
   color: var(--navy-deep);
+}
+.link:disabled {
+  opacity: 0.6;
 }
 
 .spinner {

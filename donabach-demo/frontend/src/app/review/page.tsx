@@ -7,10 +7,33 @@ import { ReviewRow } from "@/components/portal/ReviewRow";
 import { Screen } from "@/components/portal/Screen";
 import { useGuard } from "@/components/portal/useGuard";
 import { groupFields } from "@/components/review/fieldLogic";
-import { documentLabel, sameValue } from "@/lib/portal-format";
+import { customerLabel, documentLabel, sameValue } from "@/lib/portal-format";
 import { usePortal } from "@/lib/portal-state";
 import type { ParsedField } from "@/lib/portal-types";
 import styles from "./Review.module.css";
+
+/** The rows the customer is shown first, in this order, with the names the mockup uses. */
+const CURATED: { title: string; rows: [key: string, label: string][] }[] = [
+  {
+    title: "Tax return",
+    rows: [
+      ["w2_wages_taxpayer", "Wages, after 401(k)"],
+      ["filing_status", "Filing status"],
+      ["qualified_dividends_3a", "Qualified dividends"],
+    ],
+  },
+  {
+    title: "Accounts",
+    rows: [
+      ["brokerage_total_value", "Brokerage"],
+      ["brokerage_cost_basis", "Brokerage cost basis"],
+      ["k401_total_balance", "401(k) and IRA"],
+      ["k401_contrib_taxpayer", "401(k) contributions this year"],
+      ["roth_total_balance", "Roth IRA"],
+      ["brokerage_cash", "Cash"],
+    ],
+  },
+];
 
 export default function ReviewPage() {
   const { state, actions } = usePortal();
@@ -23,11 +46,34 @@ export default function ReviewPage() {
 
   const fields = useMemo(() => (documents ?? []).flatMap((d) => d.fields), [documents]);
   const fieldByKey = useMemo(() => new Map(fields.map((f) => [f.key, f])), [fields]);
+  const docKindOf = useMemo(
+    () => new Map((documents ?? []).flatMap((d) => d.fields.map((f) => [f.key, d.doc_kind] as const))),
+    [documents],
+  );
   const docOfField = useMemo(() => {
     const map = new Map<string, string>();
     (documents ?? []).forEach((d) => d.fields.forEach((f) => map.set(f.key, `${d.doc_kind}-${d.first_page}`)));
     return map;
   }, [documents]);
+
+  // A field that needs a look is always in the first list, even when it is not one of the friendly rows.
+  const shownFirst = useMemo(() => {
+    const curatedKeys = new Set(CURATED.flatMap((g) => g.rows.map(([key]) => key)));
+    const extra = fields.filter((f) => f.confidence !== "high" && !curatedKeys.has(f.key));
+    return CURATED.map((group, i) => ({
+      title: group.title,
+      rows: [
+        ...group.rows.flatMap(([key, label]) => {
+          const field = fieldByKey.get(key);
+          return field ? [{ field, label }] : [];
+        }),
+        ...extra
+          .filter((f) => (i === 0) === (docKindOf.get(f.key) === "form_1040"))
+          .map((field) => ({ field, label: customerLabel(field.label) })),
+      ],
+    })).filter((g) => g.rows.length > 0);
+  }, [fields, fieldByKey, docKindOf]);
+  const shownKeys = useMemo(() => new Set(shownFirst.flatMap((g) => g.rows.map((r) => r.field.key))), [shownFirst]);
 
   const isResolved = (f: ParsedField) =>
     f.key in overrides && !sameValue(overrides[f.key], f.value) ? true : f.value !== null && confirmed.includes(f.key);
@@ -68,64 +114,68 @@ export default function ReviewPage() {
     [],
   );
 
+  const renderRow = (field: ParsedField, label?: string) => {
+    const override = overrides[field.key];
+    const edited = field.key in overrides && !sameValue(override, field.value);
+    const flagged = field.confidence !== "high";
+    return (
+      <ReviewRow
+        key={field.key}
+        field={field}
+        label={label}
+        value={edited ? override : field.value}
+        edited={edited}
+        flagged={flagged}
+        resolved={isResolved(field)}
+        confirmed={confirmed.includes(field.key)}
+        selected={selected?.key === field.key}
+        onSelect={() => select(field.key)}
+        onEdit={(value) => {
+          if (sameValue(value, field.value)) {
+            actions.setOverride(field.key, null);
+            if (flagged) actions.confirm(field.key);
+          } else actions.setOverride(field.key, value);
+        }}
+        onReset={() => actions.setOverride(field.key, null)}
+        onConfirm={() => actions.confirm(field.key)}
+      />
+    );
+  };
+
   return (
     <Screen
-      title="Review"
-      wide
+      title="Check what we found"
+      lede="Select any number to see where it came from."
       back={{ onClick: () => router.push("/") }}
       next={{ label: "Confirm and continue", onClick: () => router.push("/goals"), disabled: waiting.length > 0 }}
     >
-      <div className={styles.split}>
+      <div className={styles.review}>
         <div className={styles.fields}>
-          {documents.map((doc) => (
-            <section
-              key={`${doc.doc_kind}-${doc.first_page}`}
-              className={styles.doc}
-              aria-labelledby={`doc-${doc.first_page}`}
-            >
-              <header className={styles.docHead}>
-                <h2 id={`doc-${doc.first_page}`}>{documentLabel(doc)}</h2>
-                <span className={`${styles.pageTag} num`}>
-                  {doc.first_page === doc.last_page
-                    ? `Page ${doc.first_page}`
-                    : `Pages ${doc.first_page}–${doc.last_page}`}
-                </span>
-              </header>
-              {groupFields(doc.fields).map((group) => (
-                <div key={group.name} className={styles.group}>
-                  <h3 className={styles.groupTitle}>{group.name}</h3>
-                  <ul className={styles.list}>
-                    {group.fields.map((field) => {
-                      const override = overrides[field.key];
-                      const edited = field.key in overrides && !sameValue(override, field.value);
-                      const flagged = field.confidence !== "high";
-                      return (
-                        <ReviewRow
-                          key={field.key}
-                          field={field}
-                          value={edited ? override : field.value}
-                          edited={edited}
-                          flagged={flagged}
-                          resolved={isResolved(field)}
-                          confirmed={confirmed.includes(field.key)}
-                          selected={selected?.key === field.key}
-                          onSelect={() => select(field.key)}
-                          onEdit={(value) => {
-                            if (sameValue(value, field.value)) {
-                              actions.setOverride(field.key, null);
-                              if (flagged) actions.confirm(field.key);
-                            } else actions.setOverride(field.key, value);
-                          }}
-                          onReset={() => actions.setOverride(field.key, null)}
-                          onConfirm={() => actions.confirm(field.key)}
-                        />
-                      );
-                    })}
-                  </ul>
-                </div>
-              ))}
+          {shownFirst.map((group) => (
+            <section key={group.title} className={styles.group} aria-labelledby={`group-${group.title}`}>
+              <h2 id={`group-${group.title}`}>{group.title}</h2>
+              <ul className={styles.list}>{group.rows.map((r) => renderRow(r.field, r.label))}</ul>
             </section>
           ))}
+
+          <details className={styles.all}>
+            <summary>Show all fields</summary>
+            {documents.map((doc) => {
+              const rest = doc.fields.filter((f) => !shownKeys.has(f.key));
+              if (rest.length === 0) return null;
+              return (
+                <section key={`${doc.doc_kind}-${doc.first_page}`} className={styles.group}>
+                  <h3 className={styles.docTitle}>{documentLabel(doc)}</h3>
+                  {groupFields(rest).map((group) => (
+                    <div key={group.name}>
+                      <h4 className={styles.groupTitle}>{group.name}</h4>
+                      <ul className={styles.list}>{group.fields.map((field) => renderRow(field))}</ul>
+                    </div>
+                  ))}
+                </section>
+              );
+            })}
+          </details>
         </div>
 
         <div className={styles.viewer}>

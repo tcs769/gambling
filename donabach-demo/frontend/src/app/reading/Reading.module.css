@@ -1,60 +1,58 @@
-.progress {
-  height: 6px;
-  max-width: 560px;
-  background: var(--panel);
-  border-radius: 3px;
-  overflow: hidden;
+/* Reading: the mockup's file card, a progress bar and the documents waiting, then found. */
+.filecard {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px 26px;
+  max-width: 620px;
+}
+
+.fname {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 600;
+}
+
+.fname span:first-child {
+  overflow-wrap: anywhere;
 }
 
 .bar {
+  height: 6px;
+  background: var(--stone);
+  border-radius: 6px;
+  margin: 14px 0 22px;
+  overflow: hidden;
+}
+
+.bar i {
   display: block;
   height: 100%;
-  background: var(--navy);
-  border-radius: 3px;
-  transition: width 400ms ease;
+  background: var(--porphyry);
+  transition: width 0.11s linear;
 }
 
-.count {
-  margin: 10px 0 24px;
-  color: var(--ink-2);
-}
-
-.list {
+.found {
   list-style: none;
   margin: 0;
   padding: 0;
-  max-width: 560px;
-  min-height: 232px;
-  border-top: 1px solid var(--line);
 }
 
-.item {
+.found li {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 4px;
-  border-bottom: 1px solid var(--line);
-  animation: page-in 260ms ease-out;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
 }
 
-.tick {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--navy);
-  color: var(--white);
-  flex: none;
+.found li.ok {
+  color: var(--ink);
 }
 
-.name {
+.found li.ok span:last-child {
+  color: var(--good);
   font-weight: 600;
-  font-size: 1.05rem;
-}
-
-.pages {
-  margin-left: auto;
-  color: var(--ink-2);
 }

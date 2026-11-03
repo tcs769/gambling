@@ -40,6 +40,10 @@ export default function DocumentsPage() {
     }
   };
 
+  const choose = () => {
+    if (busy === null) inputRef.current?.click();
+  };
+
   const take = (files: FileList | File[] | null | undefined) => {
     const file = files?.[0];
     if (!file) return;
@@ -60,7 +64,8 @@ export default function DocumentsPage() {
 
   return (
     <Screen
-      title="Documents"
+      title="Add your documents"
+      lede="Your latest tax return and account statements, as PDFs."
       next={
         docs
           ? { onClick: () => router.push(state.readDone ? "/review" : "/reading"), disabled: busy !== null }
@@ -72,6 +77,21 @@ export default function DocumentsPage() {
         data-over={over}
         data-busy={busy !== null}
         data-testid="drop-area"
+        role="button"
+        tabIndex={0}
+        aria-label="Drop PDFs here, or press Enter to choose files"
+        aria-disabled={busy !== null || undefined}
+        onClick={choose}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            choose();
+          }
+        }}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          setOver(true);
+        }}
         onDragOver={(e) => {
           e.preventDefault();
           setOver(true);
@@ -79,39 +99,34 @@ export default function DocumentsPage() {
         onDragLeave={() => setOver(false)}
         onDrop={onDrop}
       >
-        <span className={styles.dropIcon} aria-hidden="true">
-          <Icon name="upload" size={30} />
-        </span>
-        <p className={styles.dropTitle}>Drop your PDFs here</p>
-        <button
-          type="button"
-          className={styles.choose}
-          onClick={() => inputRef.current?.click()}
-          disabled={busy !== null}
-        >
-          or click to choose files
-        </button>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="application/pdf,.pdf"
-          className="sr-only"
-          aria-label="Choose a PDF"
-          tabIndex={-1}
-          data-testid="file-input"
-          onChange={(e) => {
-            take(e.target.files);
-            e.target.value = "";
-          }}
-        />
-        {busy === "upload" && (
-          <p className={styles.status} role="status">
-            Uploading…
-          </p>
-        )}
+        <div>
+          <div className={styles.seal} aria-hidden="true">
+            <Icon name="upload" size={30} strokeWidth={1.6} />
+          </div>
+          <p className={styles.big}>Drop your PDFs here</p>
+          <p className={styles.small}>or click to choose files</p>
+          {busy === "upload" && (
+            <p className={styles.status} role="status">
+              Uploading…
+            </p>
+          )}
+        </div>
       </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="sr-only"
+        aria-label="Choose a PDF"
+        tabIndex={-1}
+        data-testid="file-input"
+        onChange={(e) => {
+          take(e.target.files);
+          e.target.value = "";
+        }}
+      />
 
-      <p className={styles.sampleRow}>
+      <p className={styles.below}>
         <Btn
           variant="link"
           onClick={() => void send(actions.useSample, "sample")}

@@ -76,3 +76,9 @@ export const visibleText = (page) =>
 
 export const sessionState = (page) =>
   page.evaluate(() => JSON.parse(window.sessionStorage.getItem("waramoug.portal.v1") ?? "null"));
+
+/** Open "Show all fields" on Review (every parsed field that is not one of the friendly rows). */
+export async function openAll(page) {
+  const details = page.locator("main details");
+  if (!(await details.evaluate((el) => el.open))) await details.locator("summary").click();
+}

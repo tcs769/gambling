@@ -1,78 +1,66 @@
+/* Documents, as the mockup draws it: a large dashed bronze drop area with the seal icon. */
 .drop {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-height: 300px;
-  padding: 40px 24px;
-  background: var(--panel);
-  border: 2px dashed var(--muted);
-  border-radius: var(--radius);
+  border: 2px dashed var(--bronze);
+  border-radius: 22px;
+  background: var(--surface);
+  min-height: 360px;
+  display: grid;
+  place-items: center;
   text-align: center;
+  padding: 40px;
+  cursor: pointer;
   transition:
-    background 140ms ease,
-    border-color 140ms ease;
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .drop[data-over="true"] {
-  background: var(--panel-deep);
-  border-color: var(--navy);
+  background: var(--bronze-wash);
+  border-style: solid;
 }
 
 .drop[data-busy="true"] {
   opacity: 0.7;
-}
-
-.dropIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: var(--white);
-  color: var(--navy);
-  border: 1px solid var(--line);
-}
-
-.dropTitle {
-  font-family: var(--font-serif);
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--navy);
-}
-
-.choose {
-  background: none;
-  border: 0;
-  padding: 4px 6px;
-  color: var(--navy);
-  font-size: 1rem;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.choose:disabled {
   cursor: default;
-  opacity: 0.6;
+}
+
+.seal {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 1.5px solid var(--bronze);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 20px;
+  color: var(--bronze);
+}
+
+.big {
+  font-family: var(--serif);
+  font-size: 26px;
+  margin-bottom: 6px;
+}
+
+.small {
+  color: var(--ink-soft);
 }
 
 .status {
-  color: var(--ink-2);
+  margin-top: 12px;
+  color: var(--ink-soft);
 }
 
-.sampleRow {
-  margin-top: 14px;
-  text-align: center;
+.below {
+  margin-top: 16px;
+  color: var(--ink-soft);
+  font-size: 15px;
 }
 
 .error {
   margin-top: 16px;
   padding: 12px 14px;
   border: 1px solid var(--bad);
-  border-radius: var(--radius-sm);
+  border-radius: 10px;
   color: var(--bad);
   background: var(--bad-wash);
 }
@@ -83,10 +71,11 @@
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 24px;
-  padding: 14px 16px;
+  padding: 14px 18px;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  color: var(--navy);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--porphyry);
 }
 
 .fileName {
@@ -97,5 +86,5 @@
 
 .fileMeta {
   margin-left: auto;
-  color: var(--ink-2);
+  color: var(--ink-soft);
 }

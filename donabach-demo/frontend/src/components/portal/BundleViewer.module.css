@@ -4,39 +4,48 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: var(--panel);
+  background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 14px;
+}
+
+.title {
+  font-family: var(--serif);
+  font-weight: 400;
+  color: var(--ink);
+  font-size: 17px;
+  padding: 18px 20px 10px;
 }
 
 .tabs {
   display: flex;
   gap: 4px;
-  padding: 8px 10px;
-  overflow-x: auto;
-  background: var(--white);
-  border-bottom: 1px solid var(--line);
+  margin: 0 20px 12px;
+  padding: 4px;
+  flex-wrap: wrap;
+  background: var(--stone);
+  border-radius: 10px;
 }
 
 .tab {
-  padding: 6px 12px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 7px;
   background: transparent;
-  color: var(--ink-2);
-  font-size: 0.9375rem;
-  font-weight: 600;
+  color: var(--ink-soft);
+  font-size: 13px;
   white-space: nowrap;
 }
 
 .tab:hover {
-  background: var(--panel);
+  color: var(--ink);
 }
 
 .tab[aria-current="true"] {
-  background: var(--panel);
-  border-color: var(--line);
-  color: var(--navy);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 /* The desk the pages lie on. The gutter is always reserved so a scrollbar appearing never changes the page width. */
@@ -44,7 +53,9 @@
   position: relative;
   flex: 1;
   min-height: 0;
-  padding: 14px;
+  margin: 0 12px 12px;
+  padding: 12px;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -106,7 +117,7 @@
 /* The box around a number: a brown outline and wash, with a ring that pulses outward twice. */
 .highlight {
   position: absolute;
-  border: 2px solid var(--brown-dark);
+  border: 2px solid var(--bronze);
   border-radius: 3px;
   background: color-mix(in srgb, var(--brown) 32%, transparent);
   pointer-events: none;

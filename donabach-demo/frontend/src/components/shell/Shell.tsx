@@ -11,34 +11,31 @@ export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { state, name } = usePortal();
   const current = stepOf(pathname);
-  const initials = name
-    .split(/\s+/)
-    .map((part) => part.charAt(0))
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+  const currentIndex = STEPS.findIndex((step) => step.key === current);
 
   return (
     <div className={styles.shell}>
       <aside className={styles.rail}>
         <Link href="/" className={styles.wordmark}>
           WARAMOUG
+          <small>Wealth management</small>
         </Link>
         <nav aria-label="Steps" className={styles.nav}>
           <ol className={styles.steps}>
             {STEPS.map((step, i) => {
               const visited = state.visited.includes(step.key);
               const isCurrent = step.key === current;
+              const stepState = isCurrent ? "current" : i < currentIndex ? "done" : "todo";
               const content = (
                 <>
-                  <span className={styles.number} aria-hidden="true">
+                  <span className={styles.dot} aria-hidden="true">
                     {i + 1}
                   </span>
-                  <span>{step.label}</span>
+                  <span className={styles.lab}>{step.label}</span>
                 </>
               );
               return (
-                <li key={step.key}>
+                <li key={step.key} className={styles.item} data-state={stepState}>
                   {visited ? (
                     <Link
                       href={step.href}
@@ -58,11 +55,9 @@ export function Shell({ children }: { children: ReactNode }) {
             })}
           </ol>
         </nav>
-        <div className={styles.user}>
-          <span className={styles.avatar} aria-hidden="true">
-            {initials}
-          </span>
-          <span className={styles.userName}>{name}</span>
+        <div className={styles.account}>
+          <b>{name}</b>
+          Signed in
         </div>
       </aside>
       <main className={styles.main}>{children}</main>

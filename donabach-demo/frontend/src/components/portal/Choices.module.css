@@ -1,23 +1,21 @@
-.group {
-  margin: 0;
-  padding: 0 0 28px;
-  border: 0;
-  min-width: 0;
+/* The mockup's .q row: a 260px question column and the chips. */
+.q {
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
 }
 
-.legend {
-  padding: 0;
-  margin-bottom: 12px;
-  font-family: var(--font-serif);
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--navy);
+.qt {
+  font-weight: 600;
 }
 
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .chip {
@@ -38,31 +36,31 @@
 .face {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
-  padding: 0 18px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--white);
-  color: var(--ink);
-  font-weight: 600;
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 8px 16px;
   font-variant-numeric: tabular-nums;
-  transition:
-    background 120ms ease,
-    border-color 120ms ease;
 }
 
 .chip:hover .face {
-  border-color: var(--muted);
-  background: var(--panel);
+  background: var(--stone);
 }
 
 .radio:checked + .face {
-  background: var(--navy);
-  border-color: var(--navy);
-  color: var(--white);
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
 }
 
 .radio:focus-visible + .face {
-  outline: 3px solid var(--navy);
+  outline: 3px solid var(--bronze);
   outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .q {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
 }

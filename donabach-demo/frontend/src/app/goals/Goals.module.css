@@ -1,29 +1,55 @@
-.questions {
-  max-width: 760px;
+.q {
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
 }
 
-.otherRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 14px;
-  padding: 14px 16px;
-  background: var(--panel);
-  border-radius: var(--radius-sm);
+.q.last {
+  border-bottom: 0;
 }
 
-.otherLabel {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  color: var(--ink-2);
-  font-size: 0.9375rem;
+.qt {
   font-weight: 600;
+}
+
+.moneyIn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.q .moneyIn {
+  margin-top: 0;
+}
+
+.moneyIn label {
+  color: var(--ink-soft);
+  margin-right: 4px;
 }
 
 .input {
   width: 170px;
-  min-height: 40px;
+  min-height: 0;
+  padding: 0 12px;
+  border-radius: 10px;
+  border-width: 1px;
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+.input input {
+  padding: 9px 0;
+}
+
+@media (max-width: 900px) {
+  .q {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
 }
 
 .building,
@@ -31,7 +57,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 8px;
+  margin-top: 20px;
   font-weight: 600;
 }
 

@@ -1,6 +1,6 @@
 // Navigation: the left rail (240px, four steps, the name at the bottom), steps not yet reached are not links, going back keeps
 // everything (and the PDF is never sent twice), a reload keeps the state, a narrow window gets a top bar.
-import { isMain, runAlone, newPage, toGoals, sessionState } from "./portal.mjs";
+import { isMain, runAlone, newPage, toGoals, sessionState, openAll } from "./portal.mjs";
 
 const railSteps = (page) =>
   page.$$eval('nav[aria-label="Steps"] li', (items) =>
@@ -34,8 +34,16 @@ export async function runNavigation({ browser, base, check }) {
       return { family: s.fontFamily, spacing: s.letterSpacing };
     });
   check(
-    /Cambria/.test(font.family) && parseFloat(font.spacing) > 2,
+    /Cambria/.test(font.family) && parseFloat(font.spacing) > 1.5,
     `the wordmark is Cambria, letter-spaced (${font.family.slice(0, 20)}, ${font.spacing})`,
+  );
+  check(
+    (await rail
+      .locator("a")
+      .first()
+      .evaluate((el) => getComputedStyle(el).fontSize)) === "30px" &&
+      (await rail.getByText("Wealth management", { exact: true }).isVisible()),
+    "the wordmark is 30px with a small 'Wealth management' under it",
   );
   let steps = await railSteps(page);
   check(
@@ -47,7 +55,16 @@ export async function runNavigation({ browser, base, check }) {
     steps[0].current && steps.slice(1).every((s) => !s.link && s.disabled),
     "on a fresh start only Documents is a link; the others are not reachable",
   );
-  check((await rail.innerText()).trimEnd().endsWith("John Smith"), "the signed-in name is at the bottom of the rail");
+  check(
+    (await rail.innerText()).replace(/\s+/g, " ").trimEnd().endsWith("John Smith Signed in"),
+    "the name and 'Signed in' are at the bottom of the rail",
+  );
+  check((await rail.locator("[class*=avatar]").count()) === 0, "there is no avatar circle");
+  const stepsLook = await page
+    .locator('nav[aria-label="Steps"] li')
+    .first()
+    .evaluate((li) => li.dataset.state);
+  check(stepsLook === "current", "the current step is marked (data-state current)");
   check(
     (await page.locator("aside").evaluate((el) => getComputedStyle(el).position)) === "sticky",
     "the rail stays in place",
@@ -75,6 +92,7 @@ export async function runNavigation({ browser, base, check }) {
   // an edit and a confirmation, then Goals with another answer
   await page.locator("[data-field-key]").first().waitFor();
   await page.getByRole("button", { name: "Confirm", exact: true }).click();
+  await openAll(page);
   const wages = page.locator('[data-field-key="wages_1a"] input');
   await wages.fill("163415");
   await wages.press("Enter");
@@ -87,6 +105,7 @@ export async function runNavigation({ browser, base, check }) {
   // back with the Back button and with the rail
   await page.getByRole("button", { name: "Back" }).click();
   await page.waitForURL("**/review");
+  await page.locator("[data-field-key]").first().waitFor();
   check((await wages.inputValue()) === "163,415", "Back to Review keeps the edit");
   check(
     (await page.locator('[data-field-key="brokerage_total_value"]').getAttribute("data-waiting")) === "false",
@@ -109,7 +128,10 @@ export async function runNavigation({ browser, base, check }) {
   await page.locator('nav[aria-label="Steps"]').getByRole("link", { name: "Goals" }).click();
   await page.waitForURL("**/goals");
   check(
-    (await page.getByRole("group", { name: "Retirement age" }).locator("input:checked + span").innerText()) === "65",
+    (await page
+      .getByRole("radiogroup", { name: "When do you want to retire?" })
+      .locator("input:checked + span")
+      .innerText()) === "65",
     "the rail's Goals step keeps the answer (65)",
   );
 
@@ -117,7 +139,10 @@ export async function runNavigation({ browser, base, check }) {
   await page.reload({ waitUntil: "networkidle" });
   await page.getByRole("radio", { name: "65", exact: true }).waitFor();
   check(
-    (await page.getByRole("group", { name: "Retirement age" }).locator("input:checked + span").innerText()) === "65",
+    (await page
+      .getByRole("radiogroup", { name: "When do you want to retire?" })
+      .locator("input:checked + span")
+      .innerText()) === "65",
     "a reload on Goals keeps the answer",
   );
   steps = await railSteps(page);

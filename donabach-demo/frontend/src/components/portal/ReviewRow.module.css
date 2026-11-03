@@ -1,46 +1,29 @@
-.item {
+/* One row of Review, the mockup's .field: label left, bold value right; hover and the selected row get a hairline card. */
+.field {
   list-style: none;
-  border-bottom: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
   scroll-margin: 80px;
 }
 
-.item:last-child {
-  border-bottom: 0;
+.field:hover,
+.field[aria-current="true"] {
+  background: var(--surface);
+  border-color: var(--line);
 }
 
-.item[data-selected="true"] {
-  background: var(--panel);
+.field[data-waiting="true"] {
+  background: var(--bronze-wash);
 }
 
-.item[data-waiting="true"] {
-  background: var(--brown-wash);
-  box-shadow: inset 4px 0 0 var(--brown);
-}
-
-.item[data-waiting="true"][data-selected="true"] {
-  background: #f1e6d6;
-}
-
-.row {
-  display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 14px;
-  min-height: 48px;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--muted);
-}
-.dot[data-confidence="medium"] {
-  background: var(--brown-dark);
-}
-.dot[data-confidence="low"] {
-  background: var(--bad);
+.field[data-waiting="true"][aria-current="true"] {
+  border-color: var(--bronze);
 }
 
 .label {
@@ -56,7 +39,7 @@
 }
 
 .sub {
-  color: var(--ink-2);
+  color: var(--ink-soft);
   font-size: 0.875rem;
 }
 
@@ -66,73 +49,82 @@
   text-align: right;
 }
 
+/* The value reads as bold text, right-aligned like the mockup's; hover and focus draw a box around it so it is clear it can be edited.
+   The box is a shadow, so it never changes the row's height. */
 .input {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  width: 168px;
+  justify-content: flex-end;
+  justify-self: end;
+  margin-right: -10px;
   padding: 0 10px;
-  min-height: 36px;
-  background: var(--white);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  background: transparent;
+  border-radius: 8px;
 }
 
+.field:hover .input,
 .input:hover {
-  border-color: var(--muted);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .input:focus-within {
-  border-color: var(--navy);
-  outline: 2px solid var(--navy);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--porphyry);
+  outline: 3px solid var(--bronze);
   outline-offset: 1px;
 }
 
 .input[data-edited="true"] {
-  border-color: var(--brown);
+  box-shadow: inset 0 0 0 1px var(--bronze);
 }
 
 .input[data-invalid="true"] {
-  border-color: var(--bad);
+  box-shadow: inset 0 0 0 1px var(--bad);
 }
 
 .affix {
-  color: var(--ink-2);
+  color: var(--ink);
   user-select: none;
+  font-weight: 600;
 }
 
-.field {
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-  padding: 6px 0;
+.fieldbox {
+  flex: none;
+  width: auto;
+  field-sizing: content;
+  min-width: 1ch;
+  max-width: 100%;
+  padding: 0 2px 0 0;
   border: 0;
   background: transparent;
   text-align: right;
   font-weight: 600;
   color: var(--ink);
+  line-height: inherit;
 }
 
-.field:focus,
-.field:focus-visible {
+.fieldbox:focus,
+.fieldbox:focus-visible {
   outline: none;
 }
 
-.field::placeholder {
-  color: var(--ink-2);
+.fieldbox::placeholder {
+  color: var(--ink-soft);
   font-weight: 400;
 }
 
 .note {
+  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
-  padding: 0 14px 12px 36px;
 }
 
 .flag {
-  color: var(--brown-dark);
-  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--warn);
 }
 
 .status {
@@ -143,12 +135,12 @@
 }
 
 .confirm {
-  min-height: 36px;
-  padding: 0 18px;
-  border: 1px solid var(--navy);
-  border-radius: var(--radius-sm);
-  background: var(--navy);
-  color: var(--white);
+  padding: 6px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--porphyry);
+  color: #fff;
+  font-size: 13.5px;
   font-weight: 600;
 }
 
@@ -164,38 +156,35 @@
   border-radius: 999px;
   font-size: 0.875rem;
   font-weight: 600;
-  background: var(--panel);
-  color: var(--navy);
-  border: 1px solid var(--line);
+  background: var(--stone);
+  color: var(--porphyry);
 }
 
 .tag[data-tone="done"] {
   background: var(--good-wash);
   color: var(--good);
-  border-color: transparent;
 }
 
 .reset {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--navy);
+  color: var(--porphyry);
   font-size: 0.9375rem;
-  font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
 @media (max-width: 480px) {
-  .row {
-    grid-template-columns: 10px minmax(0, 1fr);
+  .field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
   }
-  .row > :last-child {
-    grid-column: 2;
-    justify-self: stretch;
-    width: auto;
+  .input {
+    justify-self: start;
+    margin-right: 0;
   }
-  .note {
-    padding-left: 14px;
+  .text {
+    text-align: left;
   }
 }

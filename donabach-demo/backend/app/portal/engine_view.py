@@ -13,7 +13,6 @@ the strategy by less than the noise of the measurement does not rebuild the port
 
 from __future__ import annotations
 
-import dataclasses
 import hashlib
 import json
 import threading
@@ -23,7 +22,8 @@ import numpy as np
 
 
 from app.planner.baseline import RIA_BASELINE
-from app.planner.plan import EVAL_SEED_OFFSET, VALIDATION_PATHS, VALIDATION_SEED_OFFSET
+from app.planner.plan import VALIDATION_PATHS, VALIDATION_SEED_OFFSET
+import app.planner.search as search_module
 from app.planner.search import FORCED_SALE_LIMIT, search_matched
 from app.planner.strategies import Strategy, menu
 from app.portal import illustrative as ill
@@ -67,10 +67,16 @@ from app.sim import markets
 from app.sim import simulate as S
 from app.sim.simulate import build_inputs, run_batch, run_detail
 from app.study import metrics
+from app.study.showcase_search import transition
 from app.tax import params_2026 as P
 
 SEARCH_PATHS = 400
-EVAL_PATHS = 2000
+# Three separate sets of futures: the search (SEARCH_PATHS futures at SEED, VALIDATION_PATHS more at SEED + VALIDATION_SEED_OFFSET), the
+# finalist set on which the strategy is chosen among the ones the search scored, and the final set on which every figure on screen is measured.
+FINALIST_PATHS = 2_000
+FINALIST_SEED_OFFSET = 5_000_011
+EVAL_PATHS = 3_000
+EVAL_SEED_OFFSET = 7_000_021
 SEED = 2026
 RAISE = 1.10  # "a raise": wages 10% higher
 JOB_LOSS = JobLoss(year=1, years=1, keep=0.0)  # the engine's existing job-loss scenario: no wages for a year, starting next year
@@ -179,13 +185,12 @@ class Computed:
     harvest_plan: float = 0.0  # losses harvested in the first year (mean over futures)
     harvest_advisor: float = 0.0
     seconds: float = 0.0
-
-
-REQUIRE_DIRECT_INDEXING = True  # Waramoug holds the taxable stocks as a direct-indexed book whenever the plan stays within its limits
+    transition_tax: float = 0.0  # the tax on the sale that starts direct indexing, when the plan uses it
+    sold_household: Household | None = None  # the household after that sale
 
 
 def expected_harvest(planned: Household, policies: list[S.Policy], kwargs: dict) -> list[float]:
-    """The losses each policy harvests in the first year, averaged over the 2,000 evaluation futures (the engine's one-year run, so the
+    """The losses each policy harvests in the first year, averaged over the evaluation futures (the engine's one-year run, so the
     stocks' own movements are in it: the single expected path has none and would show nothing)."""
     inputs = build_inputs(
         planned, n_paths=EVAL_PATHS, seed=SEED + EVAL_SEED_OFFSET, options=S.ModelOptions(horizon_age=planned.primary_age + 1), **kwargs
@@ -194,17 +199,63 @@ def expected_harvest(planned: Household, policies: list[S.Policy], kwargs: dict)
     return [float(-np.mean(batch.diag[i][:, D.D_GAIN + D.P_HARVEST])) for i in range(len(policies))]
 
 
-def with_direct_indexing(strategy: Strategy, validation: S.SimInputs) -> Strategy:
-    """The search's strategy with direct indexing switched on (everything else it chose is kept), when that still meets the limits it was
-    chosen under: on the validation futures it is no worse than the strategy without it on the stock-sale limit and on ruin."""
-    if not REQUIRE_DIRECT_INDEXING or strategy.direct_indexing:
-        return strategy
-    candidate = dataclasses.replace(strategy, direct_indexing=True)
-    batch = run_batch(validation, [strategy.policy(), candidate.policy(), RIA_BASELINE])
-    forced = [float(np.mean(batch.forced_years[i] > 0)) for i in (0, 1)]
-    ruin = [float(np.mean(batch.unfunded[i] > 0)) for i in (0, 1, 2)]
-    ok = forced[1] <= max(FORCED_SALE_LIMIT, forced[0]) and ruin[1] <= max(ruin[2], ruin[0])
-    return candidate if ok else strategy
+def _run_batch_allowing_none(inputs, policies, *args, **kwargs):
+    """The search ranks the direct-indexing strategies of its menu first; a menu without any (the fund-only half of the search below) gives
+    it an empty list, which the kernel cannot take: answer with an empty result. Results for any other call are the kernel's own."""
+    if len(policies) == 0:
+        z = np.zeros((0, inputs.n_paths))
+        return S.BatchResult(wealth=z, taxes_paid=z, pretax_owed=z, unfunded=z, forced_years=z)
+    return run_batch(inputs, policies, *args, **kwargs)
+
+
+search_module.run_batch = _run_batch_allowing_none
+
+
+@dataclass
+class Chosen:
+    strategy: Strategy
+    household: "Household"  # as the plan runs it: after the switch into direct indexing (funds sold, tax paid, basis reset) when the plan uses it
+    transition_tax: float  # the tax on the sale that starts direct indexing (0 without it)
+
+
+def choose_strategy(planned: Household, kwargs: dict) -> Chosen:
+    """The strategy for the household. The planner searches two menus on its own futures: the fund-only strategies on the household as it is,
+    and the direct-indexing ones on the household after it sells its fund shares and pays the tax on the gains (direct indexing is never
+    free: the book is bought with after-tax money, at a new basis). Every strategy the search scored is then run on the finalist futures,
+    which neither search saw, and the one with the most median wealth that keeps stock sales in falling years to 2% of futures and ruin
+    no likelier than the advisor's is the plan. With none that meets both, the planner's own pick."""
+    lm = menu(style="liability_matched")
+    sold, tax = transition(planned)
+    groups = [(False, planned, [x for x in lm if not x.direct_indexing])]
+    if tax >= 0.0 and planned.accounts.brokerage_value > 0:
+        groups.append((True, sold, [x for x in lm if x.direct_indexing]))
+    pool: list[tuple[Strategy, bool, Household]] = []
+    fallback: tuple[Strategy, bool, Household] | None = None
+    for di, household, strategies in groups:
+        futures = build_inputs(household, n_paths=SEARCH_PATHS, seed=SEED, **kwargs)
+        validation = build_inputs(household, n_paths=VALIDATION_PATHS, seed=SEED + VALIDATION_SEED_OFFSET, **kwargs)
+        result, choice = search_matched(futures, validation, strategies)
+        if fallback is None:
+            fallback = (choice.strategy, di, household)
+        seen: set[str] = set()
+        for strategy in [choice.strategy, *result.strategies]:
+            if strategy.key not in seen:
+                seen.add(strategy.key)
+                pool.append((strategy, di, household))
+    assert fallback is not None
+    finalists = {di: build_inputs(h, n_paths=FINALIST_PATHS, seed=SEED + FINALIST_SEED_OFFSET, **kwargs) for di, h, _ in groups}
+    advisor_ruin = float(np.mean(run_batch(finalists[False], [RIA_BASELINE]).unfunded[0] > 0))
+    best: tuple[float, tuple[Strategy, bool, Household]] | None = None
+    for di, _household, _ in groups:
+        members = [m for m in pool if m[1] == di]
+        batch = run_batch(finalists[di], [m[0].policy() for m in members])
+        for i, member in enumerate(members):
+            if np.mean(batch.forced_years[i] > 0) <= FORCED_SALE_LIMIT and np.mean(batch.unfunded[i] > 0) <= advisor_ruin:
+                median = float(np.median(batch.wealth[i]))
+                if best is None or median > best[0]:
+                    best = (median, member)
+    strategy, di, household = best[1] if best else fallback
+    return Chosen(strategy, household, tax if di else 0.0)
 
 
 def compute_plan(household: Household, event: str, anchor: Strategy | None = None) -> Computed:
@@ -213,27 +264,32 @@ def compute_plan(household: Household, event: str, anchor: Strategy | None = Non
     started = time.perf_counter()
     planned = apply_event(household, event)
     kwargs = {"job_loss": JOB_LOSS} if event == "job_loss" else {}
-    futures = build_inputs(planned, n_paths=SEARCH_PATHS, seed=SEED, **kwargs)
-    validation = build_inputs(planned, n_paths=VALIDATION_PATHS, seed=SEED + VALIDATION_SEED_OFFSET, **kwargs)
-    strategy = with_direct_indexing(search_matched(futures, validation, menu(style="liability_matched"))[1].strategy, validation)
-    evaluation = build_inputs(planned, n_paths=EVAL_PATHS, seed=SEED + EVAL_SEED_OFFSET, **kwargs)
+    chosen = choose_strategy(planned, kwargs)
+    strategy = chosen.strategy
+    run_household = chosen.household  # the household the plan is simulated on (after the switch into direct indexing, when it has one)
+    evaluation = build_inputs(run_household, n_paths=EVAL_PATHS, seed=SEED + EVAL_SEED_OFFSET, **kwargs)
     years = evaluation.n_years
     kept = False
     if anchor is not None and anchor != strategy:
-        batch = run_batch(evaluation, [anchor.policy(), strategy.policy(), RIA_BASELINE])
+        finalist = build_inputs(run_household, n_paths=FINALIST_PATHS, seed=SEED + FINALIST_SEED_OFFSET, **kwargs)
+        batch = run_batch(finalist, [anchor.policy(), strategy.policy(), RIA_BASELINE])
         # The current strategy still meets the limits it was chosen under when it is no worse on them than the searched one on these same
         # futures (a chance measured on 2,000 futures is only good to about a point, so the limit itself is not applied to it alone).
         held_forced, new_forced = float(np.mean(batch.forced_years[0] > 0)), float(np.mean(batch.forced_years[1] > 0))
         held_ruin, new_ruin, advisor_ruin = (float(np.mean(batch.unfunded[i] > 0)) for i in (0, 1, 2))
         held_ok = held_forced <= max(FORCED_SALE_LIMIT, new_forced) and held_ruin <= max(advisor_ruin, new_ruin)
         better = metrics.compare(batch.wealth[1], batch.wealth[0], years, with_range=True, median_only=True)
-        if held_ok and better.median_range[0] <= 0.0:
+        if held_ok and better.median_range[0] <= 0.0 and anchor.direct_indexing == strategy.direct_indexing:
             strategy, kept = anchor, True
     elif anchor is not None:
         kept = True
-    batch = run_batch(evaluation, [strategy.policy(), RIA_BASELINE], record_paths=True)
-    det = build_inputs(planned, deterministic=True, **kwargs)
-    harvests = expected_harvest(planned, [strategy.policy(), RIA_BASELINE], kwargs)
+    # The advisor is measured on the household as it is, on the same futures: the switch into direct indexing is the plan's, not the advisor's.
+    advisor_eval = build_inputs(planned, n_paths=EVAL_PATHS, seed=SEED + EVAL_SEED_OFFSET, **kwargs) if run_household is not planned else evaluation
+    batch = run_batch(evaluation, [strategy.policy()] + ([RIA_BASELINE] if advisor_eval is evaluation else []), record_paths=True)
+    advisor_wealth = batch.wealth[1] if advisor_eval is evaluation else run_batch(advisor_eval, [RIA_BASELINE]).wealth[0]
+    det = build_inputs(run_household, deterministic=True, **kwargs)
+    det_advisor = build_inputs(planned, deterministic=True, **kwargs)
+    harvests = expected_harvest(run_household, [strategy.policy(), RIA_BASELINE], kwargs)
     return Computed(
         household=planned,
         event=event,
@@ -241,14 +297,16 @@ def compute_plan(household: Household, event: str, anchor: Strategy | None = Non
         strategy_kept=kept,
         years=years,
         plan_wealth=batch.wealth[0],
-        advisor_wealth=batch.wealth[1],
+        advisor_wealth=advisor_wealth,
         plan_paths=batch.path_wealth[0],
         plan_log=run_detail(det, strategy.policy()).log,
-        advisor_log=run_detail(det, RIA_BASELINE).log,
+        advisor_log=run_detail(det_advisor, RIA_BASELINE).log,
         det=det,
         harvest_plan=harvests[0],
         harvest_advisor=harvests[1],
         seconds=time.perf_counter() - started,
+        transition_tax=chosen.transition_tax,
+        sold_household=run_household if run_household is not planned else None,
     )
 
 
@@ -386,7 +444,7 @@ def _location(matrix: dict[str, dict[str, float]], accounts_total: dict[str, flo
 
 
 def build_plan(c: Computed, previous: Plan | None = None, change_label: str | None = None) -> Plan:
-    h = c.household
+    h = c.sold_household or c.household  # the household the plan runs on: after the sale that starts direct indexing, when it has one
     policy = c.strategy.policy()
     log, alog = c.plan_log, c.advisor_log
     age0 = h.primary_age
@@ -456,6 +514,8 @@ def build_plan(c: Computed, previous: Plan | None = None, change_label: str | No
              if policy.donabach_location else "Hold the same mix in every account", timing="This year", status="done"),
         Move(key="lots", title="Sell the highest-cost lots first", timing="Ongoing", status="ongoing"),
     ]
+    if c.transition_tax > 0:
+        moves.insert(0, Move(key="transition", title="Sell your fund shares to start direct indexing (one-time tax)", amount=round(c.transition_tax), timing="This year", status="needs_ok"))
     if policy.tax_loss_harvesting:
         moves.append(Move(key="harvest", title="Harvest losses" + (" stock by stock" if policy.direct_indexing else ""), amount=round(harvest) if harvest > 0.5 else None, timing="Ongoing", status="ongoing"))
     if conv > 0:
@@ -546,8 +606,8 @@ def build_plan(c: Computed, previous: Plan | None = None, change_label: str | No
             harvested_so_far=harvest, roth_conversion=conv, fee_dollars=fee_dollars, fee_rate=fee_rate,
         ),
     )
-    pid = plan_id(h, c.event, previous.plan_id if previous else None)
-    plan = Plan(plan_id=pid, household=h, portfolio=portfolio, comparison=comparison, event=c.event)  # type: ignore[arg-type]
+    pid = plan_id(c.household, c.event, previous.plan_id if previous else None)
+    plan = Plan(plan_id=pid, household=c.household, portfolio=portfolio, comparison=comparison, event=c.event)  # type: ignore[arg-type]
     if previous is not None:
         plan.what_changed = what_changed(previous, plan, change_label or "")
     return plan

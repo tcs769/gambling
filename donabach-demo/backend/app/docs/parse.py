@@ -708,6 +708,8 @@ def _percent_check(keys: Sequence[str]) -> _Check:
 
     def run(v: dict[str, float]) -> tuple[bool, str]:
         got = sum(v[k] for k in keys)
+        if got == 0.0:  # an account with nothing in it prints 0.0% everywhere; there is nothing to add up
+            return True, "The account is empty: there is no allocation to add up."
         if abs(got - 100.0) <= 0.05 * len(keys) + 1e-6:
             return True, f"Allocation percentages add up to {got:.1f}%."
         return False, f"Allocation percentages add up to {got:.1f}%, not 100%."

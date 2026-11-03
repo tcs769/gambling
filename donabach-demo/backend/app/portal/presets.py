@@ -42,7 +42,7 @@ PRESETS: tuple[Preset, ...] = (
     Preset("job_loss", "Income: job loss next year", "job_loss", lambda h: h),
     Preset("raise", "Income: a raise", "raise", lambda h: h),
     Preset("retire_65", "Retirement age: 65", "none", _goals(retirement_age=65)),
-    Preset("home_3y", "Home purchase: $150,000 within 3 years", "none", _goals(home_purchase_in_years=3, home_down_payment=150_000.0)),
+    Preset("home_1y", "Home purchase: $150,000 next year", "none", _goals(home_purchase_in_years=1, home_down_payment=150_000.0)),
     Preset("spending_120k", "Retirement spending: $120,000", "none", _goals(retirement_spending=120_000.0)),
     Preset("wages_minus_20", "Income: wages 20% lower", "none", _wages(0.8)),
 )

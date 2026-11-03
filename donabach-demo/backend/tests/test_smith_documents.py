@@ -50,8 +50,8 @@ def expected_values() -> dict[str, float | str]:
         )
     )
     out: dict[str, float | str] = {
-        "taxpayer_name": "John Smith", "filing_status": "Married filing jointly", "taxpayer_age": 50,
-        "children_under_17": 1, "child_age_1": 10, "w2_wages_taxpayer": person["wages"],
+        "taxpayer_name": "John Smith", "filing_status": "Married filing jointly", "taxpayer_age": person["age"],
+        "children_under_17": 1, "child_age_1": SHOWCASE["children_ages"][0], "w2_wages_taxpayer": person["wages"],
         "wages_1a": ret.wages, "taxable_interest_2b": 838.0, "qualified_dividends_3a": 11624.0,
         "ordinary_dividends_3b": 11624.0, "capital_gain_7": 0.0, "total_income_9": ret.total_income,
         "adjustments_10": ret.total_income - ret.agi, "agi_11": ret.agi,
@@ -282,11 +282,13 @@ def test_sample_equals_upload():
 
 def test_defaults_are_john_smiths_goals():
     d = answers()
+    g, ss = SHOWCASE["goals"], SHOWCASE["social_security"]
     assert d == {
-        "retirement_age": 60, "retirement_spending": 90015.31, "college_starts_in_years": 8,
-        "college_annual_cost": 44539.62, "college_years": 4, "home_purchase_in_years": None,
-        "home_down_payment": 120000.0, "social_security_annual": 61280.44, "social_security_start_age": 67,
-        "charitable_giving": 0.0, "income_change": "none",
+        "retirement_age": g["retirement_age"], "retirement_spending": g["retirement_spending"],
+        "college_starts_in_years": g["college_starts_in_years"], "college_annual_cost": g["college_annual_cost"],
+        "college_years": g["college_years"], "home_purchase_in_years": g["home_purchase_in_years"],
+        "home_down_payment": g["home_down_payment"], "social_security_annual": ss["annual_benefit"],
+        "social_security_start_age": ss["start_age"], "charitable_giving": 0.0, "income_change": "none",
     }
 
 
@@ -314,22 +316,22 @@ def test_household_endpoint_matches_showcase_and_rechecks_after_overrides():
     assert out["household"]["accounts"]["brokerage_value"] == pytest.approx(SHOWCASE["accounts"]["brokerage_value"])
 
     # correcting the short holding clears the flag everywhere and leaves the household as it was
-    short = {"holding_5_value": 96866.49}
+    short = {"holding_5_value": 150000.0}
     r = client.post("/portal/household", json={**body, "overrides": short})
     assert r.status_code == 200
     out = r.json()
     assert out["corrections"][0]["key"] == "holding_5_value"
-    assert out["corrections"][0]["document_value"] == pytest.approx(96865.49)
+    assert out["corrections"][0]["document_value"] == pytest.approx(149999.0)
     assert all(f["confidence"] == "high" for d in out["documents"] for f in d["fields"])
     assert all(c["passed"] for d in out["documents"] for c in d["checks"])
     assert out["household"]["accounts"]["brokerage_value"] == pytest.approx(SHOWCASE["accounts"]["brokerage_value"])
 
     # editing the stated total itself clears that field's flag (the household uses the edited value)
-    r = client.post("/portal/household", json={**body, "overrides": {"brokerage_total_value": 645775.59}})
+    r = client.post("/portal/household", json={**body, "overrides": {"brokerage_total_value": SHOWCASE["accounts"]["brokerage_value"] - 1.0}})
     out = r.json()
     total = next(f for d in out["documents"] for f in d["fields"] if f["key"] == "brokerage_total_value")
     assert total["confidence"] == "high" and total["flag"] is None
-    assert out["household"]["accounts"]["brokerage_value"] == pytest.approx(645775.59)
+    assert out["household"]["accounts"]["brokerage_value"] == pytest.approx(SHOWCASE["accounts"]["brokerage_value"] - 1.0)
 
 
 def test_household_endpoint_errors():

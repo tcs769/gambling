@@ -73,7 +73,7 @@ endobj
 endobj
 11 0 obj
 <<
-/Length 5539
+/Length 5529
 >>
 stream
 1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
@@ -115,7 +115,7 @@ BT /F1 9.5 Tf 11.4 TL ET
 BT 1 0 0 1 56 601 Tm (Taxpayer age) Tj T* ET
 BT /F1 9.5 Tf 11.4 TL ET
 0 g
-BT 1 0 0 1 545.436 601 Tm (50) Tj T* ET
+BT 1 0 0 1 545.436 601 Tm (58) Tj T* ET
 BT /F1 9.5 Tf 11.4 TL ET
 0 g
 BT 1 0 0 1 56 587 Tm (Qualifying children under 17) Tj T* ET
@@ -139,7 +139,7 @@ BT /F1 9.5 Tf 11.4 TL ET
 BT 1 0 0 1 56 519 Tm (W-2 wages, taxpayer \(John Smith\)) Tj T* ET
 BT /F1 9.5 Tf 11.4 TL ET
 0 g
-BT 1 0 0 1 503.18 519 Tm ($204,268.12) Tj T* ET
+BT 1 0 0 1 516.385 519 Tm ($300,000) Tj T* ET
 .92 g
 n 48 484 516 19 re f*
 BT /F2 8.5 Tf 10.2 TL ET
@@ -159,7 +159,7 @@ BT /F1 9.5 Tf 11.4 TL ET
 BT 1 0 0 1 92 470 Tm (Wages from Form\(s\) W-2, box 1) Tj T* ET
 BT /F1 9.5 Tf 11.4 TL ET
 0 g
-BT 1 0 0 1 503.18 470 Tm ($204,268.12) Tj T* ET
+BT 1 0 0 1 516.385 470 Tm ($300,000) Tj T* ET
 .85 G
 .5 w
 n 48 464 m 564 464 l S
@@ -219,7 +219,7 @@ BT /F2 9.5 Tf 11.4 TL ET
 BT 1 0 0 1 92 370 Tm (Total income \(add lines 1a, 2b, 3b and 7\)) Tj T* ET
 BT /F2 9.5 Tf 11.4 TL ET
 0 g
-BT 1 0 0 1 503.18 370 Tm ($216,730.12) Tj T* ET
+BT 1 0 0 1 516.385 370 Tm ($312,462) Tj T* ET
 .85 G
 .5 w
 n 48 364 m 564 364 l S
@@ -243,7 +243,7 @@ BT /F2 9.5 Tf 11.4 TL ET
 BT 1 0 0 1 92 330 Tm (Adjusted gross income \(subtract line 10 from line 9\)) Tj T* ET
 BT /F2 9.5 Tf 11.4 TL ET
 0 g
-BT 1 0 0 1 503.18 330 Tm ($216,730.12) Tj T* ET
+BT 1 0 0 1 516.385 330 Tm ($312,462) Tj T* ET
 .85 G
 .5 w
 n 48 324 m 564 324 l S
@@ -267,7 +267,7 @@ BT /F2 9.5 Tf 11.4 TL ET
 BT 1 0 0 1 92 290 Tm (Taxable income \(subtract line 12 from line 11\)) Tj T* ET
 BT /F2 9.5 Tf 11.4 TL ET
 0 g
-BT 1 0 0 1 503.18 290 Tm ($184,530.12) Tj T* ET
+BT 1 0 0 1 516.385 290 Tm ($280,262) Tj T* ET
 .85 G
 .5 w
 n 48 284 m 564 284 l S
@@ -279,7 +279,7 @@ BT /F2 9.5 Tf 11.4 TL ET
 BT 1 0 0 1 92 270 Tm (Total tax) Tj T* ET
 BT /F2 9.5 Tf 11.4 TL ET
 0 g
-BT 1 0 0 1 508.462 270 Tm ($27,006.95) Tj T* ET
+BT 1 0 0 1 508.462 270 Tm ($49,686.28) Tj T* ET
 .85 G
 .5 w
 n 48 264 m 564 264 l S
@@ -306,7 +306,7 @@ endstream
 endobj
 12 0 obj
 <<
-/Length 5370
+/Length 5322
 >>
 stream
 1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
@@ -342,25 +342,25 @@ BT /F1 9.5 Tf 11.4 TL ET
 BT 1 0 0 1 56 619 Tm (Total account value) Tj T* ET
 BT /F2 9.5 Tf 11.4 TL ET
 0 g
-BT 1 0 0 1 503.18 619 Tm ($645,776.59) Tj T* ET
+BT 1 0 0 1 508.462 619 Tm ($1,000,000) Tj T* ET
 BT /F1 9.5 Tf 11.4 TL ET
 0 g
 BT 1 0 0 1 56 605 Tm (Total cost basis) Tj T* ET
 BT /F1 9.5 Tf 11.4 TL ET
 0 g
-BT 1 0 0 1 503.18 605 Tm ($232,795.29) Tj T* ET
+BT 1 0 0 1 516.385 605 Tm ($250,000) Tj T* ET
 BT /F1 9.5 Tf 11.4 TL ET
 0 g
 BT 1 0 0 1 56 591 Tm (Unrealized gain) Tj T* ET
 BT /F1 9.5 Tf 11.4 TL ET
 0 g
-BT 1 0 0 1 503.18 591 Tm ($412,981.30) Tj T* ET
+BT 1 0 0 1 516.385 591 Tm ($750,000) Tj T* ET
 BT /F1 9.5 Tf 11.4 TL ET
 0 g
 BT 1 0 0 1 56 577 Tm (Cash balance \(not in total above\)) Tj T* ET
 BT /F1 9.5 Tf 11.4 TL ET
 0 g
-BT 1 0 0 1 508.462 577 Tm ($23,940.44) Tj T* ET
+BT 1 0 0 1 521.667 577 Tm ($60,000) Tj T* ET
 BT /F2 11 Tf 13.2 TL ET
 0 g
 BT 1 0 0 1 48 552 Tm (Holdings) Tj T* ET
@@ -392,10 +392,10 @@ BT /F1 9 Tf 10.8 TL ET
 BT 1 0 0 1 330 510 Tm (Equity) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 419.96 510 Tm ($206,648.50) Tj T* ET
+BT 1 0 0 1 432.47 510 Tm ($320,000) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 510.964 510 Tm ($51,073.75) Tj T* ET
+BT 1 0 0 1 517.48 510 Tm (\($31,400\)) Tj T* ET
 .85 G
 .5 w
 n 48 504 m 564 504 l S
@@ -410,10 +410,10 @@ BT /F1 9 Tf 10.8 TL ET
 BT 1 0 0 1 330 490 Tm (Equity) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 419.96 490 Tm ($154,986.38) Tj T* ET
+BT 1 0 0 1 432.47 490 Tm ($240,000) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 510.964 490 Tm ($46,495.91) Tj T* ET
+BT 1 0 0 1 523.474 490 Tm ($72,000) Tj T* ET
 .85 G
 .5 w
 n 48 484 m 564 484 l S
@@ -428,10 +428,10 @@ BT /F1 9 Tf 10.8 TL ET
 BT 1 0 0 1 330 470 Tm (Equity) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 424.964 470 Tm ($64,577.66) Tj T* ET
+BT 1 0 0 1 432.47 470 Tm ($100,000) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 510.964 470 Tm ($20,664.85) Tj T* ET
+BT 1 0 0 1 523.474 470 Tm ($32,000) Tj T* ET
 .85 G
 .5 w
 n 48 464 m 564 464 l S
@@ -446,10 +446,10 @@ BT /F1 9 Tf 10.8 TL ET
 BT 1 0 0 1 330 450 Tm (Equity) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 424.964 450 Tm ($51,662.13) Tj T* ET
+BT 1 0 0 1 437.474 450 Tm ($80,000) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 510.964 450 Tm ($19,631.61) Tj T* ET
+BT 1 0 0 1 523.474 450 Tm ($30,400) Tj T* ET
 .85 G
 .5 w
 n 48 444 m 564 444 l S
@@ -464,10 +464,10 @@ BT /F1 9 Tf 10.8 TL ET
 BT 1 0 0 1 330 430 Tm (Equity) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 424.964 430 Tm ($96,865.49) Tj T* ET
+BT 1 0 0 1 432.47 430 Tm ($149,999) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 510.964 430 Tm ($38,746.60) Tj T* ET
+BT 1 0 0 1 523.474 430 Tm ($60,000) Tj T* ET
 .85 G
 .5 w
 n 48 424 m 564 424 l S
@@ -482,10 +482,10 @@ BT /F1 9 Tf 10.8 TL ET
 BT 1 0 0 1 330 410 Tm (Equity) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 424.964 410 Tm ($19,373.30) Tj T* ET
+BT 1 0 0 1 437.474 410 Tm ($30,000) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 515.968 410 Tm ($9,686.65) Tj T* ET
+BT 1 0 0 1 523.474 410 Tm ($15,000) Tj T* ET
 .85 G
 .5 w
 n 48 404 m 564 404 l S
@@ -500,10 +500,10 @@ BT /F1 9 Tf 10.8 TL ET
 BT 1 0 0 1 330 390 Tm (Bond) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 424.964 390 Tm ($51,662.13) Tj T* ET
+BT 1 0 0 1 437.474 390 Tm ($80,000) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 510.964 390 Tm ($46,495.92) Tj T* ET
+BT 1 0 0 1 523.474 390 Tm ($72,000) Tj T* ET
 .85 G
 .5 w
 n 48 384 m 564 384 l S
@@ -515,10 +515,10 @@ BT /F2 9 Tf 10.8 TL ET
 BT 1 0 0 1 56 370 Tm (Total) Tj T* ET
 BT /F2 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 419.96 370 Tm ($645,776.59) Tj T* ET
+BT 1 0 0 1 424.964 370 Tm ($1,000,000) Tj T* ET
 BT /F2 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 505.96 370 Tm ($232,795.29) Tj T* ET
+BT 1 0 0 1 518.47 370 Tm ($250,000) Tj T* ET
 BT /F1 7.5 Tf 9 TL ET
 .4 g
 BT 1 0 0 1 48 336 Tm (Index fund holdings are not FDIC insured and may lose value. Values as of statement date.) Tj T* ET
@@ -536,7 +536,7 @@ endstream
 endobj
 13 0 obj
 <<
-/Length 3609
+/Length 3591
 >>
 stream
 1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
@@ -580,7 +580,7 @@ BT /F1 9 Tf 10.8 TL ET
 BT 1 0 0 1 56 604 Tm (John Smith \(taxpayer\)) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 279.96 604 Tm ($429,185.46) Tj T* ET
+BT 1 0 0 1 292.47 604 Tm ($800,000) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
 BT 1 0 0 1 545.992 604 Tm ($0) Tj T* ET
@@ -595,7 +595,7 @@ BT /F2 9 Tf 10.8 TL ET
 BT 1 0 0 1 56 584 Tm (Total balance) Tj T* ET
 BT /F2 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 279.96 584 Tm ($429,185.46) Tj T* ET
+BT 1 0 0 1 292.47 584 Tm ($800,000) Tj T* ET
 BT /F2 11 Tf 13.2 TL ET
 0 g
 BT 1 0 0 1 48 546 Tm (Fund allocation) Tj T* ET
@@ -621,7 +621,7 @@ BT /F1 9 Tf 10.8 TL ET
 BT 1 0 0 1 300 504 Tm (Equity) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 389.96 504 Tm ($154,506.77) Tj T* ET
+BT 1 0 0 1 402.47 504 Tm ($288,000) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
 BT 1 0 0 1 530.485 504 Tm (36.0%) Tj T* ET
@@ -636,7 +636,7 @@ BT /F1 9 Tf 10.8 TL ET
 BT 1 0 0 1 300 484 Tm (Equity) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 394.964 484 Tm ($64,377.82) Tj T* ET
+BT 1 0 0 1 402.47 484 Tm ($120,000) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
 BT 1 0 0 1 530.485 484 Tm (15.0%) Tj T* ET
@@ -651,7 +651,7 @@ BT /F1 9 Tf 10.8 TL ET
 BT 1 0 0 1 300 464 Tm (Equity) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 394.964 464 Tm ($38,626.69) Tj T* ET
+BT 1 0 0 1 407.474 464 Tm ($72,000) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
 BT 1 0 0 1 535.489 464 Tm (9.0%) Tj T* ET
@@ -666,7 +666,7 @@ BT /F1 9 Tf 10.8 TL ET
 BT 1 0 0 1 300 444 Tm (Bond) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 389.96 444 Tm ($171,674.18) Tj T* ET
+BT 1 0 0 1 402.47 444 Tm ($320,000) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
 BT 1 0 0 1 530.485 444 Tm (40.0%) Tj T* ET
@@ -690,7 +690,7 @@ endstream
 endobj
 14 0 obj
 <<
-/Length 2520
+/Length 2494
 >>
 stream
 1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
@@ -726,7 +726,7 @@ BT /F1 9.5 Tf 11.4 TL ET
 BT 1 0 0 1 56 619 Tm (Total balance) Tj T* ET
 BT /F2 9.5 Tf 11.4 TL ET
 0 g
-BT 1 0 0 1 508.462 619 Tm ($94,380.32) Tj T* ET
+BT 1 0 0 1 545.436 619 Tm ($0) Tj T* ET
 BT /F1 9.5 Tf 11.4 TL ET
 0 g
 BT 1 0 0 1 56 605 Tm (Contributions, year to date) Tj T* ET
@@ -758,10 +758,10 @@ BT /F1 9 Tf 10.8 TL ET
 BT 1 0 0 1 300 540 Tm (Equity) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 394.964 540 Tm ($66,066.22) Tj T* ET
+BT 1 0 0 1 429.992 540 Tm ($0) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 530.485 540 Tm (70.0%) Tj T* ET
+BT 1 0 0 1 535.489 540 Tm (0.0%) Tj T* ET
 .85 G
 .5 w
 n 48 534 m 564 534 l S
@@ -773,10 +773,10 @@ BT /F1 9 Tf 10.8 TL ET
 BT 1 0 0 1 300 520 Tm (Equity) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 394.964 520 Tm ($28,314.10) Tj T* ET
+BT 1 0 0 1 429.992 520 Tm ($0) Tj T* ET
 BT /F1 9 Tf 10.8 TL ET
 0 g
-BT 1 0 0 1 530.485 520 Tm (30.0%) Tj T* ET
+BT 1 0 0 1 535.489 520 Tm (0.0%) Tj T* ET
 .85 G
 .5 w
 n 48 514 m 564 514 l S
@@ -809,9 +809,9 @@ xref
 0000001170 00000 n 
 0000001527 00000 n 
 0000001605 00000 n 
-0000007196 00000 n 
-0000012618 00000 n 
-0000016279 00000 n 
+0000007186 00000 n 
+0000012560 00000 n 
+0000016203 00000 n 
 trailer
 <<
 /ID 
@@ -823,5 +823,5 @@ trailer
 /Size 15
 >>
 startxref
-18851
+18749
 %%EOF

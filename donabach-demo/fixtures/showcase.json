@@ -1,43 +1,44 @@
 {
-  "id": "smith",
-  "name": "The Smith household",
-  "type_label": "Large unrealized gains",
-  "tagline": "One earner aged 50 with a child, a large appreciated taxable account, and retirement planned at 60.",
-  "household": {
-    "people": [
-      {
-        "name": "John Smith",
-        "age": 50,
-        "wages": 204268.12,
-        "pretax_401k": 0.0
-      }
-    ],
-    "children_ages": [
-      10
-    ],
-    "accounts": {
-      "brokerage_value": 645776.59,
-      "brokerage_basis": 232795.29,
-      "pretax_balance": 429185.46,
-      "pretax_equity_share": 0.6,
-      "roth_balance": 94380.32,
-      "roth_equity_share": 1.0,
-      "cash": 23940.44
-    },
-    "goals": {
-      "home_purchase_in_years": null,
-      "home_down_payment": 120000.0,
-      "college_starts_in_years": 8,
-      "college_annual_cost": 44539.62,
-      "college_years": 4,
-      "retirement_age": 60,
-      "retirement_spending": 90015.31
-    },
-    "social_security": {
-      "annual_benefit": 61280.44,
-      "start_age": 67
-    },
-    "snapshot": null,
-    "estimated": []
-  }
+ "id": "smith",
+ "name": "The Smith household",
+ "type_label": "Large unrealized gains",
+ "tagline": "One earner aged 58 with a child, a large appreciated taxable account, and retirement planned at 67.",
+ "household": {
+  "people": [
+   {
+    "name": "John Smith",
+    "age": 58,
+    "wages": 300000.0,
+    "pretax_401k": 0.0
+   }
+  ],
+  "children_ages": [
+   10
+  ],
+  "accounts": {
+   "brokerage_value": 1000000.0,
+   "brokerage_basis": 250000.0,
+   "pretax_balance": 800000.0,
+   "pretax_equity_share": 0.6,
+   "roth_balance": 0.0,
+   "roth_equity_share": 1.0,
+   "cash": 60000.0
+  },
+  "goals": {
+   "home_purchase_in_years": 3,
+   "home_down_payment": 150000.0,
+   "college_starts_in_years": 8,
+   "college_annual_cost": 44539.62,
+   "college_years": 4,
+   "retirement_age": 67,
+   "retirement_spending": 105000.0,
+   "charitable_giving": 0.0
+  },
+  "social_security": {
+   "annual_benefit": 52433.52,
+   "start_age": 67
+  },
+  "snapshot": null,
+  "estimated": []
+ }
 }

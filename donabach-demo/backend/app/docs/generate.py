@@ -168,7 +168,7 @@ def form_1040_values(h: Mapping[str, Any]) -> dict[str, float]:
 
 def allocation_percent(value: float, total: float) -> float:
     """Share of the 401(k) in one fund, as printed (one decimal)."""
-    return round(value / total * 100, 1)
+    return round(value / total * 100, 1) if total else 0.0
 
 
 # =============================================================================================

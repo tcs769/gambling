@@ -57,7 +57,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </nav>
         <div className={styles.account}>
           <b>{name}</b>
-          Signed in
+          Illustrative household.
         </div>
       </aside>
       <main className={styles.main}>{children}</main>

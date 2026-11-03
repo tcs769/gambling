@@ -13,7 +13,7 @@ from app.portal import engine_view as E
 from app.portal import presets
 from fastapi.testclient import TestClient
 
-TOTAL = 1_193_283  # John Smith's total savings, to the dollar (the deck's figure)
+TOTAL = 1_860_000  # John Smith's total savings, to the dollar (the deck's figure)
 
 
 @pytest.fixture(scope="module")
@@ -34,13 +34,13 @@ def plan(request, plans):
 def test_the_base_plan_has_the_figures_the_demo_quotes(plans):
     base = plans["base"]
     s = base.portfolio.summary
-    assert round(s.projected_wealth) == 2_426_567
+    assert round(s.projected_wealth) == 3_354_464
     assert s.invested_today == TOTAL
-    assert round(base.comparison.advisor.wealth_80) == 1_297_356
-    assert round(base.comparison.dollars_more) == 1_129_210
-    assert base.comparison.rate_per_year == pytest.approx(0.021091, abs=5e-7)
-    assert base.portfolio.holdings.accounts[0].holdings[0].name == "Direct-indexed US stocks" and base.portfolio.holdings.accounts[0].holdings[0].positions == 100
-    assert s.fee_rate == 0.0035 and round(s.fee_dollars) == 4_176
+    assert round(base.comparison.advisor.wealth_80) == 1_961_675
+    assert round(base.comparison.dollars_more) == 1_392_788
+    assert base.comparison.rate_per_year == pytest.approx(0.024686, abs=5e-7)
+    assert all(h.name != "Direct-indexed US stocks" for a in base.portfolio.holdings.accounts for h in a.holdings)  # the plan holds funds: direct indexing does not pay once its sale tax is charged
+    assert s.fee_rate == 0.0035 and round(s.fee_dollars) == 6_510
 
 
 def test_the_mix_adds_up_to_total_savings_and_each_class_is_the_sum_over_accounts(plan):
@@ -64,7 +64,7 @@ def test_each_accounts_holdings_add_up_to_its_balance_and_the_gains_to_the_unrea
     for account in plan.portfolio.holdings.accounts:
         assert account.balance == balances[account.key]
         assert sum(h.value for h in account.holdings) == account.balance
-        assert sum(h.share for h in account.holdings) == pytest.approx(1.0)
+        assert sum(h.share for h in account.holdings) == pytest.approx(1.0 if account.balance else 0.0)
     brokerage = next(a for a in plan.portfolio.holdings.accounts if a.key == "brokerage")
     stocks = [h for h in brokerage.holdings if h.gain is not None]
     assert sum(h.gain for h in stocks) == brokerage.unrealized_gain
@@ -182,12 +182,12 @@ def test_what_changed_is_shown_against_the_previous_plan_with_its_own_numbers(pl
             assert (m.before, m.after) == (before, after)
 
 
-def test_job_loss_changes_the_conversion_at_51(plans):
+def test_job_loss_changes_the_conversion_at_59(plans):
     w = plans["job_loss"].what_changed
-    assert w.conversion_age == 51
-    assert round(w.conversion_before) == 65_324 and round(w.conversion_after) == 246_600
+    assert w.conversion_age == 59
+    assert round(w.conversion_before) == 156_515 and round(w.conversion_after) == 430_518
     added = {m.title: m for m in w.moves}
-    assert added["Roth conversion at 51"].after.endswith("Needs your OK")
+    assert added["Roth conversion at 59"].after.endswith("Needs your OK")
     assert plans["job_loss"].event == "job_loss"
     # the household itself is unchanged; the event is applied to the simulated futures
     assert plans["job_loss"].household == plans["base"].household
@@ -197,7 +197,7 @@ def test_a_raise_and_the_edits_change_the_household_as_asked(plans):
     base = plans["base"].household
     assert plans["raise"].household.people[0].wages == pytest.approx(base.people[0].wages * 1.1, abs=0.01)
     assert plans["retire_65"].household.goals.retirement_age == 65
-    assert plans["home_3y"].household.goals.home_purchase_in_years == 3 and plans["home_3y"].household.goals.home_down_payment == 150_000
+    assert plans["home_1y"].household.goals.home_purchase_in_years == 1 and plans["home_1y"].household.goals.home_down_payment == 150_000
     assert plans["spending_120k"].household.goals.retirement_spending == 120_000
     assert plans["wages_minus_20"].household.people[0].wages == pytest.approx(base.people[0].wages * 0.8, abs=0.01)
 
@@ -263,8 +263,8 @@ def test_changes_made_through_the_review_and_goals_screens_hit_the_precomputed_p
     cases = {
         "retire_65": ({}, {"retirement_age": 65}, "none"),
         "spending_120k": ({}, {"retirement_spending": 120_000.0}, "none"),
-        "home_3y": ({}, {"home_purchase_in_years": 3, "home_down_payment": 150_000.0}, "none"),
-        "wages_minus_20": ({"w2_wages_taxpayer": 163_414.5}, {}, "none"),
+        "home_1y": ({}, {"home_purchase_in_years": 1, "home_down_payment": 150_000.0}, "none"),
+        "wages_minus_20": ({"w2_wages_taxpayer": 240_000.0}, {}, "none"),
         "job_loss": ({}, {}, "job_loss"),
         "raise": ({}, {}, "raise"),
     }

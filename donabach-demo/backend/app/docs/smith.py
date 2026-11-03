@@ -110,6 +110,8 @@ def holdings(accounts: dict[str, Any]) -> list[Holding]:
 
 def _split(total_cents: int, plan: Sequence[tuple[str, str, float | None]], equity_cents: int | None = None) -> list[int]:
     """Fund values in cents: the planned shares, with the funds that have no share taking the rest."""
+    if total_cents == 0:  # an account with nothing in it: every fund shows $0.00
+        return [0] * len(plan)
     values = [round(total_cents * share) if share is not None else 0 for _, _, share in plan]
     if equity_cents is not None:  # the equity funds add up to exactly this much
         eq = [i for i, (_, cls, _) in enumerate(plan) if cls == "equity"]

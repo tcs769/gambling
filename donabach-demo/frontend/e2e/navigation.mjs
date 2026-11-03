@@ -56,8 +56,8 @@ export async function runNavigation({ browser, base, check }) {
     "on a fresh start only Documents is a link; the others are not reachable",
   );
   check(
-    (await rail.innerText()).replace(/\s+/g, " ").trimEnd().endsWith("John Smith Signed in"),
-    "the name and 'Signed in' are at the bottom of the rail",
+    (await rail.innerText()).replace(/\s+/g, " ").trimEnd().endsWith("John Smith Illustrative household."),
+    'the name and the label "Illustrative household." are at the bottom of the rail',
   );
   check((await rail.locator("[class*=avatar]").count()) === 0, "there is no avatar circle");
   const stepsLook = await page

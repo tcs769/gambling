@@ -210,6 +210,7 @@ def quick_score(p: Profile, n: int = 300) -> dict:
     fut = _futures(h, n, EVAL_SEED_OFFSET)
     adv = run_batch(fut, [RIA_BASELINE])
     advisor = float(np.median(adv.wealth[0]))
+    advisor_ruin = float(np.mean(adv.unfunded[0] > 0))
     off = [s for s in QUICK_STRATEGIES if not s.direct_indexing]
     on = [s for s in QUICK_STRATEGIES if s.direct_indexing]
     b_off = run_batch(fut, [s.policy() for s in off])
@@ -220,7 +221,17 @@ def quick_score(p: Profile, n: int = 300) -> dict:
         medians += [(float(np.median(b_on.wealth[i])), on[i]) for i in range(len(on))]
     best, strategy = max(medians, key=lambda m: m[0])
     rate = (best / advisor) ** (1.0 / years) - 1.0 if best > 0 and advisor > 0 else -1.0
-    return {"rate": rate, "wealth": best, "advisor": advisor, "tax": tax, "strategy": strategy.key}
+    return {"rate": rate, "wealth": best, "advisor": advisor, "advisor_ruin": advisor_ruin, "spending": h.goals.retirement_spending, "tax": tax, "strategy": strategy.key}
+
+
+ADVISOR_CUSHION = 10.0  # the standard advisor's median wealth at 80 must be at least this many years of retirement spending ...
+ADVISOR_MAX_RUIN = 0.10  # ... and it may run out of money in at most this share of futures: a percentage gap over an advisor whose household is
+# broke (a base near zero) is an artifact of the base, not a result
+
+
+def funded(row: dict) -> bool:
+    """Is the household one the standard advisor can actually fund? (rows scored before the ruin was recorded are judged on the cushion alone)"""
+    return row["advisor"] >= ADVISOR_CUSHION * row["spending"] and row.get("advisor_ruin", 0.0) <= ADVISOR_MAX_RUIN
 
 
 # --- sampling ---------------------------------------------------------------------------------------------------------------------------
@@ -300,6 +311,9 @@ def cmd_climb(args: list[str]) -> None:
     src, out, top, rounds = Path(args[0]), Path(args[1]), int(args[2]), int(args[3])
     rows = [json.loads(line) for line in src.read_text().splitlines() if line.strip()]
     seen = {json.dumps(r["profile"], sort_keys=True) for r in rows}
+    for r in rows:
+        r.setdefault("spending", from_json(r["profile"]).household().goals.retirement_spending)
+    rows = [r for r in rows if funded(r)]
     rows.sort(key=lambda r: -r["rate"])
     frontier = rows[:top]
     with out.open("a") as f:
@@ -318,7 +332,8 @@ def cmd_climb(args: list[str]) -> None:
                     row = {"profile": to_json(q), **s}
                     f.write(json.dumps(row) + "\n")
                     f.flush()
-                    fresh.append(row)
+                    if funded(row):
+                        fresh.append(row)
             pool = sorted(frontier + fresh, key=lambda r: -r["rate"])
             frontier = pool[:top]
             print(f"round {rnd + 1}: {len(fresh)} new, best {frontier[0]['rate']:.3%}", flush=True)

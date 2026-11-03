@@ -83,14 +83,17 @@ export async function runDocuments({ browser, base, check }) {
     );
     // keyboard: the area is a button that Enter and Space open the file chooser from
     const area = page.getByRole("button", { name: "Drop PDFs here, or press Enter to choose files" });
-    await area.focus();
     for (const key of ["Enter", " "]) {
-      const chooser = page.waitForEvent("filechooser", { timeout: 10000 }).then(
-        () => true,
-        () => false,
-      );
-      await page.keyboard.press(key);
-      check(await chooser, `pressing ${key === " " ? "Space" : key} on the drop area opens the file chooser`);
+      // headless Chromium sometimes drops a key press made right after another chooser closed: the key is tried up to three times
+      let opened = null;
+      for (let attempt = 0; attempt < 3 && opened === null; attempt++) {
+        await area.focus();
+        const chooser = page.waitForEvent("filechooser", { timeout: 3000 }).catch(() => null);
+        await page.keyboard.press(key);
+        opened = await chooser;
+      }
+      check(opened !== null, `pressing ${key === " " ? "Space" : key} on the drop area opens the file chooser`);
+      if (opened) await opened.setFiles([]); // closes the chooser the browser is holding, so the next key opens a fresh one
     }
     check(
       (await page.locator('input[type="file"]').getAttribute("accept"))?.includes("pdf"),

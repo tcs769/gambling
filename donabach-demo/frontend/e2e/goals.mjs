@@ -64,9 +64,12 @@ export async function runGoals({ browser, base, check }) {
   );
   const startsIn = `Starts in ${plural(d.college_starts_in_years, "year")}`;
   check((await checked(page, COLLEGE)) === startsIn, `college is "${startsIn}"`);
-  check(d.home_purchase_in_years === null && (await checked(page, HOME)) === "No plans", "home is No plans");
+  check(d.home_purchase_in_years === 3 && (await checked(page, HOME)) === "Within 3 years", "home is Within 3 years");
   check((await checked(page, INCOME)) === "No", "income changes: No is selected");
-  check((await page.getByLabel("Down payment").count()) === 0, "no down payment box while there are no home plans");
+  check(
+    (await page.getByLabel("Down payment").inputValue()) === Math.round(d.home_down_payment).toLocaleString("en-US"),
+    `a Down payment box is prefilled with ${Math.round(d.home_down_payment).toLocaleString("en-US")} while a home is planned`,
+  );
 
   // --- the chips
   check(
@@ -99,11 +102,14 @@ export async function runGoals({ browser, base, check }) {
   check((await down.inputValue()) === "175,000", "switching between 3 and 5 years keeps the down payment");
   await page.getByRole("radio", { name: "No plans" }).check();
   check((await page.getByLabel("Down payment").count()) === 0, "No plans takes the down payment box away");
+  await page.getByRole("radio", { name: "Within 3 years" }).check();
+  await page.getByLabel("Down payment").fill(String(Math.round(d.home_down_payment)));
+  await page.getByLabel("Down payment").press("Enter");
   await page.getByRole("radio", { name: "Not planned" }).check();
   check((await checked(page, COLLEGE)) === "Not planned", "college can be set to Not planned");
   await page.getByRole("radio", { name: startsIn }).check();
   check((await checked(page, COLLEGE)) === startsIn, "and back to Starts in 8 years");
-  await page.getByRole("radio", { name: "60", exact: true }).check();
+  await page.getByRole("radio", { name: String(d.retirement_age), exact: true }).check();
   // keyboard: the chips are radio buttons
   await page.getByRole("radio", { name: "No", exact: true }).focus();
   await page.keyboard.press("ArrowRight");
@@ -142,7 +148,7 @@ export async function runGoals({ browser, base, check }) {
   await page.getByRole("button", { name: "Back" }).click();
   await page.waitForURL("**/goals");
   check(
-    (await checked(page, AGE)) === "60" && (await checked(page, INCOME)) === "No",
+    (await checked(page, AGE)) === String(d.retirement_age) && (await checked(page, INCOME)) === "No",
     "Back from Invest keeps the answers",
   );
   await page.getByRole("radio", { name: "Job loss next year" }).check();

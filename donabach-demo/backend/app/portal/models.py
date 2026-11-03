@@ -201,11 +201,11 @@ class RetirementTab(BaseModel):
 
 
 class GoalCard(BaseModel):
-    key: Literal["college", "retirement", "home"]
+    key: Literal["college", "retirement", "home", "emergency"]
     label: str
     target: float
-    target_label: str  # "$178,158 in total", "$90,015 a year"
-    timing: str
+    target_label: str  # the amount, as shown in bold: "$178,158", "$90,015"
+    timing: str  # the line under the title: "Starts in 2034, 4 years", "$90,015 a year in today's dollars"
     progress: float  # 0..1
     status: Literal["On track", "Close", "Behind"]
 
@@ -234,6 +234,7 @@ class AdvisorCard(BaseModel):
     wealth_80: float
     bar: float  # scaled to the larger of the two cards
     mix: list[MixShare]
+    mix_text: str  # "85% stocks, 15% private credit" (stocks together, whole percents that add up to 100)
     accounts: list[str]
     harvesting: str
     harvested_so_far: float | None = None

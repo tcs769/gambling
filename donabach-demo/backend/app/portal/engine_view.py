@@ -77,6 +77,7 @@ JOB_LOSS = JobLoss(year=1, years=1, keep=0.0)  # the engine's existing job-loss 
 CONVERSION_NEEDS_OK = 25_000.0  # a Roth conversion at least this large waits for the customer's OK
 SCHEDULED_BIG_FACTOR = 2.0  # next year's conversion needs the OK when it is this many times this year's
 PROJECTED_RETIREMENT_ROWS = 8
+K401_STEP_MIN = 1_000.0  # the plan's 401(k) contribution must be this far above what the household contributes for a step to ask of the customer
 HARVEST_SHOWN = 500.0  # first-year harvested losses below this are shown as none
 YEAR0 = P.TAX_YEAR
 
@@ -472,10 +473,10 @@ def build_plan(c: Computed, previous: Plan | None = None, change_label: str | No
                 status="needs_ok" if big else "scheduled", detail=f"Tax {_money(float(log['conv_tax'][1]))}",
             )
         )
-    if h.people[0].pretax_401k > 0 and policy.k401 != "pretax":
+    plan_deferral = float(log["k401"][0])
+    if plan_deferral - h.people[0].pretax_401k >= K401_STEP_MIN:
         moves.append(
-            Move(key="k401", title="Change your 401(k) contributions to the Roth option through your employer", timing="This year",
-                 status="your_step")
+            Move(key="k401", title="Raise your 401(k) contribution", amount=plan_deferral, timing="Next paycheck", status="your_step")
         )
 
     # --- projection
@@ -531,15 +532,17 @@ def build_plan(c: Computed, previous: Plan | None = None, change_label: str | No
         advisor=AdvisorCard(
             title="Standard wealth advisor", wealth_80=adv_med, bar=adv_med / top,
             mix=[MixShare(key=r.key, label=r.label, share=r.share) for r in adv_mix.rows],
+            mix_text=mix_text(adv_mix),
             accounts=["Same mix in every account"],
-            harvesting="Fund-level, in large down years", harvested_so_far=c.harvest_advisor if c.harvest_advisor >= HARVEST_SHOWN else 0.0,
+            harvesting="Once in a while, at the fund level", harvested_so_far=c.harvest_advisor if c.harvest_advisor >= HARVEST_SHOWN else 0.0,
             roth_conversion=float(alog["conv"][0]), fee_dollars=advisor_fee, fee_rate=advisor_fee / total_savings if total_savings else 0.0,
         ),
         waramoug=AdvisorCard(
             title="Waramoug", wealth_80=plan_med, bar=plan_med / top,
             mix=[MixShare(key=r.key, label=r.label, share=r.share) for r in mix.rows],
+            mix_text=mix_text(mix),
             accounts=_account_lines(location),
-            harvesting="Stock by stock" if policy.direct_indexing else ("Fund-level, in large down years" if policy.tax_loss_harvesting else "None"),
+            harvesting="Stock by stock, all year" if policy.direct_indexing else ("Once in a while, at the fund level" if policy.tax_loss_harvesting else "None"),
             harvested_so_far=harvest, roth_conversion=conv, fee_dollars=fee_dollars, fee_rate=fee_rate,
         ),
     )
@@ -552,6 +555,19 @@ def build_plan(c: Computed, previous: Plan | None = None, change_label: str | No
 
 def _money(x: float) -> str:
     return f"${x:,.0f}"
+
+
+def mix_text(mix: Mix) -> str:
+    """"85% stocks, 15% private credit": stocks together, the classes held, whole percents that add up to 100."""
+    parts: list[tuple[str, float]] = []
+    stocks = sum(r.share for r in mix.rows if r.key in ("us_stocks", "intl_stocks"))
+    if stocks > 0.0005:
+        parts.append(("stocks", stocks))
+    for r in mix.rows:
+        if r.key not in ("us_stocks", "intl_stocks") and r.share > 0.0005:
+            parts.append((r.label.lower(), r.share))
+    whole = round_to_total([p[1] * 100 for p in parts], 100)
+    return ", ".join(f"{w}% {name}" for (name, _), w in zip(parts, whole, strict=True))
 
 
 def _account_lines(location: Location) -> list[str]:
@@ -684,6 +700,7 @@ def _withdrawal_order(policy: S.Policy) -> list[str]:
 
 def _goals(h: Household, c: Computed, log: dict[str, np.ndarray]) -> GoalsTab:
     g = h.goals
+    a = h.accounts
     age0 = h.primary_age
     med = np.median(c.plan_paths, axis=0)  # median wealth at the end of year t
 
@@ -702,23 +719,33 @@ def _goals(h: Household, c: Computed, log: dict[str, np.ndarray]) -> GoalsTab:
         s_age = age0 + g.college_starts_in_years
         progress = min(1.0, wealth_at(s_age) / total) if total > 0 else 1.0
         cards.append(
-            GoalCard(key="college", label="College", target=total, target_label=f"{_money(total)} in total",
-                     timing=f"Starts at age {s_age}, {g.college_years} years", progress=progress, status=status(progress))  # type: ignore[arg-type]
+            GoalCard(key="college", label="College", target=total, target_label=_money(total),
+                     timing=f"Starts in {YEAR0 + g.college_starts_in_years}, {g.college_years} years", progress=progress,
+                     status=status(progress))  # type: ignore[arg-type]
         )
     if g.home_purchase_in_years is not None and g.home_down_payment > 0:
         s_age = age0 + g.home_purchase_in_years
         progress = min(1.0, wealth_at(s_age) / g.home_down_payment)
         cards.append(
-            GoalCard(key="home", label="Home purchase", target=g.home_down_payment, target_label=f"{_money(g.home_down_payment)} down payment",
-                     timing=f"At age {s_age}", progress=progress, status=status(progress))  # type: ignore[arg-type]
+            GoalCard(key="home", label="Home purchase", target=g.home_down_payment, target_label=_money(g.home_down_payment),
+                     timing=f"Down payment in {YEAR0 + g.home_purchase_in_years}", progress=progress, status=status(progress))  # type: ignore[arg-type]
         )
     t_ret = max(0, g.retirement_age - age0)
     need = float(sum(log["spend_need"][t] for t in range(t_ret, len(log["spend_need"]))))
     progress = min(1.0, wealth_at(g.retirement_age) / need) if need > 0 else 1.0
     cards.append(
-        GoalCard(key="retirement", label="Retirement", target=g.retirement_spending,
-                 target_label=f"{_money(g.retirement_spending)} a year", timing=f"From age {g.retirement_age}", progress=progress,
-                 status=status(progress))  # type: ignore[arg-type]
+        GoalCard(key="retirement", label=f"Retire at {g.retirement_age}", target=g.retirement_spending,
+                 target_label=_money(g.retirement_spending), timing=f"{_money(g.retirement_spending)} a year in today's dollars",
+                 progress=progress, status=status(progress))  # type: ignore[arg-type]
+    )
+    # Emergency fund: six months of spending (before retirement the engine takes spending to be the retirement spending), met when
+    # the taxable account, which can be sold at any time, holds at least that much.
+    emergency = g.retirement_spending / 2.0
+    liquid = float(a.brokerage_value + a.cash)
+    progress = min(1.0, liquid / emergency) if emergency > 0 else 1.0
+    cards.append(
+        GoalCard(key="emergency", label="Emergency fund", target=emergency, target_label=_money(emergency), timing="Six months of spending",
+                 progress=progress, status=status(progress))  # type: ignore[arg-type]
     )
     return GoalsTab(cards=cards)
 

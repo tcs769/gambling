@@ -152,6 +152,12 @@ def test_goal_cards_come_from_the_household(plan):
     g = plan.household.goals
     cards = {c.key: c for c in plan.portfolio.goals.cards}
     assert cards["retirement"].target == g.retirement_spending
+    assert cards["emergency"].target == g.retirement_spending / 2
+    assert cards["retirement"].label == f"Retire at {g.retirement_age}"
+    moves = {m.key: m for m in plan.portfolio.overview.moves}
+    assert moves["k401"].status == "your_step" and moves["k401"].amount == 24_500  # the engine's contribution against the $0 on the return
+    for card in plan.comparison.advisor, plan.comparison.waramoug:
+        assert sum(int(p.split("%")[0]) for p in card.mix_text.split(", ")) == 100
     assert ("college" in cards) == (g.college_starts_in_years is not None and g.college_annual_cost > 0)
     assert ("home" in cards) == (g.home_purchase_in_years is not None)
     for c in cards.values():

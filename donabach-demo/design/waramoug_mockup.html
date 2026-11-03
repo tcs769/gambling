@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waramoug</title>
+<style>
+:root{
+  --paper:#FFFFFF; --surface:#FFFFFF; --stone:#EEF2F7; --line:#D5DEE9;
+  --ink:#1E2430; --ink-soft:#5B6472; --porphyry:#1F3A5F; --porphyry-wash:rgba(31,58,95,.07);
+  --bronze:#8A6440; --bronze-wash:rgba(184,148,106,.16); --good:#2F6B47; --warn:#8A5A12;
+  --seg1:#1F3A5F; --seg2:#B8946A; --seg3:#6B4A2E; --seg4:#C9CED6; --seg5:#5B7FAE;
+  --advisor:#8A8F96;
+  --serif:Cambria,"Palatino Linotype",Georgia,serif;
+  --sans:Calibri,"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme:dark;
+    --paper:#0F1622; --surface:#16202F; --stone:#1D2939; --line:#2B3A4F;
+    --ink:#EEF2F7; --ink-soft:#A9B3C1; --porphyry:#8FB0DA; --porphyry-wash:rgba(143,176,218,.10);
+    --bronze:#D9B78E; --bronze-wash:rgba(217,183,142,.14); --good:#7FC49A; --warn:#E3A55A;
+    --seg1:#8FB0DA; --seg2:#D9B78E; --seg3:#A9805A; --seg4:#4A5566; --seg5:#5B7FAE; --advisor:#7D848D;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--bronze);outline-offset:2px;border-radius:6px}
+.num{font-variant-numeric:tabular-nums}
+
+/* Mockup-only switcher, outside the product */
+.mockbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 16px;background:var(--stone);border-bottom:1px solid var(--line);font-size:13px;color:var(--ink-soft)}
+.mockbar strong{margin-right:6px;color:var(--ink)}
+.mockbar button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 12px;font-size:13px}
+.mockbar button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+/* Product shell */
+.shell{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 41px)}
+.rail{border-right:1px solid var(--line);padding:28px 22px;display:flex;flex-direction:column;gap:36px}
+.mark{font-family:var(--serif);font-size:30px;letter-spacing:.06em;color:var(--porphyry);line-height:1}
+.mark small{display:block;font-family:var(--sans);font-size:12px;letter-spacing:0;color:var(--ink-soft);margin-top:6px}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.steps li{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:8px;color:var(--ink-soft);font-size:15px}
+.steps .dot{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:12px;flex:none}
+.steps li[data-state="current"]{background:var(--porphyry-wash);color:var(--ink);font-weight:600}
+.steps li[data-state="current"] .dot{border-color:var(--porphyry);color:var(--porphyry)}
+.steps li[data-state="done"] .dot{background:var(--porphyry);border-color:var(--porphyry);color:var(--paper)}
+.account{margin-top:auto;font-size:14px;color:var(--ink-soft)}
+.account b{display:block;color:var(--ink);font-weight:600}
+
+main{padding:48px 56px 64px;max-width:1040px}
+h1{font-family:var(--serif);font-weight:400;font-size:40px;line-height:1.15;margin:0 0 8px;letter-spacing:-.01em}
+.lede{color:var(--ink-soft);margin:0 0 32px;font-size:17px}
+.screen{display:none}
+.screen.on{display:block;animation:in .28s ease-out}
+@keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.screen.on{animation:none}}
+
+.btn{border:0;border-radius:10px;padding:12px 22px;font-weight:600;background:var(--porphyry);color:#fff}
+@media (prefers-color-scheme: dark){.btn{color:#17120F}}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.actions{display:flex;gap:12px;justify-content:space-between;margin-top:36px}
+.link{background:none;border:0;padding:0;color:var(--porphyry);text-decoration:underline;text-underline-offset:3px}
+
+/* 1. Documents */
+.drop{border:2px dashed var(--bronze);border-radius:22px;background:var(--surface);min-height:360px;display:grid;place-items:center;text-align:center;padding:40px;transition:background .15s,border-color .15s}
+.drop.over{background:var(--bronze-wash);border-style:solid}
+.drop .seal{width:76px;height:76px;border-radius:50%;border:1.5px solid var(--bronze);display:grid;place-items:center;margin:0 auto 20px;color:var(--bronze)}
+.drop p{margin:0}
+.drop .big{font-family:var(--serif);font-size:26px;margin-bottom:6px}
+.drop .small{color:var(--ink-soft)}
+.below{margin-top:16px;color:var(--ink-soft);font-size:15px}
+
+/* 2. Reading */
+.filecard{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px 26px;max-width:620px}
+.fname{display:flex;justify-content:space-between;font-weight:600}
+.bar{height:6px;background:var(--stone);border-radius:6px;margin:14px 0 22px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--porphyry);transition:width 2.2s linear}
+.found{list-style:none;margin:0;padding:0}
+.found li{display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line);color:var(--ink-soft)}
+.found li.ok{color:var(--ink)}
+.found li.ok span:last-child{color:var(--good);font-weight:600}
+
+/* 3. Review */
+.review{display:grid;grid-template-columns:1.05fr 1fr;gap:28px;align-items:start}
+.group{margin-bottom:26px}
+.group h2{font-family:var(--serif);font-weight:400;font-size:21px;margin:0 0 6px}
+.field{display:grid;grid-template-columns:1fr auto;gap:12px;padding:11px 14px;border-radius:10px;align-items:center;cursor:pointer;border:1px solid transparent}
+.field:hover,.field[aria-current="true"]{background:var(--surface);border-color:var(--line)}
+.field .v{font-weight:600}
+.field.flag{background:var(--bronze-wash)}
+.field.flag .note{grid-column:1/-1;font-size:13.5px;color:var(--warn)}
+.doc{position:sticky;top:24px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px 28px;min-height:520px;font-size:12.5px;color:var(--ink-soft)}
+.doc h3{font-family:var(--serif);font-weight:400;color:var(--ink);font-size:17px;margin:0 0 14px}
+.doc .ln{display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px solid var(--line)}
+.doc .ln.hl{background:var(--bronze-wash);outline:2px solid var(--bronze);border-radius:4px;color:var(--ink)}
+.doc .foot{margin-top:18px;font-size:11px}
+
+/* 4. Goals */
+.q{padding:22px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:center}
+.q:last-of-type{border-bottom:1px solid var(--line)}
+.q label,.q .qt{font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 16px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.money-in{display:flex;align-items:center;gap:8px}
+.money-in input{width:170px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit}
+
+/* 5. Portfolio */
+.headline{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;margin:4px 0 30px}
+.headline .figure{font-family:var(--serif);font-size:64px;line-height:1;color:var(--porphyry)}
+.headline .cap{color:var(--ink-soft)}
+.mix{margin-bottom:34px}
+.stack{display:flex;height:44px;border-radius:12px;overflow:hidden;gap:3px}
+.stack span{display:block}
+.legend{display:flex;gap:26px;flex-wrap:wrap;margin-top:12px;font-size:15px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:8px;vertical-align:-1px}
+.accts{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:34px}
+.acct{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
+.acct .t{font-weight:600}
+.acct .amt{font-family:var(--serif);font-size:24px;margin:2px 0 14px}
+.acct ul{list-style:none;margin:0;padding:0;font-size:14.5px}
+.acct li{display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line)}
+.section-t{font-family:var(--serif);font-weight:400;font-size:24px;margin:0 0 10px}
+.todo{list-style:none;margin:0;padding:0}
+.todo li{display:grid;grid-template-columns:28px 1fr auto;gap:12px;padding:14px 0;border-top:1px solid var(--line);align-items:start}
+.todo .tick{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--porphyry);margin-top:3px}
+.todo .when{color:var(--ink-soft);font-size:14px}
+.fine{margin-top:40px;font-size:12.5px;color:var(--ink-soft)}
+
+
+/* Detailed plan */
+.summary{display:grid;grid-template-columns:1.4fr 1fr 1fr 1.2fr;gap:0;border:1px solid var(--line);border-radius:18px;background:var(--surface);margin:6px 0 22px;overflow:hidden}
+.sum{padding:18px 22px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.sum:first-child{border-left:0}
+.sum span{font-size:14px;color:var(--ink-soft)}
+.sum b{font-family:var(--serif);font-weight:400;font-size:28px;line-height:1.15}
+.sum em{font-style:normal;font-size:13px;color:var(--ink-soft)}
+.sum.main b{font-size:44px;color:var(--porphyry)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin-bottom:18px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.panel-head .section-t{margin:0}
+.muted-s{font-size:14px;color:var(--ink-soft)}
+.proj{width:100%;height:auto;display:block}
+.proj .grid line{stroke:var(--line);stroke-width:1}
+.proj .ylab text{fill:var(--ink-soft);font-size:12px;text-anchor:end}
+.proj .xlab text{fill:var(--ink-soft);font-size:12px;text-anchor:middle}
+.proj .band{fill:var(--bronze-wash)}
+.proj .mile{stroke:var(--bronze);stroke-dasharray:4 4}
+.proj .line{fill:none;stroke:var(--porphyry);stroke-width:3;stroke-linecap:round}
+.proj .end{fill:var(--porphyry)}
+.proj .tag{fill:var(--ink-soft);font-size:12px}
+.mixtab,.hold{width:100%;border-collapse:collapse;margin-top:14px;font-size:15px}
+.mixtab th,.hold th{text-align:left;font-weight:600;font-size:13.5px;color:var(--ink-soft);padding:8px 6px;border-bottom:1px solid var(--line)}
+.mixtab td,.hold td{padding:10px 6px;border-bottom:1px solid var(--line)}
+.mixtab tr:last-child td,.hold tr:last-child td{border-bottom:0}
+.mixtab td i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:10px;vertical-align:-1px}
+.r{text-align:right!important}
+.tabs{display:flex;gap:4px;background:var(--stone);padding:4px;border-radius:10px}
+.tabs button{border:0;background:transparent;padding:6px 14px;border-radius:7px;font-size:14px}
+.tabs button[aria-selected="true"]{background:var(--surface);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.acctmeta{display:flex;gap:28px;flex-wrap:wrap;color:var(--ink-soft);font-size:14.5px}
+.acctmeta b{color:var(--ink);font-weight:600}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.twocol .panel{margin-bottom:18px}
+.kv{margin:0}
+.kv div{display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line)}
+.kv div:first-child{border-top:0}
+.kv dt{color:var(--ink-soft)}
+.kv dd{margin:0;font-weight:600}
+.kv .total{border-top:1.5px solid var(--ink)}
+.kv .total dt{color:var(--ink);font-weight:600}
+.kv .total dd{color:var(--porphyry)}
+@media (max-width: 900px){.summary{grid-template-columns:1fr 1fr}.sum:nth-child(3){border-left:0}.twocol{grid-template-columns:1fr}}
+
+
+.planhead{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:18px}
+.planhead h1{margin:0}
+.ptabs{display:flex;gap:2px;border-bottom:1px solid var(--line)}
+.ptabs button{border:0;background:none;padding:10px 14px;font-size:15px;color:var(--ink-soft);border-bottom:2px solid transparent;margin-bottom:-1px}
+.ptabs button[aria-selected="true"]{color:var(--ink);font-weight:600;border-bottom-color:var(--porphyry)}
+.matrix{width:100%;border-collapse:collapse;font-size:14.5px}
+.matrix th{text-align:left;font-weight:600;font-size:13.5px;color:var(--ink-soft);padding:8px 6px;border-bottom:1px solid var(--line)}
+.matrix td{padding:10px 8px;border-bottom:1px solid var(--line)}
+.matrix td.c1{background:var(--porphyry-wash)}
+.matrix td.c2{background:rgba(31,58,95,.13)}
+.matrix td.c3{background:rgba(31,58,95,.22);font-weight:600}
+@media (prefers-color-scheme: dark){.matrix td.c2{background:rgba(143,176,218,.16)}.matrix td.c3{background:rgba(143,176,218,.26)}}
+.matrix tr.tot td{font-weight:600;border-bottom:0;border-top:1.5px solid var(--ink)}
+.bars{list-style:none;margin:0;padding:0}
+.bars li{display:grid;grid-template-columns:150px 1fr 44px;gap:12px;align-items:center;padding:6px 0;font-size:14.5px}
+.bars .b{height:10px;background:var(--stone);border-radius:5px;overflow:hidden}
+.bars .b i{display:block;height:100%;background:var(--porphyry);border-radius:5px}
+.bars .num{text-align:right}
+.bracket{display:flex;gap:3px;height:38px;margin-top:4px}
+.bracket .seg{background:var(--stone);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--ink-soft)}
+.bracket .seg.fill{background:var(--porphyry);color:#fff}
+.order{margin:0;padding-left:22px}.order li{padding:6px 0}
+.goals{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.goal .gt{font-family:var(--serif);font-size:22px}
+.goal .gs{color:var(--ink-soft);font-size:14.5px;margin-bottom:16px}
+.prog{height:8px;background:var(--stone);border-radius:4px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--good)}
+.gf{display:flex;justify-content:space-between;margin-top:10px}
+.gf span{color:var(--good);font-weight:600}
+@media (max-width:900px){.goals{grid-template-columns:1fr}.ptabs{overflow-x:auto}}
+
+
+.moves{list-style:none;margin:0;padding:0}
+.moves li{display:grid;grid-template-columns:130px 1fr auto;gap:14px;align-items:center;padding:13px 0;border-top:1px solid var(--line)}
+.moves li:first-child{border-top:0}
+.st{font-size:12.5px;font-weight:600;padding:3px 10px;border-radius:999px;justify-self:start}
+.st.done{background:rgba(47,107,71,.12);color:var(--good)}
+.st.run{background:var(--porphyry-wash);color:var(--porphyry)}
+.st.ask{background:var(--bronze-wash);color:var(--bronze)}
+.st.you{background:var(--stone);color:var(--ink-soft)}
+.mini{border:0;border-radius:8px;padding:6px 14px;font-size:13.5px;font-weight:600;background:var(--porphyry);color:#fff}
+@media (prefers-color-scheme: dark){.mini{color:#0F1622}}
+
+
+.changed{border:2px solid var(--bronze);background:var(--bronze-wash);border-radius:16px;padding:16px 22px;margin-bottom:18px}
+.chead{display:flex;gap:14px;align-items:baseline;margin-bottom:10px}
+.chead b{font-size:16px}.chead span{color:var(--ink-soft)}
+.cgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.cgrid span{display:block;font-size:13px;color:var(--ink-soft)}
+.cgrid b{font-size:16px}
+@media (max-width:900px){.cgrid{grid-template-columns:1fr 1fr}}
+
+/* 6. Comparison */
+.gap{display:flex;align-items:center;gap:18px;flex-wrap:wrap;max-width:960px;background:var(--porphyry);color:#fff;border-radius:16px;padding:16px 24px;margin-bottom:18px}
+.gap .gapk{font-size:14px;opacity:.85}
+.gap b{font-family:var(--serif);font-weight:400;font-size:26px}
+.gapsep{width:1px;height:26px;background:rgba(255,255,255,.35)}
+@media (prefers-color-scheme: dark){.gap{color:#0F1622}.gapsep{background:rgba(15,22,34,.35)}}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:960px}
+.side{background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.side.can{border:2px solid var(--porphyry)}
+.sidehead{padding:14px 24px;font-weight:600;font-size:16px;background:var(--stone);color:var(--ink-soft)}
+.side.can .sidehead{background:var(--porphyry);color:#fff}
+@media (prefers-color-scheme: dark){.side.can .sidehead{color:#0F1622}}
+.sidebig{padding:18px 24px 6px}
+.sidebig span{display:block;font-size:14px;color:var(--ink-soft)}
+.sidebig b{font-family:var(--serif);font-weight:400;font-size:40px;line-height:1.1}
+.side.can .sidebig b{color:var(--porphyry)}
+.sidebar{margin:6px 24px 16px;height:10px;background:var(--stone);border-radius:5px;overflow:hidden}
+.sidebar i{display:block;height:100%;background:var(--advisor);border-radius:5px}
+.side.can .sidebar i{background:var(--porphyry)}
+.sidelist{margin:0;padding:0 24px 12px}
+.sidelist div{padding:12px 0;border-top:1px solid var(--line)}
+.sidelist dt{font-size:13px;color:var(--ink-soft);margin-bottom:3px}
+.sidelist dd{margin:0;font-size:15px}
+.side.can .sidelist dd{font-weight:600}
+.sidelist .ministack{margin-bottom:6px}
+@media (max-width:900px){.duo{grid-template-columns:1fr}}
+
+.vs{max-width:860px;margin-top:20px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:10px 28px}
+.vshead,.vsrow{display:grid;grid-template-columns:190px 1fr 1fr;gap:20px;align-items:center;padding:13px 0}
+.vshead{font-weight:600;font-size:14px;color:var(--ink-soft);border-bottom:1px solid var(--line)}
+.vshead span:last-child{color:var(--porphyry)}
+.vsrow{border-bottom:1px solid var(--line);font-size:15px}
+.vsrow:last-child{border-bottom:0}
+.vsrow .lab{font-weight:600}
+.vsrow span:last-child{font-weight:600;color:var(--ink)}
+.ministack{display:flex;height:14px;border-radius:4px;overflow:hidden;gap:2px;margin-bottom:6px}
+.ministack i{display:block}
+.vsrow small{display:block;color:var(--ink-soft);font-weight:400;font-size:13px}
+@media (max-width:900px){.vshead,.vsrow{grid-template-columns:1fr}}
+
+.compare{max-width:860px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:32px 34px}
+.row{display:grid;grid-template-columns:200px 1fr 110px;gap:16px;align-items:center;margin:14px 0}
+.row .who{font-weight:600}
+.row .track{height:30px;background:var(--stone);border-radius:8px;overflow:hidden}
+.row .track i{display:block;height:100%;border-radius:8px}
+.row .val{font-family:var(--serif);font-size:22px;text-align:right}
+.diff{margin-top:24px;padding-top:20px;border-top:1px solid var(--line);display:flex;gap:40px;flex-wrap:wrap}
+.diff div span{display:block;color:var(--ink-soft);font-size:14px}
+.diff div b{font-family:var(--serif);font-weight:400;font-size:30px;color:var(--porphyry)}
+
+@media (max-width: 900px){
+  .shell{grid-template-columns:1fr}
+  .rail{border-right:0;border-bottom:1px solid var(--line);flex-direction:row;align-items:center;gap:20px;padding:16px 20px;overflow-x:auto}
+  .steps{flex-direction:row}.steps li span.lab{display:none}.account{display:none}
+  main{padding:28px 20px 48px}
+  .review,.accts{grid-template-columns:1fr}.q{grid-template-columns:1fr}.row{grid-template-columns:1fr;gap:6px}.row .val{text-align:left}
+  .headline .figure{font-size:48px}
+}
+</style>
+</head>
+<body>
+
+<div class="mockbar" role="navigation" aria-label="Mockup screens">
+  <strong>Mockup</strong>
+  <button data-go="docs">Documents</button>
+  <button data-go="reading">Reading</button>
+  <button data-go="review">Review</button>
+  <button data-go="goals">Goals</button>
+  <button data-go="portfolio">Portfolio</button>
+  <button data-go="compare">Comparison</button>
+</div>
+
+<div class="shell">
+  <aside class="rail">
+    <div class="mark">WARAMOUG<small>Wealth management</small></div>
+    <ol class="steps" id="steps">
+      <li data-step="docs"><span class="dot">1</span><span class="lab">Documents</span></li>
+      <li data-step="review"><span class="dot">2</span><span class="lab">Review</span></li>
+      <li data-step="goals"><span class="dot">3</span><span class="lab">Goals</span></li>
+      <li data-step="portfolio"><span class="dot">4</span><span class="lab">Invest</span></li>
+    </ol>
+    <div class="account"><b>John Smith</b>Signed in</div>
+  </aside>
+
+  <main>
+    <!-- 1. Documents -->
+    <section class="screen" id="docs">
+      <h1>Add your documents</h1>
+      <p class="lede">Your latest tax return and account statements, as PDFs.</p>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Drop PDFs here, or press Enter to choose files">
+        <div>
+          <div class="seal" aria-hidden="true">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+          </div>
+          <p class="big">Drop your PDFs here</p>
+          <p class="small">or click to choose files</p>
+        </div>
+      </div>
+      <p class="below"><button class="link" data-go="reading">Use sample documents</button></p>
+    </section>
+
+    <!-- 2. Reading -->
+    <section class="screen" id="reading">
+      <h1>Reading your documents</h1>
+      <p class="lede">This takes a few seconds.</p>
+      <div class="filecard">
+        <div class="fname"><span>smith_documents.pdf</span><span class="num" id="pct">0%</span></div>
+        <div class="bar"><i id="barfill"></i></div>
+        <ul class="found" id="found">
+          <li data-at="25"><span>Tax return</span><span>Waiting</span></li>
+          <li data-at="50"><span>Brokerage statement</span><span>Waiting</span></li>
+          <li data-at="75"><span>401(k) statement</span><span>Waiting</span></li>
+          <li data-at="95"><span>Roth IRA statement</span><span>Waiting</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 3. Review -->
+    <section class="screen" id="review">
+      <h1>Check what we found</h1>
+      <p class="lede">Select any number to see where it came from.</p>
+      <div class="review">
+        <div>
+          <div class="group">
+            <h2>Tax return</h2>
+            <div class="field" data-hl="wages" aria-current="true"><span>Wages, after 401(k)</span><span class="v num">$179,768</span></div>
+            <div class="field" data-hl="status"><span>Filing status</span><span class="v">Married filing jointly</span></div>
+            <div class="field" data-hl="div"><span>Qualified dividends</span><span class="v num">$9,840</span></div>
+          </div>
+          <div class="group">
+            <h2>Accounts</h2>
+            <div class="field" data-hl="brok"><span>Brokerage</span><span class="v num">$645,777</span></div>
+            <div class="field flag" data-hl="basis"><span>Brokerage cost basis</span><span class="v num">$281,400</span><span class="note">Holdings don't add up to the statement total. Please confirm.</span></div>
+            <div class="field" data-hl="k"><span>401(k) and IRA</span><span class="v num">$429,582</span></div>
+            <div class="field" data-hl="kc"><span>401(k) contributions this year</span><span class="v num">$24,500</span></div>
+            <div class="field" data-hl="roth"><span>Roth IRA</span><span class="v num">$95,463</span></div>
+            <div class="field" data-hl="cash"><span>Cash</span><span class="v num">$22,461</span></div>
+          </div>
+        </div>
+        <div class="doc" aria-label="Document preview">
+          <h3>Form 1040 (sample)</h3>
+          <div class="ln" data-doc="status"><span>Filing status</span><span>Married filing jointly</span></div>
+          <div class="ln hl" data-doc="wages"><span>1a  Wages, salaries, tips</span><span class="num">179,768</span></div>
+          <div class="ln"><span>2b  Taxable interest</span><span class="num">1,212</span></div>
+          <div class="ln" data-doc="div"><span>3a  Qualified dividends</span><span class="num">9,840</span></div>
+          <div class="ln"><span>3b  Ordinary dividends</span><span class="num">11,020</span></div>
+          <div class="ln"><span>7   Capital gain or (loss)</span><span class="num">(3,000)</span></div>
+          <div class="ln"><span>10  Adjustments to income</span><span class="num">7,724</span></div>
+          <div class="ln"><span>11  Adjusted gross income</span><span class="num">181,276</span></div>
+          <div class="ln"><span>12  Standard deduction</span><span class="num">32,200</span></div>
+          <div class="ln"><span>15  Taxable income</span><span class="num">149,076</span></div>
+          <p class="foot">SAMPLE – FICTIONAL</p>
+        </div>
+      </div>
+      <div class="actions"><button class="btn ghost" data-go="docs">Back</button><button class="btn" data-go="goals">Confirm and continue</button></div>
+    </section>
+
+    <!-- 4. Goals -->
+    <section class="screen" id="goals">
+      <h1>A few questions</h1>
+      <p class="lede">Your documents can't tell us these.</p>
+      <div class="q"><span class="qt">When do you want to retire?</span>
+        <div class="chips" data-group="ret"><button class="chip">60</button><button class="chip">62</button><button class="chip" aria-pressed="true">65</button><button class="chip">67</button></div></div>
+      <div class="q"><span class="qt">College for your child</span>
+        <div class="chips" data-group="col"><button class="chip" aria-pressed="true">Starts in 8 years</button><button class="chip">Not planned</button></div></div>
+      <div class="q"><span class="qt">Buying a home?</span>
+        <div class="chips" data-group="home"><button class="chip" aria-pressed="true">No plans</button><button class="chip">Within 3 years</button><button class="chip">Within 5 years</button></div></div>
+      <div class="q"><span class="qt">Any income changes coming?</span>
+        <div class="chips" data-group="inc"><button class="chip" aria-pressed="true">No</button><button class="chip">Job loss next year</button><button class="chip">A raise</button></div></div>
+      <div class="q"><label for="spend">Yearly spending in retirement</label>
+        <div class="money-in"><span>$</span><input id="spend" class="num" value="95,000" inputmode="numeric"></div></div>
+      <div class="actions"><button class="btn ghost" data-go="review">Back</button><button class="btn" data-go="portfolio">Invest</button></div>
+    </section>
+
+    <!-- 5. Portfolio -->
+    <section class="screen" id="portfolio">
+      <div class="planhead">
+        <h1>Invest</h1>
+        <div class="ptabs" role="tablist" aria-label="Invest sections">
+          <button role="tab" aria-selected="true" data-ptab="overview">Overview</button>
+          <button role="tab" aria-selected="false" data-ptab="holdings">Holdings</button>
+          <button role="tab" aria-selected="false" data-ptab="taxes">Taxes</button>
+          <button role="tab" aria-selected="false" data-ptab="income">Retirement income</button>
+          <button role="tab" aria-selected="false" data-ptab="goals">Goals</button>
+        </div>
+      </div>
+
+      <div class="changed" id="changed" hidden>
+        <div class="chead"><b>What changed</b><span>Income: job loss next year</span></div>
+        <div class="cgrid">
+          <div><span>Roth conversion at 51</span><b class="num">$62,324 → $243,600</b></div>
+          <div><span>Gains taken at a 0% rate</span><b>Added next year</b></div>
+          <div><span>Projected at 80</span><b class="num">Recalculated</b></div>
+          <div><span>Everything after</span><b>Adjusted around it</b></div>
+        </div>
+      </div>
+      <div class="summary">
+        <div class="sum main"><span>Projected at 80</span><b class="num">$2.38M</b></div>
+        <div class="sum"><span>Total savings</span><b class="num">$1,193,283</b></div>
+        <div class="sum"><span>Yearly fee</span><b class="num">$4,098</b><em>0.35% of managed accounts</em></div>
+        <div class="sum"><span>Tax saved this year</span><b class="num">$7,940</b><em>estimated</em></div>
+      </div>
+
+      <!-- OVERVIEW -->
+      <div class="ptab" data-ptab-pane="overview">
+        <div class="panel">
+          <div class="panel-head"><h2 class="section-t">Projected wealth</h2><span class="muted-s">Typical outcome, after tax</span></div>
+          <svg class="proj" viewBox="0 0 900 260" role="img" aria-label="Projected wealth rising from $1.19 million at 50 to $2.38 million at 80">
+            <g class="grid"><line x1="60" y1="30" x2="880" y2="30"/><line x1="60" y1="90" x2="880" y2="90"/><line x1="60" y1="150" x2="880" y2="150"/><line x1="60" y1="210" x2="880" y2="210"/></g>
+            <g class="ylab"><text x="50" y="34">$3M</text><text x="50" y="94">$2M</text><text x="50" y="154">$1M</text><text x="50" y="214">$0</text></g>
+            <rect class="band" x="279" y="30" width="109" height="180"/>
+            <line class="mile" x1="470" y1="30" x2="470" y2="210"/>
+            <line class="mile" x1="607" y1="30" x2="607" y2="210"/>
+            <path class="line" d="M60,138 C130,128 210,114 279,104 C310,104 350,112 388,114 C420,112 450,104 470,98 C560,90 700,80 880,67"/>
+            <circle class="end" cx="880" cy="67" r="5"/>
+            <g class="xlab"><text x="60" y="236">50</text><text x="333" y="236">60</text><text x="607" y="236">70</text><text x="880" y="236">80</text></g>
+            <text class="tag" x="306" y="48">College</text><text class="tag" x="478" y="48">Retire at 65</text><text class="tag" x="615" y="48">Social Security</text>
+          </svg>
+        </div>
+
+        <div class="twocol">
+          <div class="panel">
+            <div class="panel-head"><h2 class="section-t">Overall mix</h2></div>
+            <div class="stack" role="img" aria-label="US stocks 48%, international stocks 18%, bonds 14%, private credit 13%, cash 7%">
+              <span style="flex:48;background:var(--seg1)"></span><span style="flex:18;background:var(--seg5)"></span><span style="flex:14;background:var(--seg2)"></span><span style="flex:13;background:var(--seg3)"></span><span style="flex:7;background:var(--seg4)"></span>
+            </div>
+            <table class="mixtab">
+              <thead><tr><th>Asset class</th><th class="r">Amount</th><th class="r">Share</th><th class="r">Exp. return</th></tr></thead>
+              <tbody>
+                <tr><td><i style="background:var(--seg1)"></i>US stocks</td><td class="r num">$577,549</td><td class="r num">48%</td><td class="r num">5.5%</td></tr>
+                <tr><td><i style="background:var(--seg5)"></i>International stocks</td><td class="r num">$210,074</td><td class="r num">18%</td><td class="r num">5.5%</td></tr>
+                <tr><td><i style="background:var(--seg2)"></i>Bonds</td><td class="r num">$167,060</td><td class="r num">14%</td><td class="r num">1.5%</td></tr>
+                <tr><td><i style="background:var(--seg3)"></i>Private credit</td><td class="r num">$155,127</td><td class="r num">13%</td><td class="r num">3.5%</td></tr>
+                <tr><td><i style="background:var(--seg4)"></i>Cash</td><td class="r num">$83,473</td><td class="r num">7%</td><td class="r num">0.5%</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2 class="section-t">What goes where</h2></div>
+            <table class="matrix">
+              <thead><tr><th></th><th class="r">Brokerage</th><th class="r">401(k) / IRA</th><th class="r">Roth IRA</th><th class="r">Bank</th></tr></thead>
+              <tbody>
+                <tr><td>US stocks</td><td class="r num c3">$419,757</td><td class="r num c1">$90,968</td><td class="r num c2">$66,824</td><td class="r num">–</td></tr>
+                <tr><td>International stocks</td><td class="r num c3">$135,613</td><td class="r num c1">$45,822</td><td class="r num c1">$28,639</td><td class="r num">–</td></tr>
+                <tr><td>Bonds</td><td class="r num c1">$51,662</td><td class="r num c3">$115,398</td><td class="r num">–</td><td class="r num">–</td></tr>
+                <tr><td>Private credit</td><td class="r num">–</td><td class="r num c3">$155,127</td><td class="r num">–</td><td class="r num">–</td></tr>
+                <tr><td>Cash</td><td class="r num c1">$38,745</td><td class="r num c1">$22,267</td><td class="r num">–</td><td class="r num c2">$22,461</td></tr>
+                <tr class="tot"><td>Total</td><td class="r num">$645,777</td><td class="r num">$429,582</td><td class="r num">$95,463</td><td class="r num">$22,461</td></tr>
+              </tbody>
+            </table>
+            <p class="muted-s" style="margin-top:12px">Darker cells hold more of each asset class.</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2 class="section-t">This year's moves</h2><span class="muted-s">Waramoug handles these for you</span></div>
+          <ul class="moves">
+            <li><span class="st done">Done</span><span>Moved bonds and private credit into your 401(k)</span><span class="when">Oct 3</span></li>
+            <li><span class="st run">Ongoing</span><span>Selling losing positions as they appear, <b class="num">$18,500</b> harvested so far</span><span class="when">Daily</span></li>
+            <li><span class="st run">Ongoing</span><span>Rebalancing back to your target mix</span><span class="when">As needed</span></li>
+            <li><span class="st ask">Needs your OK</span><span>Convert <b class="num">$62,324</b> from your IRA to your Roth</span><span class="when"><button class="mini">Approve</button></span></li>
+            <li><span class="st you">Your step</span><span>Raise your 401(k) contribution to <b class="num">$24,500</b> through your employer</span><span class="when">Next paycheck</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- HOLDINGS -->
+      <div class="ptab" data-ptab-pane="holdings" hidden>
+        <div class="panel">
+          <div class="panel-head"><h2 class="section-t">Holdings by account</h2>
+            <div class="tabs" role="tablist">
+              <button role="tab" aria-selected="true" data-acct="brok">Brokerage</button>
+              <button role="tab" aria-selected="false" data-acct="ira">401(k) and IRA</button>
+              <button role="tab" aria-selected="false" data-acct="roth">Roth IRA</button>
+            </div>
+          </div>
+          <div class="acctpane" data-pane="brok">
+            <div class="acctmeta"><span><b class="num">$645,777</b> balance</span><span><b class="num">$281,400</b> cost basis</span><span><b class="num">$364,377</b> unrealized gain</span><span>Taxed yearly</span></div>
+            <table class="hold">
+              <thead><tr><th>Holding</th><th class="r">Positions</th><th class="r">Value</th><th class="r">Gain</th><th class="r">Share</th></tr></thead>
+              <tbody>
+                <tr><td>US large-cap stocks, held individually</td><td class="r num">296</td><td class="r num">$322,890</td><td class="r num">$239,700</td><td class="r num">50%</td></tr>
+                <tr><td>US small and mid-cap stocks</td><td class="r num">1</td><td class="r num">$96,867</td><td class="r num">$52,100</td><td class="r num">15%</td></tr>
+                <tr><td>International developed stocks</td><td class="r num">1</td><td class="r num">$103,324</td><td class="r num">$61,300</td><td class="r num">16%</td></tr>
+                <tr><td>Emerging market stocks</td><td class="r num">1</td><td class="r num">$32,289</td><td class="r num">$9,877</td><td class="r num">5%</td></tr>
+                <tr><td>Municipal bonds</td><td class="r num">1</td><td class="r num">$51,662</td><td class="r num">$1,400</td><td class="r num">8%</td></tr>
+                <tr><td>Cash</td><td class="r num">–</td><td class="r num">$38,745</td><td class="r num">–</td><td class="r num">6%</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="acctpane" data-pane="ira" hidden>
+            <div class="acctmeta"><span><b class="num">$429,582</b> balance</span><span>Taxed when withdrawn</span></div>
+            <table class="hold">
+              <thead><tr><th>Holding</th><th class="r">Positions</th><th class="r">Value</th><th class="r">Yield</th><th class="r">Share</th></tr></thead>
+              <tbody>
+                <tr><td>Private credit fund</td><td class="r num">1</td><td class="r num">$155,127</td><td class="r num">8.1%</td><td class="r num">36%</td></tr>
+                <tr><td>US Treasury ladder, 2027 to 2036</td><td class="r num">10</td><td class="r num">$85,916</td><td class="r num">4.0%</td><td class="r num">20%</td></tr>
+                <tr><td>Investment-grade corporate bonds</td><td class="r num">1</td><td class="r num">$29,482</td><td class="r num">4.9%</td><td class="r num">7%</td></tr>
+                <tr><td>US total market stocks</td><td class="r num">1</td><td class="r num">$90,968</td><td class="r num">1.3%</td><td class="r num">21%</td></tr>
+                <tr><td>International stocks</td><td class="r num">1</td><td class="r num">$45,822</td><td class="r num">2.9%</td><td class="r num">11%</td></tr>
+                <tr><td>Cash</td><td class="r num">–</td><td class="r num">$22,267</td><td class="r num">3.6%</td><td class="r num">5%</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="acctpane" data-pane="roth" hidden>
+            <div class="acctmeta"><span><b class="num">$95,463</b> balance</span><span>Tax-free</span></div>
+            <table class="hold">
+              <thead><tr><th>Holding</th><th class="r">Positions</th><th class="r">Value</th><th class="r">Share</th></tr></thead>
+              <tbody>
+                <tr><td>US small-cap value stocks</td><td class="r num">1</td><td class="r num">$28,639</td><td class="r num">30%</td></tr>
+                <tr><td>International small-cap stocks</td><td class="r num">1</td><td class="r num">$28,639</td><td class="r num">30%</td></tr>
+                <tr><td>US total market stocks</td><td class="r num">1</td><td class="r num">$38,185</td><td class="r num">40%</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="twocol">
+          <div class="panel">
+            <div class="panel-head"><h2 class="section-t">Largest individual stocks</h2><span class="muted-s">Brokerage, 296 held</span></div>
+            <table class="hold">
+              <thead><tr><th>Company</th><th class="r">Value</th><th class="r">Gain</th></tr></thead>
+              <tbody>
+                <tr><td>Apple</td><td class="r num">$22,600</td><td class="r num">$14,100</td></tr>
+                <tr><td>Microsoft</td><td class="r num">$21,300</td><td class="r num">$12,900</td></tr>
+                <tr><td>Nvidia</td><td class="r num">$20,700</td><td class="r num">$16,800</td></tr>
+                <tr><td>Amazon</td><td class="r num">$12,300</td><td class="r num">$5,200</td></tr>
+                <tr><td>Alphabet</td><td class="r num">$12,000</td><td class="r num">$6,700</td></tr>
+                <tr><td>Meta Platforms</td><td class="r num">$8,400</td><td class="r num">$4,900</td></tr>
+                <tr><td>Broadcom</td><td class="r num">$7,700</td><td class="r num">$5,600</td></tr>
+                <tr><td>JPMorgan Chase</td><td class="r num">$4,500</td><td class="r num">$2,100</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2 class="section-t">Stocks by sector</h2></div>
+            <ul class="bars">
+              <li><span>Technology</span><span class="b"><i style="width:100%"></i></span><span class="num">31%</span></li>
+              <li><span>Financials</span><span class="b"><i style="width:45%"></i></span><span class="num">14%</span></li>
+              <li><span>Health care</span><span class="b"><i style="width:35%"></i></span><span class="num">11%</span></li>
+              <li><span>Consumer</span><span class="b"><i style="width:55%"></i></span><span class="num">17%</span></li>
+              <li><span>Industrials</span><span class="b"><i style="width:32%"></i></span><span class="num">10%</span></li>
+              <li><span>Energy and materials</span><span class="b"><i style="width:19%"></i></span><span class="num">6%</span></li>
+              <li><span>Other</span><span class="b"><i style="width:35%"></i></span><span class="num">11%</span></li>
+            </ul>
+            <div class="panel-head" style="margin-top:22px"><h2 class="section-t">Stocks by region</h2></div>
+            <ul class="bars">
+              <li><span>United States</span><span class="b"><i style="width:100%"></i></span><span class="num">70%</span></li>
+              <li><span>Developed markets</span><span class="b"><i style="width:34%"></i></span><span class="num">24%</span></li>
+              <li><span>Emerging markets</span><span class="b"><i style="width:9%"></i></span><span class="num">6%</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAXES -->
+      <div class="ptab" data-ptab-pane="taxes" hidden>
+        <div class="twocol">
+          <div class="panel">
+            <div class="panel-head"><h2 class="section-t">Taxes this year</h2></div>
+            <dl class="kv">
+              <div><dt>Roth conversion</dt><dd class="num">$62,324</dd></div>
+              <div><dt>Tax on the conversion</dt><dd class="num">$13,711</dd></div>
+              <div><dt>Losses harvested</dt><dd class="num">$18,500</dd></div>
+              <div><dt>Gains offset</dt><dd class="num">$15,500</dd></div>
+              <div><dt>Deducted from income</dt><dd class="num">$3,000</dd></div>
+              <div><dt>Interest kept out of taxable accounts</dt><dd class="num">$11,240</dd></div>
+              <div class="total"><dt>Estimated tax saved</dt><dd class="num">$7,940</dd></div>
+            </dl>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2 class="section-t">Your tax bracket</h2></div>
+            <div class="bracket">
+              <div class="seg" style="flex:12"><span>10%</span></div>
+              <div class="seg" style="flex:30"><span>12%</span></div>
+              <div class="seg fill" style="flex:42"><span>22%</span></div>
+              <div class="seg" style="flex:16"><span>24%</span></div>
+            </div>
+            <dl class="kv" style="margin-top:16px">
+              <div><dt>Taxable income before conversion</dt><dd class="num">$149,076</dd></div>
+              <div><dt>Conversion fills the 22% bracket to</dt><dd class="num">$211,400</dd></div>
+              <div><dt>Federal marginal rate</dt><dd class="num">22%</dd></div>
+              <div><dt>Illinois tax on the conversion</dt><dd class="num">$0</dd></div>
+            </dl>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2 class="section-t">Harvesting opportunities</h2><span class="muted-s">Brokerage positions below cost</span></div>
+          <table class="hold">
+            <thead><tr><th>Position</th><th class="r">Value</th><th class="r">Cost</th><th class="r">Loss</th><th>Replace with</th></tr></thead>
+            <tbody>
+              <tr><td>Intel</td><td class="r num">$2,180</td><td class="r num">$4,960</td><td class="r num">−$2,780</td><td>Similar semiconductor stocks</td></tr>
+              <tr><td>Pfizer</td><td class="r num">$3,050</td><td class="r num">$5,410</td><td class="r num">−$2,360</td><td>Similar health care stocks</td></tr>
+              <tr><td>Nike</td><td class="r num">$2,640</td><td class="r num">$4,720</td><td class="r num">−$2,080</td><td>Similar consumer stocks</td></tr>
+              <tr><td>Emerging market stocks fund</td><td class="r num">$32,289</td><td class="r num">$33,850</td><td class="r num">−$1,561</td><td>Alternate emerging market fund</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2 class="section-t">Roth conversions by year</h2></div>
+          <table class="hold">
+            <thead><tr><th>Year</th><th>Age</th><th class="r">Convert</th><th class="r">Tax</th><th>Fills</th></tr></thead>
+            <tbody>
+              <tr><td class="num">2026</td><td class="num">50</td><td class="r num">$62,324</td><td class="r num">$13,711</td><td>22% bracket</td></tr>
+              <tr><td class="num">2027</td><td class="num">51</td><td class="r num">$62,324</td><td class="r num">$13,711</td><td>22% bracket</td></tr>
+              <tr><td class="num">2028</td><td class="num">52</td><td class="r num">$61,200</td><td class="r num">$13,464</td><td>22% bracket</td></tr>
+              <tr><td class="num">2031</td><td class="num">55</td><td class="r num">$59,700</td><td class="r num">$13,134</td><td>22% bracket</td></tr>
+              <tr><td class="num">2041</td><td class="num">65</td><td class="r num">$96,400</td><td class="r num">$11,568</td><td>12% bracket</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RETIREMENT INCOME -->
+      <div class="ptab" data-ptab-pane="income" hidden>
+        <div class="panel">
+          <div class="panel-head"><h2 class="section-t">Where your income comes from</h2><span class="muted-s">First years of retirement, in today's dollars</span></div>
+          <table class="hold">
+            <thead><tr><th>Age</th><th class="r">Social Security</th><th class="r">From 401(k) / IRA</th><th class="r">From brokerage</th><th class="r">From Roth</th><th class="r">Tax</th><th class="r">Spending</th></tr></thead>
+            <tbody>
+              <tr><td class="num">65</td><td class="r num">–</td><td class="r num">$48,000</td><td class="r num">$52,400</td><td class="r num">–</td><td class="r num">$5,400</td><td class="r num">$95,000</td></tr>
+              <tr><td class="num">66</td><td class="r num">–</td><td class="r num">$48,000</td><td class="r num">$52,400</td><td class="r num">–</td><td class="r num">$5,400</td><td class="r num">$95,000</td></tr>
+              <tr><td class="num">67</td><td class="r num">$32,800</td><td class="r num">$40,500</td><td class="r num">$27,100</td><td class="r num">–</td><td class="r num">$5,400</td><td class="r num">$95,000</td></tr>
+              <tr><td class="num">70</td><td class="r num">$32,800</td><td class="r num">$41,200</td><td class="r num">$26,600</td><td class="r num">–</td><td class="r num">$5,600</td><td class="r num">$95,000</td></tr>
+              <tr><td class="num">75</td><td class="r num">$32,800</td><td class="r num">$52,600</td><td class="r num">$9,400</td><td class="r num">$6,300</td><td class="r num">$6,100</td><td class="r num">$95,000</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="twocol">
+          <div class="panel"><div class="panel-head"><h2 class="section-t">Withdrawal order</h2></div>
+            <ol class="order"><li>401(k) and IRA, up to the 12% bracket</li><li>Brokerage, using the highest-cost shares first</li><li>Roth IRA, last</li></ol></div>
+          <div class="panel"><div class="panel-head"><h2 class="section-t">Required withdrawals</h2></div>
+            <dl class="kv"><div><dt>Start at age</dt><dd class="num">75</dd></div><div><dt>First required amount</dt><dd class="num">$38,900</dd></div><div><dt>Already covered by planned withdrawals</dt><dd>Yes</dd></div></dl></div>
+        </div>
+      </div>
+
+      <!-- GOALS -->
+      <div class="ptab" data-ptab-pane="goals" hidden>
+        <div class="goals">
+          <div class="panel goal"><div class="gt">College</div><div class="gs">Starts in 2034, 4 years</div>
+            <div class="prog"><i style="width:100%"></i></div><div class="gf"><b class="num">$140,000</b><span>On track</span></div></div>
+          <div class="panel goal"><div class="gt">Retire at 65</div><div class="gs">$95,000 a year in today's dollars</div>
+            <div class="prog"><i style="width:100%"></i></div><div class="gf"><b class="num">$95,000</b><span>On track</span></div></div>
+          <div class="panel goal"><div class="gt">Emergency fund</div><div class="gs">Six months of spending</div>
+            <div class="prog"><i style="width:100%"></i></div><div class="gf"><b class="num">$47,500</b><span>On track</span></div></div>
+        </div>
+      </div>
+
+      <div class="actions"><button class="btn ghost" data-go="goals">Back</button><button class="btn" data-go="compare">Compare</button></div>
+      <p class="fine">Illustration based on simulated outcomes. Not investment advice.</p>
+    </section>
+
+    <!-- 6. Comparison -->
+    <section class="screen" id="compare">
+      <h1>Compared with a standard advisor</h1>
+      <p class="lede">The same household, managed two ways.</p>
+
+      <div class="gap"><span class="gapk">With Waramoug</span><b class="num">$1.09M more at 80</b><span class="gapsep" aria-hidden="true"></span><b class="num">+2.05% a year</b></div>
+
+      <div class="duo">
+        <div class="side adv">
+          <div class="sidehead">Standard wealth advisor</div>
+          <div class="sidebig"><span>Projected at 80</span><b class="num">$1.30M</b></div>
+          <div class="sidebar"><i style="width:54.6%"></i></div>
+          <dl class="sidelist">
+            <div><dt>Mix</dt><dd><span class="ministack"><i style="flex:65;background:var(--seg1)"></i><i style="flex:30;background:var(--seg2)"></i><i style="flex:5;background:var(--seg4)"></i></span>65% stocks, 30% bonds, 5% cash</dd></div>
+            <div><dt>Accounts</dt><dd>Same mix in every account</dd></div>
+            <div><dt>Harvesting losses</dt><dd>Once in a while, at the fund level</dd></div>
+            <div><dt>Roth conversion this year</dt><dd>None</dd></div>
+            <div><dt>Yearly fee</dt><dd class="num">$11,367 (0.97%)</dd></div>
+          </dl>
+        </div>
+        <div class="side can">
+          <div class="sidehead">Waramoug</div>
+          <div class="sidebig"><span>Projected at 80</span><b class="num">$2.38M</b></div>
+          <div class="sidebar"><i style="width:100%"></i></div>
+          <dl class="sidelist">
+            <div><dt>Mix</dt><dd><span class="ministack"><i style="flex:66;background:var(--seg1)"></i><i style="flex:14;background:var(--seg2)"></i><i style="flex:13;background:var(--seg3)"></i><i style="flex:7;background:var(--seg4)"></i></span>66% stocks, 14% bonds, 13% private credit, 7% cash</dd></div>
+            <div><dt>Accounts</dt><dd>Bonds and private credit in the 401(k), stocks in the Roth and brokerage</dd></div>
+            <div><dt>Harvesting losses</dt><dd>Stock by stock, all year: $18,500 so far</dd></div>
+            <div><dt>Roth conversion this year</dt><dd class="num">$62,324</dd></div>
+            <div><dt>Yearly fee</dt><dd class="num">$4,098 (0.35%)</dd></div>
+          </dl>
+        </div>
+      </div>
+      <div class="actions" style="max-width:960px"><button class="btn ghost" data-go="portfolio">Back</button></div>
+      <p class="fine">Illustration based on simulated outcomes. Not investment advice.</p>
+    </section>
+  </main>
+</div>
+
+<script>
+const screens=["docs","reading","review","goals","portfolio","compare"];
+const stepOf={docs:"docs",reading:"docs",review:"review",goals:"goals",portfolio:"portfolio",compare:"portfolio"};
+const order=["docs","review","goals","portfolio"];
+let timer=null;
+function go(id){
+  screens.forEach(s=>document.getElementById(s).classList.toggle("on",s===id));
+  document.querySelectorAll(".mockbar button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.go===id));
+  const cur=order.indexOf(stepOf[id]);
+  document.querySelectorAll("#steps li").forEach((li,i)=>li.dataset.state=i<cur?"done":i===cur?"current":"");
+  window.scrollTo(0,0);
+  if(id==="reading") read(); else clearTimeout(timer);
+}
+function read(){
+  const fill=document.getElementById("barfill"),pct=document.getElementById("pct");
+  const items=[...document.querySelectorAll("#found li")];
+  fill.style.transition="none";fill.style.width="0";items.forEach(li=>{li.className="";li.lastElementChild.textContent="Waiting"});
+  requestAnimationFrame(()=>{fill.style.transition="width 2.2s linear";fill.style.width="100%"});
+  let p=0;clearTimeout(timer);
+  const tick=()=>{p=Math.min(100,p+5);pct.textContent=p+"%";
+    items.forEach(li=>{if(p>=+li.dataset.at&&!li.classList.contains("ok")){li.classList.add("ok");li.lastElementChild.textContent="Found"}});
+    if(p<100) timer=setTimeout(tick,110); else timer=setTimeout(()=>go("review"),600);};
+  tick();
+}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-go]");if(t){go(t.dataset.go)}});
+const drop=document.getElementById("drop");
+["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over")}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over")}));
+drop.addEventListener("drop",()=>go("reading"));
+drop.addEventListener("click",()=>go("reading"));
+drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go("reading")}});
+document.querySelectorAll(".field").forEach(f=>f.addEventListener("click",()=>{
+  document.querySelectorAll(".field").forEach(x=>x.removeAttribute("aria-current"));f.setAttribute("aria-current","true");
+  document.querySelectorAll(".doc .ln").forEach(l=>l.classList.toggle("hl",l.dataset.doc===f.dataset.hl));
+}));
+document.querySelectorAll(".chips").forEach(g=>g.addEventListener("click",e=>{const c=e.target.closest(".chip");if(!c)return;
+  g.querySelectorAll(".chip").forEach(x=>x.setAttribute("aria-pressed",x===c))}));
+document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{
+  b.parentElement.querySelectorAll("button").forEach(x=>x.setAttribute("aria-selected",x===b));
+  document.querySelectorAll(".acctpane").forEach(p=>p.hidden=p.dataset.pane!==b.dataset.acct);
+}));
+let firstBuilt=false, changedRet=false;
+document.querySelector('[data-group="inc"]').addEventListener("click",e=>{const c=e.target.closest(".chip"); if(c&&firstBuilt) changedRet=(c.textContent.trim()==="Job loss next year");});
+document.addEventListener("click",e=>{const t=e.target.closest('[data-go="portfolio"]'); if(!t) return;
+  const fromGoals=!!t.closest("#goals");
+  if(fromGoals){ document.getElementById("changed").hidden=!(firstBuilt&&changedRet); firstBuilt=true; }
+},true);
+document.querySelectorAll(".mini").forEach(b=>b.addEventListener("click",()=>{const li=b.closest("li");const st=li.querySelector(".st");st.className="st run";st.textContent="Scheduled";b.parentElement.textContent="December";}));
+document.querySelectorAll(".ptabs button").forEach(b=>b.addEventListener("click",()=>{
+  b.parentElement.querySelectorAll("button").forEach(x=>x.setAttribute("aria-selected",x===b));
+  document.querySelectorAll(".ptab").forEach(p=>p.hidden=p.dataset.ptabPane!==b.dataset.ptab);
+}));
+go("docs");
+</script>
+</body>
+</html>

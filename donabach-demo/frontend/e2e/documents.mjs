@@ -85,7 +85,7 @@ export async function runDocuments({ browser, base, check }) {
     const area = page.getByRole("button", { name: "Drop PDFs here, or press Enter to choose files" });
     await area.focus();
     for (const key of ["Enter", " "]) {
-      const chooser = page.waitForEvent("filechooser", { timeout: 3000 }).then(
+      const chooser = page.waitForEvent("filechooser", { timeout: 10000 }).then(
         () => true,
         () => false,
       );

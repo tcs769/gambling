@@ -25,7 +25,6 @@ import numpy as np
 
 from app.planner.baseline import RIA_BASELINE
 from app.planner.search import FORCED_SALE_LIMIT
-from app.planner.plan import EVAL_SEED_OFFSET
 from app.planner.strategies import Strategy
 from app.schemas import Accounts, Goals, Household, Person, SocialSecurity
 from app.sim import simulate as S
@@ -203,25 +202,28 @@ QUICK_STRATEGIES = [
 ]
 
 
-def quick_score(p: Profile, n: int = 300) -> dict:
+QUICK_OFFSET = 4_000_039  # the futures of the search itself (the quick scores and the climb): seed offset, apart from the finalist and final sets
+
+
+def quick_score(p: Profile, n: int = 300, offset: int = QUICK_OFFSET) -> dict:
     """A fast score: the best of a few typical strategies (direct indexing after its transition tax) against the advisor, on `n` futures."""
     h = p.household()
     hd, tax = transition(h)
     years = h.horizon_years
-    fut = _futures(h, n, EVAL_SEED_OFFSET)
+    fut = _futures(h, n, offset)
     adv = run_batch(fut, [RIA_BASELINE])
     advisor = float(np.median(adv.wealth[0]))
     advisor_ruin = float(np.mean(adv.unfunded[0] > 0))
     off = [s for s in QUICK_STRATEGIES if not s.direct_indexing]
     on = [s for s in QUICK_STRATEGIES if s.direct_indexing]
     # the planner's own limits, screened on these few futures with slack: the chance of selling stocks in a falling year for goals or spending
-    # at most 2% (+1 point for noise), and the chance of running out of money no higher than the advisor's (+1 point)
+    # at most 2%, and the chance of running out of money no higher than the advisor's (the hard limits, on the search futures)
     candidates = []
     for batch, strategies in ((run_batch(fut, [s.policy() for s in off]), off),) + (
-        ((run_batch(_futures(hd, n, EVAL_SEED_OFFSET), [s.policy() for s in on]), on),) if tax >= 0.0 and on else ()
+        ((run_batch(_futures(hd, n, offset), [s.policy() for s in on]), on),) if tax >= 0.0 and on else ()
     ):
         for i, strat_ in enumerate(strategies):
-            ok = float(np.mean(batch.forced_years[i] > 0)) <= FORCED_SALE_LIMIT + 0.01 and float(np.mean(batch.unfunded[i] > 0)) <= advisor_ruin + 0.01
+            ok = float(np.mean(batch.forced_years[i] > 0)) <= FORCED_SALE_LIMIT and float(np.mean(batch.unfunded[i] > 0)) <= advisor_ruin
             candidates.append((float(np.median(batch.wealth[i])), strat_, ok))
     pool = [c for c in candidates if c[2]]
     feasible = bool(pool)
@@ -243,18 +245,18 @@ def funded(row: dict) -> bool:
 # --- sampling ---------------------------------------------------------------------------------------------------------------------------
 
 GRID = {
-    "age": [40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60],
-    "wages": [100_000.0, 150_000.0, 204_268.12, 250_000.0, 300_000.0, 350_000.0, 400_000.0, 500_000.0],
-    "retirement_age": [55, 58, 60, 62, 65, 67, 70],
-    "spend_ratio": [0.35, 0.44, 0.55],
+    "age": [40, 42, 44, 46, 48, 49, 50, 51, 52, 54, 56, 58, 60],
+    "wages": [100_000.0, 150_000.0, 204_268.12, 250_000.0, 275_000.0, 300_000.0, 325_000.0, 350_000.0, 400_000.0, 500_000.0],
+    "retirement_age": [55, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 70],
+    "spend_ratio": [0.35, 0.40, 0.44, 0.50, 0.55],
     "pretax": [100_000.0, 250_000.0, 429_185.46, 600_000.0, 800_000.0, 1_000_000.0],
     "roth": [0.0, 50_000.0, 94_380.32, 200_000.0, 400_000.0],
-    "brokerage": [0.0, 100_000.0, 300_000.0, 645_776.59, 1_000_000.0, 1_500_000.0],
+    "brokerage": [0.0, 100_000.0, 300_000.0, 645_776.59, 800_000.0, 1_000_000.0, 1_250_000.0, 1_500_000.0],
     "basis_ratio": [0.25, 0.4, 0.6, 0.8, 1.0],
-    "cash": [10_000.0, 23_940.44, 60_000.0, 150_000.0, 300_000.0],
+    "cash": [10_000.0, 23_940.44, 40_000.0, 60_000.0, 100_000.0, 150_000.0, 300_000.0],
     "college": [None, (3, 44_539.62), (8, 44_539.62), (8, 60_000.0), (12, 44_539.62)],
-    "home": [None, (3, 100_000.0), (3, 150_000.0), (5, 150_000.0), (5, 250_000.0)],
-    "giving": [0.0, 10_000.0, 25_000.0],
+    "home": [None, (2, 150_000.0), (3, 100_000.0), (3, 150_000.0), (4, 150_000.0), (5, 150_000.0), (5, 250_000.0)],
+    "giving": [0.0, 5_000.0, 10_000.0, 25_000.0],
 }
 
 

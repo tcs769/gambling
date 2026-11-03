@@ -1,0 +1,1054 @@
+[
+ {
+  "profile": {
+   "age": 60,
+   "wages": 300000.0,
+   "retirement_age": 67,
+   "spend_ratio": 0.44,
+   "pretax": 800000.0,
+   "roth": 0.0,
+   "brokerage": 1000000.0,
+   "basis_ratio": 0.25,
+   "cash": 60000.0,
+   "college": null,
+   "home": [
+    3,
+    150000.0
+   ],
+   "giving": 0.0
+  },
+  "strategy": "100|fill24_every|15|off|off|pretax|sell|8",
+  "label": "8-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit",
+  "di": false,
+  "transition_tax": 200691.8625,
+  "median": 2625572.2892212598,
+  "advisor_median": 1586937.3116351175,
+  "advantage": 0.025494204763499395,
+  "advantage_dollars": 1038634.9775861423,
+  "advantage_range": [
+   0.02427898238223718,
+   0.026613286152150594
+  ],
+  "risk_adjusted": 0.00823592464632461,
+  "risk_adjusted_range": [
+   0.0031223423753238724,
+   0.014074339559157462
+  ],
+  "ruin": 0.004,
+  "advisor_ruin": 0.006,
+  "forced_sale": 0.021,
+  "p10": 792653.820282843,
+  "advisor_p10": 624318.0172533937,
+  "years": 20,
+  "median_without_di": 2625572.2892212598,
+  "median_with_di": 2323350.7692434443,
+  "feasible": false,
+  "quick_rate": 0.025558396149694573,
+  "usage": [
+   [
+    "Lower, flat fee",
+    true
+   ],
+   [
+    "Asset location",
+    true
+   ],
+   [
+    "Highest-cost lots first",
+    true
+   ],
+   [
+    "Tax-aware withdrawal order",
+    true
+   ],
+   [
+    "Gains realized in the 0% bracket",
+    true
+   ],
+   [
+    "Spending reserve with the rest in stocks",
+    true
+   ],
+   [
+    "Private credit",
+    true
+   ],
+   [
+    "Roth conversions",
+    true
+   ],
+   [
+    "Stock-by-stock loss harvesting (direct indexing)",
+    false
+   ],
+   [
+    "Roth 401(k) contributions",
+    false
+   ],
+   [
+    "Borrowing against the taxable account for goals",
+    false
+   ],
+   [
+    "Gifts of appreciated shares",
+    false
+   ]
+  ],
+  "flips": {
+   "Roth 401(k) contributions": {
+    "delta": 0.0,
+    "per_year": 0.0
+   },
+   "Borrowing against the taxable account for goals": {
+    "delta": 265.36356694530696,
+    "per_year": 5.05319981813912e-06
+   },
+   "Stock-by-stock loss harvesting (direct indexing)": {
+    "delta": -297362.7659115037,
+    "per_year": -0.005991944266862226
+   }
+  },
+  "job_loss": {
+   "age": 61,
+   "conversion_before": 156514.63124219532,
+   "conversion_after": 430518.375,
+   "visible": true,
+   "zero_bracket_gains_at_that_age": 0.0
+  },
+  "checks": {
+   "income": [
+    true,
+    "wages $300,000 (SCF median $70,260, top-10% from $248,600; cap $500,000)",
+    "SCF 2022"
+   ],
+   "retirement accounts below the top decile": [
+    true,
+    "401(k)/IRA + Roth $800,000 (fewer than 10% of households in any age group hold over $1,000,000)",
+    "SCF 2022 (CRS)"
+   ],
+   "retirement accounts at least the holders' median": [
+    true,
+    "$800,000 against the median $185,000 among families with accounts at this age",
+    "SCF 2022"
+   ],
+   "financial assets below age p90 net worth": [
+    true,
+    "financial assets $1,860,000 against the age-group 90th percentile of NET WORTH $3,040,000",
+    "SCF 2022"
+   ],
+   "financial assets in line with income": [
+    true,
+    "6.2x income against at most 12.2x (age p90 net worth / top-10% income)",
+    "SCF 2022 (derived)"
+   ],
+   "windfall or cash within a year's income": [
+    true,
+    "cash $60,000 against income $300,000",
+    "rule of thumb"
+   ],
+   "cost basis between 20% and 100% of value": [
+    true,
+    "basis 25% of value",
+    "rule of thumb"
+   ],
+   "implied saving rate at most 30%": [
+    true,
+    "the engine saves 18% of wages (401(k) up to $24,500 + 10% in the brokerage account)",
+    "engine assumption; rule of thumb"
+   ],
+   "retirement spending 35% to 65% of wages": [
+    true,
+    "44% of wages",
+    "rule of thumb"
+   ],
+   "retirement age": [
+    true,
+    "retire at 67 from 60",
+    "rule of thumb"
+   ],
+   "home down payment fundable": [
+    true,
+    "down payment $150,000 against liquid $1,060,000 and income $300,000",
+    "rule of thumb"
+   ]
+  }
+ },
+ {
+  "profile": {
+   "age": 60,
+   "wages": 300000.0,
+   "retirement_age": 65,
+   "spend_ratio": 0.44,
+   "pretax": 600000.0,
+   "roth": 0.0,
+   "brokerage": 1500000.0,
+   "basis_ratio": 0.25,
+   "cash": 150000.0,
+   "college": null,
+   "home": [
+    3,
+    150000.0
+   ],
+   "giving": 0.0
+  },
+  "strategy": "100|fill24_every|15|off|off|pretax|sell|8",
+  "label": "8-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit",
+  "di": false,
+  "transition_tax": 309033.1125,
+  "median": 2681376.2800179804,
+  "advisor_median": 1632550.32557288,
+  "advantage": 0.02511965211838607,
+  "advantage_dollars": 1048825.9544451004,
+  "advantage_range": [
+   0.023867846684280446,
+   0.025941413093132838
+  ],
+  "risk_adjusted": 0.010782346628281259,
+  "risk_adjusted_range": [
+   0.005682151398036273,
+   0.015981833776245513
+  ],
+  "ruin": 0.0055,
+  "advisor_ruin": 0.0075,
+  "forced_sale": 0.0205,
+  "p10": 802342.5986622708,
+  "advisor_p10": 583680.3091930996,
+  "years": 20,
+  "median_without_di": 2681376.2800179804,
+  "median_with_di": 2171323.6679250984,
+  "feasible": false,
+  "quick_rate": 0.025573119260571042,
+  "usage": [
+   [
+    "Lower, flat fee",
+    true
+   ],
+   [
+    "Asset location",
+    true
+   ],
+   [
+    "Highest-cost lots first",
+    true
+   ],
+   [
+    "Tax-aware withdrawal order",
+    true
+   ],
+   [
+    "Gains realized in the 0% bracket",
+    true
+   ],
+   [
+    "Spending reserve with the rest in stocks",
+    true
+   ],
+   [
+    "Private credit",
+    true
+   ],
+   [
+    "Roth conversions",
+    true
+   ],
+   [
+    "Stock-by-stock loss harvesting (direct indexing)",
+    false
+   ],
+   [
+    "Roth 401(k) contributions",
+    false
+   ],
+   [
+    "Borrowing against the taxable account for goals",
+    false
+   ],
+   [
+    "Gifts of appreciated shares",
+    false
+   ]
+  ],
+  "flips": {
+   "Roth 401(k) contributions": {
+    "delta": 0.0,
+    "per_year": 0.0
+   },
+   "Borrowing against the taxable account for goals": {
+    "delta": 0.0,
+    "per_year": 0.0
+   },
+   "Stock-by-stock loss harvesting (direct indexing)": {
+    "delta": -443810.4264854081,
+    "per_year": -0.009006278188315675
+   }
+  },
+  "job_loss": {
+   "age": 61,
+   "conversion_before": 156514.63124219532,
+   "conversion_after": 430518.375,
+   "visible": true,
+   "zero_bracket_gains_at_that_age": 0.0
+  },
+  "checks": {
+   "income": [
+    true,
+    "wages $300,000 (SCF median $70,260, top-10% from $248,600; cap $500,000)",
+    "SCF 2022"
+   ],
+   "retirement accounts below the top decile": [
+    true,
+    "401(k)/IRA + Roth $600,000 (fewer than 10% of households in any age group hold over $1,000,000)",
+    "SCF 2022 (CRS)"
+   ],
+   "retirement accounts at least the holders' median": [
+    true,
+    "$600,000 against the median $185,000 among families with accounts at this age",
+    "SCF 2022"
+   ],
+   "financial assets below age p90 net worth": [
+    true,
+    "financial assets $2,250,000 against the age-group 90th percentile of NET WORTH $3,040,000",
+    "SCF 2022"
+   ],
+   "financial assets in line with income": [
+    true,
+    "7.5x income against at most 12.2x (age p90 net worth / top-10% income)",
+    "SCF 2022 (derived)"
+   ],
+   "windfall or cash within a year's income": [
+    true,
+    "cash $150,000 against income $300,000",
+    "rule of thumb"
+   ],
+   "cost basis between 20% and 100% of value": [
+    true,
+    "basis 25% of value",
+    "rule of thumb"
+   ],
+   "implied saving rate at most 30%": [
+    true,
+    "the engine saves 18% of wages (401(k) up to $24,500 + 10% in the brokerage account)",
+    "engine assumption; rule of thumb"
+   ],
+   "retirement spending 35% to 65% of wages": [
+    true,
+    "44% of wages",
+    "rule of thumb"
+   ],
+   "retirement age": [
+    true,
+    "retire at 65 from 60",
+    "rule of thumb"
+   ],
+   "home down payment fundable": [
+    true,
+    "down payment $150,000 against liquid $1,650,000 and income $300,000",
+    "rule of thumb"
+   ]
+  }
+ },
+ {
+  "profile": {
+   "age": 50,
+   "wages": 300000.0,
+   "retirement_age": 60,
+   "spend_ratio": 0.35,
+   "pretax": 250000.0,
+   "roth": 0.0,
+   "brokerage": 1500000.0,
+   "basis_ratio": 0.25,
+   "cash": 60000.0,
+   "college": [
+    12,
+    44539.62
+   ],
+   "home": [
+    5,
+    250000.0
+   ],
+   "giving": 0.0
+  },
+  "strategy": "100|fill24_every|15|off|off|roth_low|borrow|7",
+  "label": "7-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, Roth 401(k) in low-income years, borrow for goals",
+  "di": false,
+  "transition_tax": 308954.3625,
+  "median": 2837473.759371126,
+  "advisor_median": 1384282.7276464116,
+  "advantage": 0.02421288500397445,
+  "advantage_dollars": 1453191.0317247144,
+  "advantage_range": [
+   0.023250705909818002,
+   0.025352330101882627
+  ],
+  "risk_adjusted": 0.007861927916184452,
+  "risk_adjusted_range": [
+   0.006645225817054135,
+   0.009477425572998277
+  ],
+  "ruin": 0.047,
+  "advisor_ruin": 0.0825,
+  "forced_sale": 0.0225,
+  "p10": 312494.8458712334,
+  "advisor_p10": 98284.76716585783,
+  "years": 30,
+  "median_without_di": 2837473.759371126,
+  "median_with_di": 2162252.898846371,
+  "feasible": true,
+  "quick_rate": 0.026322265462358274,
+  "usage": [
+   [
+    "Lower, flat fee",
+    true
+   ],
+   [
+    "Asset location",
+    true
+   ],
+   [
+    "Highest-cost lots first",
+    true
+   ],
+   [
+    "Tax-aware withdrawal order",
+    true
+   ],
+   [
+    "Gains realized in the 0% bracket",
+    true
+   ],
+   [
+    "Spending reserve with the rest in stocks",
+    true
+   ],
+   [
+    "Private credit",
+    true
+   ],
+   [
+    "Roth conversions",
+    true
+   ],
+   [
+    "Stock-by-stock loss harvesting (direct indexing)",
+    false
+   ],
+   [
+    "Roth 401(k) contributions",
+    false
+   ],
+   [
+    "Borrowing against the taxable account for goals",
+    false
+   ],
+   [
+    "Gifts of appreciated shares",
+    false
+   ]
+  ],
+  "flips": {
+   "Stock-by-stock loss harvesting (direct indexing)": {
+    "delta": -611543.2463686727,
+    "per_year": -0.008058656805129072
+   }
+  },
+  "job_loss": {
+   "age": 51,
+   "conversion_before": 130145.45399999998,
+   "conversion_after": 130145.45399999998,
+   "visible": false,
+   "zero_bracket_gains_at_that_age": 0.0
+  },
+  "checks": {
+   "income": [
+    true,
+    "wages $300,000 (SCF median $70,260, top-10% from $248,600; cap $500,000)",
+    "SCF 2022"
+   ],
+   "retirement accounts below the top decile": [
+    true,
+    "401(k)/IRA + Roth $250,000 (fewer than 10% of households in any age group hold over $1,000,000)",
+    "SCF 2022 (CRS)"
+   ],
+   "retirement accounts at least the holders' median": [
+    true,
+    "$250,000 against the median $115,000 among families with accounts at this age",
+    "SCF 2022"
+   ],
+   "financial assets below age p90 net worth": [
+    true,
+    "financial assets $1,810,000 against the age-group 90th percentile of NET WORTH $1,990,000",
+    "SCF 2022"
+   ],
+   "financial assets in line with income": [
+    true,
+    "6.0x income against at most 8.0x (age p90 net worth / top-10% income)",
+    "SCF 2022 (derived)"
+   ],
+   "windfall or cash within a year's income": [
+    true,
+    "cash $60,000 against income $300,000",
+    "rule of thumb"
+   ],
+   "cost basis between 20% and 100% of value": [
+    true,
+    "basis 25% of value",
+    "rule of thumb"
+   ],
+   "implied saving rate at most 30%": [
+    true,
+    "the engine saves 18% of wages (401(k) up to $24,500 + 10% in the brokerage account)",
+    "engine assumption; rule of thumb"
+   ],
+   "retirement spending 35% to 65% of wages": [
+    true,
+    "35% of wages",
+    "rule of thumb"
+   ],
+   "retirement age": [
+    true,
+    "retire at 60 from 50",
+    "rule of thumb"
+   ],
+   "home down payment fundable": [
+    true,
+    "down payment $250,000 against liquid $1,560,000 and income $300,000",
+    "rule of thumb"
+   ],
+   "college cost a year": [
+    true,
+    "$44,540 a year starting in 12 years",
+    "rule of thumb"
+   ]
+  }
+ },
+ {
+  "profile": {
+   "age": 50,
+   "wages": 250000.0,
+   "retirement_age": 62,
+   "spend_ratio": 0.35,
+   "pretax": 100000.0,
+   "roth": 50000.0,
+   "brokerage": 1000000.0,
+   "basis_ratio": 0.25,
+   "cash": 10000.0,
+   "college": [
+    8,
+    60000.0
+   ],
+   "home": [
+    5,
+    150000.0
+   ],
+   "giving": 0.0
+  },
+  "strategy": "100|fill24_every|15|off|off|roth_low|borrow|6",
+  "label": "6-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit, Roth 401(k) in low-income years, borrow for goals",
+  "di": false,
+  "transition_tax": 197907.7625,
+  "median": 2269781.1253264393,
+  "advisor_median": 1116851.9965814762,
+  "advantage": 0.023920595199264483,
+  "advantage_dollars": 1152929.128744963,
+  "advantage_range": [
+   0.022831327788332724,
+   0.024615450494502623
+  ],
+  "risk_adjusted": 0.008603618658439283,
+  "risk_adjusted_range": [
+   0.00732558227300889,
+   0.010100188044272573
+  ],
+  "ruin": 0.027,
+  "advisor_ruin": 0.045,
+  "forced_sale": 0.024,
+  "p10": 391546.64228844515,
+  "advisor_p10": 205917.8716011076,
+  "years": 30,
+  "median_without_di": 2269781.1253264393,
+  "median_with_di": 1752731.538458773,
+  "feasible": true,
+  "quick_rate": 0.025188287712289315,
+  "usage": [
+   [
+    "Lower, flat fee",
+    true
+   ],
+   [
+    "Asset location",
+    true
+   ],
+   [
+    "Highest-cost lots first",
+    true
+   ],
+   [
+    "Tax-aware withdrawal order",
+    true
+   ],
+   [
+    "Gains realized in the 0% bracket",
+    true
+   ],
+   [
+    "Spending reserve with the rest in stocks",
+    true
+   ],
+   [
+    "Private credit",
+    true
+   ],
+   [
+    "Roth conversions",
+    true
+   ],
+   [
+    "Stock-by-stock loss harvesting (direct indexing)",
+    false
+   ],
+   [
+    "Roth 401(k) contributions",
+    false
+   ],
+   [
+    "Borrowing against the taxable account for goals",
+    false
+   ],
+   [
+    "Gifts of appreciated shares",
+    false
+   ]
+  ],
+  "flips": {
+   "Stock-by-stock loss harvesting (direct indexing)": {
+    "delta": -408286.85138718854,
+    "per_year": -0.006588330088719174
+   }
+  },
+  "job_loss": {
+   "age": 51,
+   "conversion_before": 25847.5,
+   "conversion_after": 25847.5,
+   "visible": false,
+   "zero_bracket_gains_at_that_age": 67418.66389746782
+  },
+  "checks": {
+   "income": [
+    true,
+    "wages $250,000 (SCF median $70,260, top-10% from $248,600; cap $500,000)",
+    "SCF 2022"
+   ],
+   "retirement accounts below the top decile": [
+    true,
+    "401(k)/IRA + Roth $150,000 (fewer than 10% of households in any age group hold over $1,000,000)",
+    "SCF 2022 (CRS)"
+   ],
+   "retirement accounts at least the holders' median": [
+    true,
+    "$150,000 against the median $115,000 among families with accounts at this age",
+    "SCF 2022"
+   ],
+   "financial assets below age p90 net worth": [
+    true,
+    "financial assets $1,160,000 against the age-group 90th percentile of NET WORTH $1,990,000",
+    "SCF 2022"
+   ],
+   "financial assets in line with income": [
+    true,
+    "4.6x income against at most 8.0x (age p90 net worth / top-10% income)",
+    "SCF 2022 (derived)"
+   ],
+   "windfall or cash within a year's income": [
+    true,
+    "cash $10,000 against income $250,000",
+    "rule of thumb"
+   ],
+   "cost basis between 20% and 100% of value": [
+    true,
+    "basis 25% of value",
+    "rule of thumb"
+   ],
+   "implied saving rate at most 30%": [
+    true,
+    "the engine saves 20% of wages (401(k) up to $24,500 + 10% in the brokerage account)",
+    "engine assumption; rule of thumb"
+   ],
+   "retirement spending 35% to 65% of wages": [
+    true,
+    "35% of wages",
+    "rule of thumb"
+   ],
+   "retirement age": [
+    true,
+    "retire at 62 from 50",
+    "rule of thumb"
+   ],
+   "home down payment fundable": [
+    true,
+    "down payment $150,000 against liquid $1,010,000 and income $250,000",
+    "rule of thumb"
+   ],
+   "college cost a year": [
+    true,
+    "$60,000 a year starting in 8 years",
+    "rule of thumb"
+   ]
+  }
+ },
+ {
+  "profile": {
+   "age": 56,
+   "wages": 350000.0,
+   "retirement_age": 67,
+   "spend_ratio": 0.35,
+   "pretax": 600000.0,
+   "roth": 0.0,
+   "brokerage": 645776.59,
+   "basis_ratio": 0.25,
+   "cash": 23940.44,
+   "college": [
+    8,
+    44539.62
+   ],
+   "home": null,
+   "giving": 0.0
+  },
+  "strategy": "100|fill24_every|15|off|off|pretax|sell|10",
+  "label": "10-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit",
+  "di": false,
+  "transition_tax": 126462.08581599999,
+  "median": 2487501.4679668383,
+  "advisor_median": 1460468.04599661,
+  "advantage": 0.022436402561266888,
+  "advantage_dollars": 1027033.4219702282,
+  "advantage_range": [
+   0.021367841617357962,
+   0.023230583016639182
+  ],
+  "risk_adjusted": 0.025229873772441902,
+  "risk_adjusted_range": [
+   0.0199565101517038,
+   0.031070984153459914
+  ],
+  "ruin": 0.0015,
+  "advisor_ruin": 0.011,
+  "forced_sale": 0.0195,
+  "p10": 701133.9275408313,
+  "advisor_p10": 520222.0749989831,
+  "years": 24,
+  "median_without_di": 2487501.4679668383,
+  "median_with_di": 2200107.106665761,
+  "feasible": false,
+  "quick_rate": 0.02567581735386315,
+  "usage": [
+   [
+    "Lower, flat fee",
+    true
+   ],
+   [
+    "Asset location",
+    true
+   ],
+   [
+    "Highest-cost lots first",
+    true
+   ],
+   [
+    "Tax-aware withdrawal order",
+    true
+   ],
+   [
+    "Gains realized in the 0% bracket",
+    true
+   ],
+   [
+    "Spending reserve with the rest in stocks",
+    true
+   ],
+   [
+    "Private credit",
+    true
+   ],
+   [
+    "Roth conversions",
+    true
+   ],
+   [
+    "Stock-by-stock loss harvesting (direct indexing)",
+    false
+   ],
+   [
+    "Roth 401(k) contributions",
+    false
+   ],
+   [
+    "Borrowing against the taxable account for goals",
+    false
+   ],
+   [
+    "Gifts of appreciated shares",
+    false
+   ]
+  ],
+  "flips": {
+   "Roth 401(k) contributions": {
+    "delta": -22982.699634656776,
+    "per_year": -0.00038668428422772294
+   },
+   "Borrowing against the taxable account for goals": {
+    "delta": 0.0,
+    "per_year": 0.0
+   },
+   "Stock-by-stock loss harvesting (direct indexing)": {
+    "delta": -189822.92240904132,
+    "per_year": -0.003302015274539216
+   }
+  },
+  "job_loss": {
+   "age": 57,
+   "conversion_before": 107335.34049291123,
+   "conversion_after": 431089.70821035,
+   "visible": true,
+   "zero_bracket_gains_at_that_age": 0.0
+  },
+  "checks": {
+   "income": [
+    true,
+    "wages $350,000 (SCF median $70,260, top-10% from $248,600; cap $500,000)",
+    "SCF 2022"
+   ],
+   "retirement accounts below the top decile": [
+    true,
+    "401(k)/IRA + Roth $600,000 (fewer than 10% of households in any age group hold over $1,000,000)",
+    "SCF 2022 (CRS)"
+   ],
+   "retirement accounts at least the holders' median": [
+    true,
+    "$600,000 against the median $185,000 among families with accounts at this age",
+    "SCF 2022"
+   ],
+   "financial assets below age p90 net worth": [
+    true,
+    "financial assets $1,269,717 against the age-group 90th percentile of NET WORTH $2,500,000",
+    "SCF 2022"
+   ],
+   "financial assets in line with income": [
+    true,
+    "3.6x income against at most 10.1x (age p90 net worth / top-10% income)",
+    "SCF 2022 (derived)"
+   ],
+   "windfall or cash within a year's income": [
+    true,
+    "cash $23,940 against income $350,000",
+    "rule of thumb"
+   ],
+   "cost basis between 20% and 100% of value": [
+    true,
+    "basis 25% of value",
+    "rule of thumb"
+   ],
+   "implied saving rate at most 30%": [
+    true,
+    "the engine saves 17% of wages (401(k) up to $24,500 + 10% in the brokerage account)",
+    "engine assumption; rule of thumb"
+   ],
+   "retirement spending 35% to 65% of wages": [
+    true,
+    "35% of wages",
+    "rule of thumb"
+   ],
+   "retirement age": [
+    true,
+    "retire at 67 from 56",
+    "rule of thumb"
+   ],
+   "college cost a year": [
+    true,
+    "$44,540 a year starting in 8 years",
+    "rule of thumb"
+   ]
+  }
+ },
+ {
+  "profile": {
+   "age": 60,
+   "wages": 300000.0,
+   "retirement_age": 65,
+   "spend_ratio": 0.44,
+   "pretax": 600000.0,
+   "roth": 94380.32,
+   "brokerage": 1500000.0,
+   "basis_ratio": 0.25,
+   "cash": 150000.0,
+   "college": [
+    8,
+    44539.62
+   ],
+   "home": [
+    3,
+    150000.0
+   ],
+   "giving": 0.0
+  },
+  "strategy": "100|fill24_every|15|off|off|pretax|sell|9",
+  "label": "9-year spending reserve, the rest in stocks, fill 24% bracket (every year), 15% private credit",
+  "di": false,
+  "transition_tax": 309033.1125,
+  "median": 2466683.320183114,
+  "advisor_median": 1591045.3309804338,
+  "advantage": 0.022166261559006806,
+  "advantage_dollars": 875637.9892026803,
+  "advantage_range": [
+   0.020984503419921075,
+   0.02314567809993926
+  ],
+  "risk_adjusted": 0.021708868458149233,
+  "risk_adjusted_range": [
+   0.016801981251622477,
+   0.027577632985134194
+  ],
+  "ruin": 0.0085,
+  "advisor_ruin": 0.0195,
+  "forced_sale": 0.025,
+  "p10": 669834.2819165927,
+  "advisor_p10": 473511.395552237,
+  "years": 20,
+  "median_without_di": 2466683.320183114,
+  "median_with_di": 2070487.9920709236,
+  "feasible": false,
+  "quick_rate": 0.025233627875667075,
+  "usage": [
+   [
+    "Lower, flat fee",
+    true
+   ],
+   [
+    "Asset location",
+    true
+   ],
+   [
+    "Highest-cost lots first",
+    true
+   ],
+   [
+    "Tax-aware withdrawal order",
+    true
+   ],
+   [
+    "Gains realized in the 0% bracket",
+    true
+   ],
+   [
+    "Spending reserve with the rest in stocks",
+    true
+   ],
+   [
+    "Private credit",
+    true
+   ],
+   [
+    "Roth conversions",
+    true
+   ],
+   [
+    "Stock-by-stock loss harvesting (direct indexing)",
+    false
+   ],
+   [
+    "Roth 401(k) contributions",
+    false
+   ],
+   [
+    "Borrowing against the taxable account for goals",
+    false
+   ],
+   [
+    "Gifts of appreciated shares",
+    false
+   ]
+  ],
+  "flips": {
+   "Roth 401(k) contributions": {
+    "delta": -7878.118291880935,
+    "per_year": -0.00015993327302965543
+   },
+   "Borrowing against the taxable account for goals": {
+    "delta": -263.19283749721944,
+    "per_year": -5.33522433598943e-06
+   },
+   "Stock-by-stock loss harvesting (direct indexing)": {
+    "delta": -396195.3281121906,
+    "per_year": -0.008716297810662743
+   }
+  },
+  "job_loss": {
+   "age": 61,
+   "conversion_before": 153407.77004909533,
+   "conversion_after": 427411.5138069,
+   "visible": true,
+   "zero_bracket_gains_at_that_age": 0.0
+  },
+  "checks": {
+   "income": [
+    true,
+    "wages $300,000 (SCF median $70,260, top-10% from $248,600; cap $500,000)",
+    "SCF 2022"
+   ],
+   "retirement accounts below the top decile": [
+    true,
+    "401(k)/IRA + Roth $694,380 (fewer than 10% of households in any age group hold over $1,000,000)",
+    "SCF 2022 (CRS)"
+   ],
+   "retirement accounts at least the holders' median": [
+    true,
+    "$694,380 against the median $185,000 among families with accounts at this age",
+    "SCF 2022"
+   ],
+   "financial assets below age p90 net worth": [
+    true,
+    "financial assets $2,344,380 against the age-group 90th percentile of NET WORTH $3,040,000",
+    "SCF 2022"
+   ],
+   "financial assets in line with income": [
+    true,
+    "7.8x income against at most 12.2x (age p90 net worth / top-10% income)",
+    "SCF 2022 (derived)"
+   ],
+   "windfall or cash within a year's income": [
+    true,
+    "cash $150,000 against income $300,000",
+    "rule of thumb"
+   ],
+   "cost basis between 20% and 100% of value": [
+    true,
+    "basis 25% of value",
+    "rule of thumb"
+   ],
+   "implied saving rate at most 30%": [
+    true,
+    "the engine saves 18% of wages (401(k) up to $24,500 + 10% in the brokerage account)",
+    "engine assumption; rule of thumb"
+   ],
+   "retirement spending 35% to 65% of wages": [
+    true,
+    "44% of wages",
+    "rule of thumb"
+   ],
+   "retirement age": [
+    true,
+    "retire at 65 from 60",
+    "rule of thumb"
+   ],
+   "home down payment fundable": [
+    true,
+    "down payment $150,000 against liquid $1,650,000 and income $300,000",
+    "rule of thumb"
+   ],
+   "college cost a year": [
+    true,
+    "$44,540 a year starting in 8 years",
+    "rule of thumb"
+   ]
+  }
+ }
+]

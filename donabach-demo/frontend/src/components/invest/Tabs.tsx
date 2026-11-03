@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useRef, type KeyboardEvent } from "react";
 import styles from "./Tabs.module.css";
 
 export interface TabSpec<K extends string> {
@@ -8,7 +8,7 @@ export interface TabSpec<K extends string> {
   label: string;
 }
 
-interface Props<K extends string> {
+interface ListProps<K extends string> {
   /** The name of the tab list for a screen reader. */
   label: string;
   /** Prefix for the element ids (unique on the page). */
@@ -16,21 +16,12 @@ interface Props<K extends string> {
   tabs: TabSpec<K>[];
   value: K;
   onChange: (key: K) => void;
-  /** "line": underlined page tabs. "pill": a smaller row inside a tab. */
+  /** "line": the page tabs (underlined). "pill": the account switcher (a stone track). */
   variant?: "line" | "pill";
-  children: ReactNode;
 }
 
 /** A tab list with the keyboard pattern: arrows, Home and End move and select; only the selected tab is in the Tab order. */
-export function Tabs<K extends string>({
-  label,
-  idPrefix,
-  tabs,
-  value,
-  onChange,
-  variant = "line",
-  children,
-}: Props<K>) {
+export function TabList<K extends string>({ label, idPrefix, tabs, value, onChange, variant = "line" }: ListProps<K>) {
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const move = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -47,39 +38,46 @@ export function Tabs<K extends string>({
   };
 
   return (
-    <div>
-      <div role="tablist" aria-label={label} className={`${styles.list} ${styles[variant]}`}>
-        {tabs.map((tab, index) => {
-          const selected = tab.key === value;
-          return (
-            <button
-              key={tab.key}
-              ref={(el) => {
-                refs.current[tab.key] = el;
-              }}
-              type="button"
-              role="tab"
-              id={`${idPrefix}-tab-${tab.key}`}
-              aria-selected={selected}
-              aria-controls={`${idPrefix}-panel-${tab.key}`}
-              tabIndex={selected ? 0 : -1}
-              className={styles.tab}
-              onClick={() => onChange(tab.key)}
-              onKeyDown={(event) => move(event, index)}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-      <div
-        role="tabpanel"
-        id={`${idPrefix}-panel-${value}`}
-        aria-labelledby={`${idPrefix}-tab-${value}`}
-        className={styles.panel}
-      >
-        {children}
-      </div>
+    <div role="tablist" aria-label={label} className={`${styles.list} ${styles[variant]}`}>
+      {tabs.map((tab, index) => {
+        const selected = tab.key === value;
+        return (
+          <button
+            key={tab.key}
+            ref={(el) => {
+              refs.current[tab.key] = el;
+            }}
+            type="button"
+            role="tab"
+            id={`${idPrefix}-tab-${tab.key}`}
+            aria-selected={selected}
+            aria-controls={`${idPrefix}-panel-${tab.key}`}
+            tabIndex={selected ? 0 : -1}
+            className={styles.tab}
+            onClick={() => onChange(tab.key)}
+            onKeyDown={(event) => move(event, index)}
+          >
+            {tab.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The panel the selected tab controls. */
+export function TabPanel({
+  idPrefix,
+  value,
+  children,
+}: {
+  idPrefix: string;
+  value: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div role="tabpanel" id={`${idPrefix}-panel-${value}`} aria-labelledby={`${idPrefix}-tab-${value}`}>
+      {children}
     </div>
   );
 }

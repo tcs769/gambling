@@ -1,150 +1,134 @@
-.strip {
+/* The mockup's comparison: the navy .gap strip and the two .side cards. */
+.gap {
   display: flex;
+  align-items: center;
+  gap: 18px;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 6px 36px;
-  margin-bottom: 24px;
-  padding: 20px 26px;
-  border-radius: var(--radius);
-  background: var(--navy);
-  color: var(--white);
+  max-width: 960px;
+  background: var(--porphyry);
+  color: #fff;
+  border-radius: 16px;
+  padding: 16px 24px;
+  margin-bottom: 18px;
+}
+.gapk {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+}
+.gap b {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 26px;
+}
+.gapsep {
+  width: 1px;
+  height: 26px;
+  background: rgba(255, 255, 255, 0.35);
 }
 
-.stripLead {
-  font-size: 0.95rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-weight: 600;
-  color: #d5dee9;
-}
-
-.stripBig {
-  font-family: var(--font-serif);
-  font-size: 2.1rem;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.stripRate {
-  margin-left: auto;
-  font-size: 1.4rem;
-  font-weight: 600;
-}
-
-.cards {
+.duo {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  align-items: stretch;
+  gap: 18px;
+  max-width: 960px;
 }
 
-.card {
-  display: flex;
-  flex-direction: column;
+.side {
+  background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--white);
+  border-radius: 20px;
+  overflow: hidden;
+  min-width: 0;
+}
+.can {
+  border: 2px solid var(--porphyry);
+}
+
+.sidehead {
+  margin: 0;
+  padding: 14px 24px;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.5;
+  background: var(--stone);
+  color: var(--ink-soft);
+}
+.can .sidehead {
+  background: var(--porphyry);
+  color: #fff;
+}
+
+.sidebig {
+  padding: 18px 24px 6px;
+}
+.sidebig span {
+  display: block;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.sidebig b {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1.1;
+}
+.can .sidebig b {
+  color: var(--porphyry);
+}
+
+.sidebar {
+  margin: 6px 24px 16px;
+  height: 10px;
+  background: var(--stone);
+  border-radius: 5px;
   overflow: hidden;
 }
-.card[data-side="waramoug"] {
-  border: 2px solid var(--navy);
-}
-
-.cardHead {
-  margin: 0;
-  padding: 14px 22px;
-  font-size: 1.15rem;
-  background: #e7ebf0;
-  color: var(--ink);
-}
-.card[data-side="waramoug"] .cardHead {
-  background: var(--navy);
-  color: var(--white);
-}
-
-.rows {
-  margin: 0;
-  padding: 4px 22px 10px;
-}
-
-.row {
-  display: grid;
-  gap: 6px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--line);
-}
-.row:last-child {
-  border-bottom: 0;
-}
-
-.rowLabel {
-  color: var(--ink-2);
-  font-size: 0.875rem;
-}
-
-.rowValue {
-  margin: 0;
-  font-weight: 600;
-  display: grid;
-  gap: 8px;
-}
-
-.wealth {
-  font-family: var(--font-serif);
-  font-size: 1.9rem;
-  line-height: 1.1;
-  color: var(--navy);
-}
-.card[data-side="advisor"] .wealth {
-  color: var(--ink);
-}
-
-.barTrack {
-  display: block;
-  height: 12px;
-  border-radius: 6px;
-  background: var(--panel);
-}
-.barFill {
+.sidebar i {
   display: block;
   height: 100%;
-  border-radius: 6px;
+  background: var(--advisor);
+  border-radius: 5px;
 }
-.barFill[data-side="advisor"] {
-  background: #8592a3;
-}
-.barFill[data-side="waramoug"] {
-  background: var(--navy);
+.can .sidebar i {
+  background: var(--porphyry);
 }
 
-.mixText {
-  font-weight: 500;
-  font-size: 0.95rem;
-}
-
-.accounts {
-  list-style: none;
+.sidelist {
   margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 4px;
-  font-weight: 500;
+  padding: 0 24px 12px;
 }
-
-.extra {
-  margin-left: 12px;
-  font-weight: 500;
-  color: var(--ink-2);
+.sidelist > div {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.sidelist dt {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 3px;
+}
+.sidelist dd {
+  margin: 0;
+  font-size: 15px;
+}
+.can .sidelist dd {
+  font-weight: 600;
+}
+.sidelist dd > div:first-child {
+  margin-bottom: 6px;
+}
+.line {
+  display: block;
 }
 
 @media (max-width: 900px) {
-  .cards {
+  .duo {
     grid-template-columns: 1fr;
   }
-  .stripRate {
-    margin-left: 0;
+  .gap b {
+    font-size: 22px;
   }
-  .stripBig {
-    font-size: 1.7rem;
+  .sidebig b {
+    font-size: 34px;
   }
 }

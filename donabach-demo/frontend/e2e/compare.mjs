@@ -1,6 +1,7 @@
-// Compare (/compare): the navy strip and the two cards equal the plan's comparison; navy right card; stacked bars; follows the plan on screen.
+// Compare (/compare) as the mockup draws it: heading and lede, the navy strip, the two cards equal the plan's comparison; navy right card;
+// 40px serif wealth, bars, ministack; stacks under 900px; follows the plan on screen.
 import { isMain, runAlone, newPage, dollarsWhole, visibleText } from "./portal.mjs";
-import { DISCLAIMER, wealthM, pct0, feeLine, signedPct2, planFromApi, toInvest } from "./invest-lib.mjs";
+import { DISCLAIMER, wealthM, feeLine, signedPct2, planFromApi, toInvest } from "./invest-lib.mjs";
 
 const rgb = (s) => s.match(/\d+/g).slice(0, 3).map(Number);
 
@@ -13,16 +14,21 @@ export async function runCompare({ browser, base, check }) {
   await page.waitForURL("**/compare");
   const t = (id) => page.getByTestId(id).innerText();
 
+  check(
+    (await page.locator("h1").innerText()) === "Compared with a standard advisor",
+    "title: Compared with a standard advisor",
+  );
+  check(
+    (await page.locator("main .lede").innerText()) === "The same household, managed two ways.",
+    "lede as the mockup",
+  );
   const more = `${wealthM(c.dollars_more)} more at 80`;
   check((await t("dollars-more")) === more, `strip: ${more}`);
   check(
     (await t("rate-per-year")) === `${signedPct2(c.rate_per_year)} a year`,
     `strip: ${signedPct2(c.rate_per_year)} a year`,
   );
-  check(
-    (await page.getByTestId("compare-strip").innerText()).toUpperCase().includes("WITH WARAMOUG"),
-    "strip starts With Waramoug",
-  );
+  check((await page.getByTestId("compare-strip").innerText()).includes("With Waramoug"), "strip starts With Waramoug");
   const strip = rgb(await page.getByTestId("compare-strip").evaluate((e) => getComputedStyle(e).backgroundColor));
   check(strip.join() === "31,58,95", "the strip is navy");
   check(
@@ -31,6 +37,14 @@ export async function runCompare({ browser, base, check }) {
     `cards: ${wealthM(c.advisor.wealth_80)} vs ${wealthM(c.waramoug.wealth_80)}`,
   );
 
+  const wealthStyle = async (side) =>
+    page
+      .getByTestId(`wealth-${side}`)
+      .evaluate((e) => [getComputedStyle(e).fontSize, getComputedStyle(e).fontFamily, getComputedStyle(e).color]);
+  const [aSize, aFont] = await wealthStyle("advisor");
+  const [wSize, , wColor] = await wealthStyle("waramoug");
+  check(aSize === "40px" && wSize === "40px" && /Cambria/.test(aFont), "the wealth figures are 40px serif");
+  check(rgb(wColor).join() === "31,58,95", "the Waramoug figure is navy");
   const adv = page.getByTestId("card-advisor");
   const war = page.getByTestId("card-waramoug");
   const ab = await adv.boundingBox();
@@ -55,7 +69,7 @@ export async function runCompare({ browser, base, check }) {
   ]) {
     const txt = (await el.innerText()).replace(/\s+/g, " ");
     for (const l of [
-      "Projected wealth at 80",
+      "Projected at 80",
       "Mix",
       "Accounts",
       "Harvesting losses",
@@ -63,11 +77,9 @@ export async function runCompare({ browser, base, check }) {
       "Yearly fee",
     ])
       check(txt.includes(l), `${side}: row "${l}"`);
-    const mix = card.mix
-      .filter((m) => Math.round(m.share * 100) > 0)
-      .map((m) => `${m.label} ${pct0(m.share)}`)
-      .join(" · ");
-    check((await t(`mix-${side}`)) === mix, `${side}: mix text "${mix}"`);
+    check((await t(`mix-${side}`)) === card.mix_text, `${side}: mix text "${card.mix_text}"`);
+    const stackH = await el.getByTestId("mix-bar").evaluate((e) => Math.round(e.getBoundingClientRect().height));
+    check(stackH === 14, `${side}: the stacked bar is 14px`);
     check(
       (await el.getByTestId("mix-bar").locator("span").count()) === card.mix.filter((m) => m.share >= 0.0005).length,
       `${side}: stacked bar segments`,
@@ -89,13 +101,10 @@ export async function runCompare({ browser, base, check }) {
       (await t(`fee-${side}`)) === feeLine(card.fee_dollars, card.fee_rate, two),
       `${side}: fee ${feeLine(card.fee_dollars, card.fee_rate, two)}`,
     );
-    check(
-      card.harvested_so_far > 0 === /(Fund-level, in large down years|Stock by stock|None)\s*this year \$/.test(txt),
-      `${side}: a harvest amount shows only above 0`,
-    );
+    check(card.harvested_so_far > 0 === /: \$[\d,]+ so far/.test(txt), `${side}: a harvest amount shows only above 0`);
   }
   const widths = await page
-    .locator("[data-side] > span[aria-hidden], article [aria-hidden='true'] > span[data-side]")
+    .locator("article [aria-hidden='true'] > i[data-side]")
     .evaluateAll((els) =>
       els.map((e) => e.getBoundingClientRect().width / e.parentElement.getBoundingClientRect().width),
     );

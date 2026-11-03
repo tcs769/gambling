@@ -1,8 +1,7 @@
 import type { Plan } from "@/lib/portal-types";
-import { dollarsWhole } from "@/lib/portal-format";
 import { amountOrDash } from "@/lib/invest-format";
-import styles from "./Retirement.module.css";
 import t from "./invest.module.css";
+import styles from "./Retirement.module.css";
 
 type Retirement = Plan["portfolio"]["retirement"];
 
@@ -12,47 +11,47 @@ export function RetirementTab({ retirement }: { retirement: Retirement }) {
       {label}
     </th>
   );
+  const cell = (value: number) => (
+    <td className={`${t.right} num ${Math.abs(value) < 0.5 ? t.dash : ""}`}>{amountOrDash(value)}</td>
+  );
+  const { required } = retirement;
+  // With nothing required there is no "covered": the API's note says why (no pre-tax balance left, or none before 80).
+  const nothingRequired = required.first_amount < 0.5;
   return (
     <div>
-      <section className={t.section} aria-labelledby="ret-income">
-        <h2 id="ret-income" className={t.heading}>
-          Where your income comes from
-        </h2>
-        <div
-          className={`${t.tableWrap} ${styles.scroll}`}
-          tabIndex={0}
-          role="region"
-          aria-label="Where your income comes from"
-        >
-          <table className={`${t.table} ${styles.table}`} data-testid="income-table">
+      <section className={t.panel} aria-labelledby="ret-income">
+        <div className={t.panelHead}>
+          <h2 id="ret-income" className={t.sectionT}>
+            Where your income comes from
+          </h2>
+          <span className={t.mutedS}>First years of retirement, in today&rsquo;s dollars</span>
+        </div>
+        <div className={t.scroll} tabIndex={0} role="region" aria-label="Where your income comes from">
+          <table className={t.hold} data-testid="income-table">
             <caption>Where your income comes from</caption>
             <thead>
               <tr>
                 {head("Age", false)}
-                {head("Year", false)}
                 {head("Social Security")}
-                {head("401(k)/IRA")}
-                {head("Brokerage")}
-                {head("Roth IRA")}
-                {head("Total income")}
-                {head("Spending")}
+                {head("From 401(k) / IRA")}
+                {head("From brokerage")}
+                {head("From Roth")}
                 {head("Tax")}
-                {head("Total used")}
+                {head("Spending")}
               </tr>
             </thead>
             <tbody>
               {retirement.rows.map((row) => (
                 <tr key={row.age}>
-                  <th scope="row">{row.age}</th>
-                  <td>{row.year}</td>
-                  <td className={t.right}>{amountOrDash(row.social_security)}</td>
-                  <td className={t.right}>{amountOrDash(row.from_pretax)}</td>
-                  <td className={t.right}>{amountOrDash(row.from_taxable)}</td>
-                  <td className={t.right}>{amountOrDash(row.from_roth)}</td>
-                  <td className={`${t.right} ${styles.total}`}>{dollarsWhole(row.total_sources)}</td>
-                  <td className={t.right}>{dollarsWhole(row.spending)}</td>
-                  <td className={t.right}>{amountOrDash(row.tax)}</td>
-                  <td className={`${t.right} ${styles.total}`}>{dollarsWhole(row.total_uses)}</td>
+                  <th scope="row" className="num">
+                    {row.age}
+                  </th>
+                  {cell(row.social_security)}
+                  {cell(row.from_pretax)}
+                  {cell(row.from_taxable)}
+                  {cell(row.from_roth)}
+                  {cell(row.tax)}
+                  {cell(row.spending)}
                 </tr>
               ))}
             </tbody>
@@ -60,29 +59,44 @@ export function RetirementTab({ retirement }: { retirement: Retirement }) {
         </div>
       </section>
 
-      <section className={t.section} aria-labelledby="ret-order">
-        <h2 id="ret-order" className={t.heading}>
-          Withdrawal order
-        </h2>
-        <ol className={styles.order} data-testid="withdrawal-order">
-          {retirement.withdrawal_order.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ol>
-      </section>
+      <div className={t.twocol}>
+        <section className={t.panel} aria-labelledby="ret-order">
+          <div className={t.panelHead}>
+            <h2 id="ret-order" className={t.sectionT}>
+              Withdrawal order
+            </h2>
+          </div>
+          <ol className={styles.order} data-testid="withdrawal-order">
+            {retirement.withdrawal_order.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ol>
+        </section>
 
-      <section className={t.section} aria-labelledby="ret-required">
-        <h2 id="ret-required" className={t.heading}>
-          Required withdrawals
-        </h2>
-        <dl className={t.lines} data-testid="required">
-          <dt>Starting age</dt>
-          <dd className="num">{retirement.required.start_age}</dd>
-          <dt>First required amount</dt>
-          <dd className="num">{dollarsWhole(retirement.required.first_amount)}</dd>
-        </dl>
-        <p className={styles.note}>{retirement.required.note}</p>
-      </section>
+        <section className={t.panel} aria-labelledby="ret-required">
+          <div className={t.panelHead}>
+            <h2 id="ret-required" className={t.sectionT}>
+              Required withdrawals
+            </h2>
+          </div>
+          <dl className={t.kv} data-testid="required">
+            <div>
+              <dt>Start at age</dt>
+              <dd className="num">{required.start_age}</dd>
+            </div>
+            <div>
+              <dt>First required amount</dt>
+              <dd className="num">{amountOrDash(required.first_amount)}</dd>
+            </div>
+            <div>
+              <dt>Already covered by planned withdrawals</dt>
+              <dd data-testid="required-covered">
+                {nothingRequired ? required.note : required.covered ? "Yes" : "No"}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </div>
     </div>
   );
 }

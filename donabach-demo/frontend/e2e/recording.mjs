@@ -3,17 +3,20 @@
 // screen being interactive) and asserts the plan steps (4, 6, 8) take under 1.5 s and the Reading step under 6 s.
 // Only path.join / fileURLToPath for file paths and no shell commands, so it runs the same on Windows.
 import { isMain, runAlone, newPage, apiGet, dollarsWhole, PDF_BYTES } from "./portal.mjs";
-import { wealthM, dash, pct0, pctTrim, feeLine, signedPct2, tableRows, planFromApi } from "./invest-lib.mjs";
+import {
+  wealthM,
+  dash,
+  pct0,
+  pctTrim,
+  signedPct2,
+  tableRows,
+  listRows,
+  moveText,
+  STATUS,
+  planFromApi,
+} from "./invest-lib.mjs";
 
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-const STATUS = {
-  done: "Done",
-  ongoing: "Ongoing",
-  scheduled: "Scheduled",
-  needs_ok: "Needs your OK",
-  your_step: "Your step",
-};
-
 /** Every figure on the Invest Overview against the API's plan (strip, mix, what goes where, moves, what changed). */
 async function overviewEqualsPlan(page, plan, check, label) {
   const pf = plan.portfolio;
@@ -21,35 +24,25 @@ async function overviewEqualsPlan(page, plan, check, label) {
   check(
     (await t("projected-wealth")) === wealthM(pf.summary.projected_wealth) &&
       (await t("invested-today")) === dollarsWhole(pf.summary.invested_today) &&
-      (await t("yearly-fee")) === feeLine(pf.summary.fee_dollars, pf.summary.fee_rate) &&
+      (await t("yearly-fee")) === dollarsWhole(pf.summary.fee_dollars) &&
       (await t("tax-saved")) === dollarsWhole(pf.summary.tax_saved),
     `${label}: the summary strip equals the API's (${wealthM(pf.summary.projected_wealth)})`,
   );
   const mix = pf.overview.mix.rows.map((r) =>
     r.amount < 0.5
-      ? [r.label, "—", "—", "—"]
+      ? [r.label, "–", "–", "–"]
       : [r.label, dollarsWhole(r.amount), pct0(r.share), pctTrim(r.expected_return)],
   );
   check(eq(await tableRows(page.getByTestId("mix-table")), mix), `${label}: the mix table equals the API's`);
-  const loc = pf.overview.location.rows.map((r) => [
-    r.label,
-    dash(r.brokerage),
-    dash(r.pretax),
-    dash(r.roth),
-    dash(r.total),
-  ]);
+  const loc = pf.overview.location.rows.map((r) => [r.label, dash(r.brokerage), dash(r.pretax), dash(r.roth)]);
   check(eq(await tableRows(page.getByTestId("location-table")), loc), `${label}: what goes where equals the API's`);
-  const moves = (await tableRows(page.getByTestId("moves-table"))).map((r) => [
-    r[0].replace(/Changed$/, ""),
-    r[1].replace(/\s+/g, ""),
-    r[2],
-    r[3].replace(/\s*Approve$/, ""),
-  ]);
+  const shown = await listRows(page.getByTestId("moves-list"));
+  // a move that changed also carries the "Changed" tag after its words
+  const moves = shown.map(([pill, words, when]) => [pill, words.replace(/\s*Changed$/, ""), when]);
   const want = pf.overview.moves.map((m) => [
-    m.title,
-    (m.amount === null ? "—" : dollarsWhole(m.amount)) + (m.detail ?? "").replace(/\s+/g, ""),
-    m.timing,
     STATUS[m.status],
+    moveText(m).replace(/\s+/g, " "),
+    m.status === "needs_ok" ? "Approve" : m.timing,
   ]);
   check(eq(moves, want), `${label}: this year's moves equal the API's`);
 }
@@ -171,13 +164,12 @@ export async function runRecording({ browser, base, check, notes }) {
   const w = (await page.getByTestId("what-changed").innerText()).replace(/\s+/g, " ");
   check(
     w.includes(
-      `Roth conversion at ${wc.conversion_age}: ${dollarsWhole(wc.conversion_before)} → ${dollarsWhole(wc.conversion_after)}`,
+      `Roth conversion at ${wc.conversion_age} ${dollarsWhole(wc.conversion_before)} → ${dollarsWhole(wc.conversion_after)}`,
     ),
-    `8 What changed: Roth conversion at ${wc.conversion_age}: ${dollarsWhole(wc.conversion_before)} → ${dollarsWhole(wc.conversion_after)}`,
+    `8 What changed: Roth conversion at ${wc.conversion_age} ${dollarsWhole(wc.conversion_before)} → ${dollarsWhole(wc.conversion_after)}`,
   );
   check(
-    w.includes(wc.changed) &&
-      w.includes(`Projected wealth at 80: ${wealthM(wc.wealth_before)} → ${wealthM(wc.wealth_after)}`),
+    w.includes(wc.changed) && w.includes(`Projected at 80 ${wealthM(wc.wealth_before)} → ${wealthM(wc.wealth_after)}`),
     "8 What changed: the change and the wealth before and after",
   );
   const next = page.locator('[data-move="conversion_next"]');

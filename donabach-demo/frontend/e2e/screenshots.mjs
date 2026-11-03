@@ -25,9 +25,9 @@ export async function runShots({ browser, base, check }) {
   const tabs = async (prefix) => {
     await shot(`${prefix}_overview`);
     await hash("Holdings");
-    for (const account of ["Brokerage", "401(k)/IRA", "Roth IRA"]) {
+    for (const account of ["Brokerage", "401(k) and IRA", "Roth IRA"]) {
       await page.getByRole("tab", { name: account, exact: true }).click();
-      await shot(`${prefix}_holdings_${account.replace(/\W+/g, "").toLowerCase()}`);
+      await shot(`${prefix}_holdings_${account.replace(/ and /, "").replace(/\W+/g, "").toLowerCase()}`);
     }
     await hash("Taxes");
     await shot(`${prefix}_taxes`);

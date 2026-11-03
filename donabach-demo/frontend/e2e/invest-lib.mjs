@@ -4,12 +4,12 @@ import { apiPost, apiGet, dollarsWhole, toGoals } from "./portal.mjs";
 
 export const DISCLAIMER = "Illustration based on simulated outcomes. Not investment advice.";
 export const wealthM = (v) => (Math.abs(v) >= 999_500 ? `$${(v / 1_000_000).toFixed(2)}M` : dollarsWhole(v));
-export const dash = (v) => (Math.abs(v) < 0.5 ? "—" : dollarsWhole(v));
+export const dash = (v) => (Math.abs(v) < 0.5 ? "–" : dollarsWhole(v));
 export const pct0 = (f) => `${Math.round(f * 100)}%`;
 export const pctTrim = (f) => `${+(f * 100).toFixed(2)}%`;
 export const pct2 = (f) => `${(f * 100).toFixed(2)}%`;
 export const signedPct2 = (f) => `${f < 0 ? "−" : "+"}${(Math.abs(f) * 100).toFixed(2)}%`;
-export const feeLine = (d, r, two = false) => `${dollarsWhole(d)} · ${two ? pct2(r) : pctTrim(r)}`;
+export const feeLine = (d, r, two = false) => `${dollarsWhole(d)} (${two ? pct2(r) : pctTrim(r)})`;
 
 /** Every body row of a table: the text of each cell. */
 export const tableRows = (locator) =>
@@ -24,6 +24,41 @@ export const footRows = (locator) =>
       [...tr.children].map((c) => c.innerText.replace(/\s+/g, " ").trim()),
     ),
   );
+
+/** The cells of every row of a table, or of a list's items (the text of each direct child), squashed. */
+export const listRows = (locator) =>
+  locator.evaluate((list) =>
+    [...list.children].map((li) => [...li.children].map((c) => c.innerText.replace(/\s+/g, " ").trim())),
+  );
+
+/** The words of a move in the mockup's list, built again here from the API's move (not imported from src/). */
+export function moveText(m) {
+  const amt = m.amount === null || m.amount === undefined ? 0 : m.amount;
+  const has = Math.abs(amt) >= 0.5;
+  const d = m.detail ? ` (${m.detail.charAt(0).toLowerCase()}${m.detail.slice(1)})` : "";
+  switch (m.key) {
+    case "invest":
+      return `Invested your savings in the target mix${has ? `, ${dollarsWhole(amt)}` : ""}`;
+    case "lots":
+      return "Selling the highest-cost shares first";
+    case "harvest":
+      return `Selling losing positions as they appear${has ? `, ${dollarsWhole(amt)} harvested so far` : ""}`;
+    case "conversion":
+    case "conversion_next":
+      return `Convert ${dollarsWhole(amt)} from your 401(k) / IRA to your Roth${d}`;
+    case "k401":
+      return `Raise your 401(k) contribution to ${dollarsWhole(amt)} through your employer`;
+    default:
+      return `${m.title}${has ? `, ${dollarsWhole(amt)}` : ""}${d}`;
+  }
+}
+export const STATUS = {
+  done: "Done",
+  ongoing: "Ongoing",
+  scheduled: "Scheduled",
+  needs_ok: "Needs your OK",
+  your_step: "Your step",
+};
 
 /** The API's plan for John Smith with the given answers changed (the same call the app makes). */
 export async function planFromApi(base, { patch = {}, event = "none", previous = null, label = null } = {}) {

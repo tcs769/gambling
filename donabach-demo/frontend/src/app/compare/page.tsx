@@ -15,7 +15,9 @@ export default function ComparePage() {
   if (!ready || !state.plan) return null;
   return (
     <Screen
-      title="Compare"
+      title="Compared with a standard advisor"
+      lede="The same household, managed two ways."
+      actionsWidth={960}
       back={{ onClick: () => router.push("/invest") }}
       footer={<p className={styles.disclaimer}>{DISCLAIMER}</p>}
     >

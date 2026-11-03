@@ -8,9 +8,9 @@ export function wealth(value: number): string {
   return `${value < 0 ? "−" : ""}$${(Math.abs(value) / 1_000_000).toFixed(2)}M`;
 }
 
-/** A dollar amount, or a dash when there is nothing ($0). */
+/** A dollar amount, or the mockup's dash when there is nothing ($0). */
 export function amountOrDash(value: number | null | undefined): string {
-  return value === null || value === undefined || Math.abs(value) < 0.5 ? "—" : dollarsWhole(value);
+  return value === null || value === undefined || Math.abs(value) < 0.5 ? "–" : dollarsWhole(value);
 }
 
 /** 0.5525 -> "55%". */
@@ -34,9 +34,9 @@ export function signedPercent2(fraction: number): string {
   return `${fraction < 0 ? "−" : "+"}${text}%`;
 }
 
-/** "$4,176 · 0.35%". */
+/** "$4,176 (0.35%)". */
 export function feeLine(dollars: number, rate: number, decimals: "trim" | "two" = "trim"): string {
-  return `${dollarsWhole(dollars)} · ${decimals === "two" ? percent2(rate) : percentTrim(rate)}`;
+  return `${dollarsWhole(dollars)} (${decimals === "two" ? percent2(rate) : percentTrim(rate)})`;
 }
 
 /** "$1.09M more at 80" / "$0.2M less at 80". */

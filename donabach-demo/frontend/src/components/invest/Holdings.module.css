@@ -1,58 +1,55 @@
-.tableGap {
-  margin-top: 18px;
+.acctmeta {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  color: var(--ink-soft);
+  font-size: 14.5px;
+}
+.acctmeta b {
+  color: var(--ink);
+  font-weight: 600;
 }
 
+/* the mockup's .bars */
 .bars {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 8px;
 }
-
-.barRow {
+.bars li {
   display: grid;
-  grid-template-columns: 220px minmax(80px, 1fr) 56px 96px;
+  grid-template-columns: 160px 1fr 44px;
+  gap: 12px;
   align-items: center;
-  gap: 14px;
+  padding: 6px 0;
+  font-size: 14.5px;
 }
-
-.barLabel {
-  min-width: 0;
-}
-
 .track {
-  height: 12px;
-  border-radius: 3px;
-  background: var(--panel);
+  display: block;
+  height: 10px;
+  background: var(--stone);
+  border-radius: 5px;
+  overflow: hidden;
 }
-
-.fill {
+.track i {
   display: block;
   height: 100%;
-  border-radius: 3px;
-  background: var(--navy);
+  background: var(--porphyry);
+  border-radius: 5px;
 }
-
-.barShare,
-.barAmount {
+.share {
   text-align: right;
-  font-variant-numeric: tabular-nums;
+}
+.second {
+  margin-top: 22px;
 }
 
-.barAmount {
-  color: var(--ink-2);
-}
-
-@media (max-width: 700px) {
-  .barRow {
-    grid-template-columns: 1fr 52px 84px;
+@media (max-width: 520px) {
+  .bars li {
+    grid-template-columns: 1fr 44px;
   }
   .track {
     grid-column: 1 / -1;
     grid-row: 2;
-  }
-  .barLabel {
-    grid-row: 1;
   }
 }

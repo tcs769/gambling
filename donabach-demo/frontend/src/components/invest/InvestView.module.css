@@ -1,0 +1,21 @@
+/* The mockup's .planhead: the title left, the tabs right. */
+.planhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.planhead h1 {
+  margin: 0;
+}
+.planhead > div {
+  max-width: 100%;
+}
+
+@media (max-width: 900px) {
+  .planhead h1 {
+    font-size: 32px;
+  }
+}

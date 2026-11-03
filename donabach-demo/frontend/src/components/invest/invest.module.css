@@ -1,39 +1,58 @@
-/* Shared by the Invest and Compare screens: sections, tables, tags. */
-.section {
-  margin-top: 36px;
-}
-.section:first-child {
-  margin-top: 0;
+/* Shared by the Invest and Compare screens: the mockup's panels, tables, key-value lists and tags. */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px 24px;
+  margin-bottom: 18px;
+  min-width: 0;
 }
 
-.heading {
-  font-size: 1.2rem;
+.panelHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
   margin-bottom: 14px;
 }
 
-.subheading {
-  font-family: var(--font-sans);
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--ink-2);
-  margin-bottom: 8px;
+.sectionT {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.2;
+  color: var(--ink);
+  margin: 0;
 }
 
-.tableWrap {
+.mutedS {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.twocol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+/* a table that scrolls sideways on a narrow screen rather than spilling out of its panel */
+.scroll {
   overflow-x: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--white);
+}
+.scroll:focus-visible {
+  outline-offset: 2px;
 }
 
-.table {
+.hold {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.95rem;
+  margin-top: 14px;
+  font-size: 15px;
   font-variant-numeric: tabular-nums;
 }
-
-.table caption {
+.hold caption {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -41,71 +60,93 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
-
-.table th,
-.table td {
-  padding: 10px 14px;
+.hold th {
   text-align: left;
-  border-bottom: 1px solid var(--line);
-  vertical-align: middle;
-}
-
-.table thead th {
-  background: var(--panel);
-  color: var(--ink);
   font-weight: 600;
-  font-size: 0.85rem;
-  white-space: nowrap;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--line);
 }
-
-.table tbody tr:last-child > th,
-.table tbody tr:last-child > td {
+.hold td,
+.hold tbody th {
+  padding: 10px 6px;
+  border-bottom: 1px solid var(--line);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--ink);
+}
+.hold tbody tr:last-child > th,
+.hold tbody tr:last-child > td {
   border-bottom: 0;
 }
-
-.table tbody th {
-  font-weight: 500;
+.hold .right {
+  text-align: right;
 }
-
-.table .right {
+.hold thead th.right {
   text-align: right;
 }
 
-.table tfoot th,
-.table tfoot td {
-  font-weight: 700;
-  background: var(--panel);
-  border-top: 1px solid var(--line);
-  border-bottom: 0;
-}
-
 .dash {
-  color: var(--ink-2);
+  color: var(--ink-soft);
 }
 
 .muted {
-  color: var(--ink-2);
+  color: var(--ink-soft);
+}
+
+/* the mockup's key-value list; the last row may be a total with a heavy top rule */
+.kv {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.kv > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.kv > div:first-child {
+  border-top: 0;
+}
+.kv dt {
+  color: var(--ink-soft);
+}
+.kv dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+.kv .total {
+  border-top: 1.5px solid var(--ink);
+}
+.kv .total dt {
+  color: var(--ink);
+  font-weight: 600;
+}
+.kv .total dd {
+  color: var(--porphyry);
 }
 
 /* a row (or a cell) that moved after a change */
 .changedRow > th,
 .changedRow > td {
-  background: var(--brown-wash);
+  background: var(--bronze-wash);
 }
 .changedRow > :first-child {
-  box-shadow: inset 3px 0 0 var(--brown-dark);
+  box-shadow: inset 3px 0 0 var(--bronze);
 }
 
 .tag {
   display: inline-block;
   margin-left: 8px;
   padding: 1px 7px;
-  border: 1px solid var(--brown-dark);
+  border: 1px solid var(--bronze);
   border-radius: 4px;
-  color: var(--brown-dark);
-  background: var(--white);
-  font-family: var(--font-sans);
-  font-size: 0.75rem;
+  color: var(--bronze);
+  background: var(--surface);
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.5;
   vertical-align: middle;
@@ -115,45 +156,16 @@
 .tagQuiet {
   composes: tag;
   border-color: var(--line);
-  color: var(--ink-2);
+  color: var(--ink-soft);
+  font-family: var(--sans);
   margin-left: 10px;
 }
 
-.lines {
-  margin: 0;
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 8px 28px;
-  font-variant-numeric: tabular-nums;
-}
-.lines dt {
-  color: var(--ink-2);
-}
-.lines dd {
-  margin: 0;
-  font-weight: 600;
-}
-.lines dd.strong {
-  color: var(--navy);
-}
-
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 18px 20px;
-}
-
-.quiet {
-  color: var(--ink-2);
-}
-
 @media (max-width: 900px) {
-  .section {
-    margin-top: 28px;
+  .twocol {
+    grid-template-columns: 1fr;
   }
-  .table th,
-  .table td {
-    padding: 8px 10px;
+  .panel {
+    padding: 18px 16px;
   }
 }

@@ -1,5 +1,6 @@
+/* The mockup's .fine line: the one disclaimer under the actions of Invest and Compare. */
 .disclaimer {
-  margin-top: 24px;
-  color: var(--ink-2);
-  font-size: 0.875rem;
+  margin-top: 40px;
+  color: var(--ink-soft);
+  font-size: 12.5px;
 }

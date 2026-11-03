@@ -1,63 +1,64 @@
-.cards {
+/* the mockup's .goals: three cards in a row */
+.goals {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 18px;
 }
-
-.card {
-  display: grid;
-  gap: 6px;
-  padding: 20px 22px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--white);
+.goals > li {
+  margin-bottom: 0;
 }
 
-.label {
-  font-size: 1.15rem;
+.gt {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 22px;
+  color: var(--ink);
+}
+.gs {
+  color: var(--ink-soft);
+  font-size: 14.5px;
+  margin-bottom: 16px;
 }
 
-.target {
-  font-size: 1.35rem;
-  font-weight: 600;
-  margin-top: 6px;
-}
-
-.timing {
-  color: var(--ink-2);
-}
-
-.track {
-  height: 10px;
-  margin-top: 12px;
-  border-radius: 5px;
-  background: var(--panel);
+.prog {
+  height: 8px;
+  background: var(--stone);
+  border-radius: 4px;
   overflow: hidden;
 }
-
-.fill {
+.prog i {
   display: block;
   height: 100%;
-  border-radius: 5px;
-  background: var(--navy);
+  background: var(--good);
 }
-.fill[data-status="Close"] {
-  background: var(--brown);
+.prog i[data-status="Close"] {
+  background: var(--warn);
 }
-.fill[data-status="Behind"] {
+.prog i[data-status="Behind"] {
   background: var(--bad);
 }
 
-.status {
-  font-weight: 600;
+.gf {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+.gf span {
   color: var(--good);
+  font-weight: 600;
 }
-.status[data-status="Close"] {
-  color: var(--brown-dark);
+.gf span[data-status="Close"] {
+  color: var(--warn);
 }
-.status[data-status="Behind"] {
+.gf span[data-status="Behind"] {
   color: var(--bad);
+}
+
+@media (max-width: 900px) {
+  .goals {
+    grid-template-columns: 1fr;
+  }
 }

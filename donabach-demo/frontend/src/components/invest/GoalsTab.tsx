@@ -1,18 +1,18 @@
 import type { Plan } from "@/lib/portal-types";
 import styles from "./GoalsTab.module.css";
+import t from "./invest.module.css";
 
 type Goals = Plan["portfolio"]["goals"];
 
 export function GoalsTab({ goals }: { goals: Goals }) {
   return (
-    <ul className={styles.cards} data-testid="goal-cards">
+    <ul className={styles.goals} data-testid="goal-cards">
       {goals.cards.map((card) => (
-        <li key={card.key} className={styles.card} data-goal={card.key}>
-          <h2 className={styles.label}>{card.label}</h2>
-          <p className={`${styles.target} num`}>{card.target_label}</p>
-          <p className={styles.timing}>{card.timing}</p>
+        <li key={card.key} className={`${t.panel} ${styles.goal}`} data-goal={card.key}>
+          <h2 className={styles.gt}>{card.label}</h2>
+          <p className={styles.gs}>{card.timing}</p>
           <div
-            className={styles.track}
+            className={styles.prog}
             role="progressbar"
             aria-label={`${card.label} progress`}
             aria-valuemin={0}
@@ -20,11 +20,12 @@ export function GoalsTab({ goals }: { goals: Goals }) {
             aria-valuenow={card.progress}
             aria-valuetext={card.status}
           >
-            <span className={styles.fill} data-status={card.status} style={{ width: `${card.progress * 100}%` }} />
+            <i data-status={card.status} style={{ width: `${card.progress * 100}%` }} />
           </div>
-          <p className={styles.status} data-status={card.status}>
-            {card.status}
-          </p>
+          <div className={styles.gf}>
+            <b className="num">{card.target_label}</b>
+            <span data-status={card.status}>{card.status}</span>
+          </div>
         </li>
       ))}
     </ul>

@@ -1,57 +1,103 @@
-.mixTable {
-  margin-top: 18px;
-}
-
 .swatch {
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
   margin-right: 10px;
-  border-radius: 2px;
-  vertical-align: baseline;
+  vertical-align: -1px;
 }
 
-.cell {
-  min-width: 110px;
+/* What goes where: the mockup's .matrix */
+.matrix {
+  font-size: 14.5px;
 }
-
+.matrix td,
+.matrix tbody th {
+  padding: 10px 8px;
+  font-size: 14.5px;
+}
+.matrix td.c1 {
+  background: var(--porphyry-wash);
+}
+.matrix td.c2 {
+  background: rgba(31, 58, 95, 0.13);
+}
+.matrix td.c3 {
+  background: rgba(31, 58, 95, 0.22);
+  font-weight: 600;
+}
+.tot th,
+.tot td {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 14.5px;
+  padding: 10px 8px;
+  border-top: 1.5px solid var(--ink);
+  border-bottom: 0;
+}
 .movedLocation > th {
-  background: var(--brown-wash);
-  box-shadow: inset 3px 0 0 var(--brown-dark);
+  background: var(--bronze-wash);
+  box-shadow: inset 3px 0 0 var(--bronze);
+}
+.caption {
+  margin-top: 12px;
 }
 
-.moves .title {
-  max-width: 420px;
-  line-height: 1.35;
+/* This year's moves: the mockup's .moves */
+.moves {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
-
-.amount {
-  white-space: nowrap;
+.moves li {
+  display: grid;
+  grid-template-columns: 130px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 13px 0;
+  border-top: 1px solid var(--line);
 }
-
+.moves li:first-child {
+  border-top: 0;
+}
+.changedMove {
+  background: var(--bronze-wash);
+  box-shadow: inset 3px 0 0 var(--bronze);
+  padding-left: 12px !important;
+  margin-left: -12px;
+  padding-right: 12px !important;
+  margin-right: -12px;
+  border-radius: 6px;
+}
+.what {
+  min-width: 0;
+}
 .detail {
-  margin-left: 10px;
-  color: var(--ink-2);
-  font-size: 0.875rem;
+  color: var(--ink-soft);
 }
-
-.statusCell {
-  white-space: nowrap;
+/* the mockup leaves the when text at the body size and colour */
+.when {
+  text-align: right;
 }
-
-.approve {
-  min-height: 32px;
-  margin-left: 12px;
-  padding: 0 14px;
-  font-size: 0.9rem;
+.mini {
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  background: var(--porphyry);
+  color: #fff;
+}
+.mini:hover {
+  background: var(--navy-deep);
 }
 
 @media (max-width: 700px) {
-  .moves .title {
-    min-width: 200px;
+  .moves li {
+    grid-template-columns: 1fr auto;
   }
-}
-
-.when {
-  white-space: nowrap;
+  .what {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 }

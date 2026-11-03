@@ -8,8 +8,9 @@ import { Overview } from "./Overview";
 import { RetirementTab } from "./Retirement";
 import { SummaryStrip } from "./SummaryStrip";
 import { TaxesTab } from "./Taxes";
-import { Tabs } from "./Tabs";
+import { TabList, TabPanel } from "./Tabs";
 import { WhatChanged } from "./WhatChanged";
+import styles from "./InvestView.module.css";
 
 const TABS = [
   { key: "overview", label: "Overview" },
@@ -22,7 +23,7 @@ type TabKey = (typeof TABS)[number]["key"];
 
 const isTab = (value: string): value is TabKey => TABS.some((t) => t.key === value);
 
-/** The Invest page body: what changed, the summary strip, and the five tabs (the selected tab is in the URL hash). */
+/** The Invest page: the heading row with the five tabs, what changed, the summary strip, and the selected tab (kept in the URL hash). */
 export function InvestView({ plan }: { plan: Plan }) {
   const [tab, setTab] = useState<TabKey>("overview");
 
@@ -44,15 +45,19 @@ export function InvestView({ plan }: { plan: Plan }) {
   const { portfolio } = plan;
   return (
     <div data-plan-id={plan.plan_id}>
+      <div className={styles.planhead}>
+        <h1>Invest</h1>
+        <TabList label="Invest sections" idPrefix="invest" tabs={[...TABS]} value={tab} onChange={select} />
+      </div>
       {plan.what_changed && <WhatChanged change={plan.what_changed} horizon={portfolio.summary.horizon_age} />}
       <SummaryStrip summary={portfolio.summary} />
-      <Tabs label="Invest sections" idPrefix="invest" tabs={[...TABS]} value={tab} onChange={select}>
+      <TabPanel idPrefix="invest" value={tab}>
         {tab === "overview" && <Overview plan={plan} />}
         {tab === "holdings" && <HoldingsTab holdings={portfolio.holdings} />}
         {tab === "taxes" && <TaxesTab taxes={portfolio.taxes} />}
         {tab === "retirement" && <RetirementTab retirement={portfolio.retirement} />}
         {tab === "goals" && <GoalsTab goals={portfolio.goals} />}
-      </Tabs>
+      </TabPanel>
     </div>
   );
 }

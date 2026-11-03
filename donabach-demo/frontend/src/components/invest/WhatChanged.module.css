@@ -1,41 +1,53 @@
-.block {
-  margin-bottom: 24px;
-  padding: 18px 22px 20px;
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--brown);
-  border-radius: var(--radius);
-  background: var(--brown-wash);
+/* The mockup's .changed: a bronze box above the summary. */
+.changed {
+  border: 2px solid var(--bronze);
+  background: var(--bronze-wash);
+  border-radius: 16px;
+  padding: 16px 22px;
+  margin-bottom: 18px;
+}
+
+.chead {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
 }
 
 .title {
-  font-size: 1.1rem;
-  margin-bottom: 10px;
-  color: var(--brown-dark);
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--ink);
 }
 
-.list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.what {
+  color: var(--ink-soft);
+}
+
+.cgrid {
   display: grid;
-  gap: 6px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
 }
-
-.list li {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-}
-
-.first {
-  font-size: 1.05rem;
+.cgrid > div {
+  min-width: 0;
 }
 
 .label {
-  color: var(--ink-2);
+  display: block;
+  font-size: 13px;
+  color: var(--ink-soft);
 }
 
 .value {
-  font-weight: 600;
-  color: var(--ink);
+  font-size: 16px;
+}
+
+@media (max-width: 900px) {
+  .cgrid {
+    grid-template-columns: 1fr 1fr;
+  }
 }

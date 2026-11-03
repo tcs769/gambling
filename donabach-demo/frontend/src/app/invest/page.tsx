@@ -15,7 +15,6 @@ export default function InvestPage() {
   if (!ready || !state.plan) return null;
   return (
     <Screen
-      title="Invest"
       back={{ onClick: () => router.push("/goals") }}
       next={{ label: "Compare", onClick: () => router.push("/compare") }}
       footer={<p className={styles.disclaimer}>{DISCLAIMER}</p>}

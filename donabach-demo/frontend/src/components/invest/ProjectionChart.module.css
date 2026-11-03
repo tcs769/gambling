@@ -1,28 +1,57 @@
 .frame {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--white);
-  padding: 8px 8px 0;
-}
-.chart {
-  height: 340px;
   width: 100%;
 }
-.chart[hidden] {
-  display: none;
+
+/* the mockup's .proj drawing */
+.proj {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
+.grid line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.ylab text {
+  fill: var(--ink-soft);
+  font-size: 12px;
+  text-anchor: end;
+}
+.xlab text {
+  fill: var(--ink-soft);
+  font-size: 12px;
+  text-anchor: middle;
+}
+.band {
+  fill: var(--bronze-wash);
+}
+.mile {
+  stroke: var(--bronze);
+  stroke-dasharray: 4 4;
+}
+.line {
+  fill: none;
+  stroke: var(--porphyry);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.end {
+  fill: var(--porphyry);
+}
+.tag {
+  fill: var(--ink-soft);
+  font-size: 12px;
+}
+
 .tableScroll {
-  max-height: 340px;
+  max-height: 260px;
   overflow-y: auto;
-  margin-bottom: 8px;
 }
+
 .toggle {
   display: flex;
   justify-content: flex-end;
-  margin-top: 6px;
-}
-@media (max-width: 600px) {
-  .chart {
-    height: 280px;
-  }
+  margin-top: 4px;
+  font-size: 14px;
 }

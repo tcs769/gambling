@@ -16,12 +16,24 @@ import numpy as np
 
 from app.planner.baseline import RIA_BASELINE
 from app.planner.plan import EVAL_SEED_OFFSET, VALIDATION_PATHS, VALIDATION_SEED_OFFSET
+import app.planner.search as search_module
 from app.planner.search import FORCED_SALE_LIMIT, search_matched
 from app.planner.strategies import Strategy, menu
 from app.schemas import JobLoss
 from app.sim.simulate import build_inputs, run_batch, run_detail
 from app.study import metrics
 from app.study.showcase_search import SEED, Profile, from_json, plausibility, to_json, transition
+
+def _run_batch_allowing_none(inputs, policies, *a, **k):
+    """The search asks for the direct-indexing strategies of its menu first; a menu without any (the non-direct-indexing half of this
+    study) gives it an empty list, which the kernel cannot take: answer with an empty result."""
+    if len(policies) == 0:
+        z = np.zeros((0, inputs.n_paths))
+        return run_batch.__globals__["BatchResult"](wealth=z, taxes_paid=z, pretax_owed=z, unfunded=z, forced_years=z)
+    return run_batch(inputs, policies, *a, **k)
+
+
+search_module.run_batch = _run_batch_allowing_none  # the harness's own search only; the kernel and its assumptions are untouched
 
 JOB_LOSS = JobLoss(year=1, years=1, keep=0.0)
 LM = menu(style="liability_matched")

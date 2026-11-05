@@ -225,7 +225,7 @@ export async function runInvest({ browser, base, check }) {
   const expectMoves = ov.moves.map((m) => [
     STATUS[m.status],
     moveText(m).replace(/\s+/g, " "),
-    m.status === "needs_ok" ? "Approve" : m.timing,
+    m.status === "needs_ok" ? `${m.timing} Approve` : m.timing,
   ]);
   check(eq(moveRows, expectMoves), "this year's moves equal the API's (pill, description, when or Approve)");
   check((await page.getByText("Waramoug handles these for you", { exact: true }).count()) === 1, "the moves caption");

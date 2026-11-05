@@ -18,7 +18,7 @@ import {
 
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 /** Every figure on the Invest Overview against the API's plan (strip, mix, what goes where, moves, what changed). */
-async function overviewEqualsPlan(page, plan, check, label) {
+async function overviewEqualsPlan(page, plan, check, label, approved = []) {
   const pf = plan.portfolio;
   const t = (id) => page.getByTestId(id).innerText();
   check(
@@ -39,10 +39,11 @@ async function overviewEqualsPlan(page, plan, check, label) {
   const shown = await listRows(page.getByTestId("moves-list"));
   // a move that changed also carries the "Changed" tag after its words
   const moves = shown.map(([pill, words, when]) => [pill, words.replace(/\s*Changed$/, ""), when]);
+  // a move the customer approved shows as Scheduled, with its timing
   const want = pf.overview.moves.map((m) => [
-    STATUS[m.status],
+    approved.includes(m.key) ? STATUS.scheduled : STATUS[m.status],
     moveText(m).replace(/\s+/g, " "),
-    m.status === "needs_ok" ? "Approve" : m.timing,
+    m.status === "needs_ok" && !approved.includes(m.key) ? `${m.timing} Approve` : m.timing,
   ]);
   check(eq(moves, want), `${label}: this year's moves equal the API's`);
 }
@@ -178,7 +179,17 @@ export async function runRecording({ browser, base, check, notes }) {
       (await next.getByRole("button", { name: /^Approve/ }).count()) === 1,
     "8 Invest: the larger conversion shows Needs your OK again, Approve visible",
   );
-  await overviewEqualsPlan(page, jl, check, "8 Invest");
+  const nextTiming = jl.portfolio.overview.moves.find((m) => m.key === "conversion_next").timing;
+  check(
+    (await next.innerText()).replace(/\s+/g, " ").includes(nextTiming),
+    `8 Invest: the changed conversion shows its timing, "${nextTiming}", beside Approve`,
+  );
+  const now = page.locator('[data-move="conversion"]');
+  check(
+    (await now.locator("[data-status]").innerText()) === "Scheduled" && (await now.getByRole("button").count()) === 0,
+    "8 Invest: the conversion approved before the change, which the new plan leaves as it was, stays Scheduled",
+  );
+  await overviewEqualsPlan(page, jl, check, "8 Invest", ["conversion"]);
   check(issues.length === 0, `no console errors in the flow (${issues.join(" | ")})`);
   await context.close();
 

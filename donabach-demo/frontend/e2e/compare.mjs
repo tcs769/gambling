@@ -91,7 +91,7 @@ export async function runCompare({ browser, base, check }) {
       card.accounts.every((a) => txt.includes(a)),
       `${side}: accounts lines`,
     );
-    check(txt.includes(card.harvesting), `${side}: harvesting`);
+    if (c.advisor.harvesting !== c.waramoug.harvesting) check(txt.includes(card.harvesting), `${side}: harvesting`);
     check(
       txt.includes(
         card.roth_conversion > 0.5

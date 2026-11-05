@@ -17,7 +17,7 @@ const BOTTOM = 210;
 const LEFT = 60;
 const RIGHT_PAD = 20;
 const TAG_LANE = 20;
-const MIN_TICK_GAP = 64; // a decade tick this close to the first or last age is left out, so the age labels never crowd
+const MIN_TICK_GAP = 90; // a decade tick this close to the first or last age is left out, so the age labels never crowd
 const CHAR_WIDTH = 6.6;
 
 /** 1, 2, 5, 10... times a power of ten, the first at or above `raw` (so the y axis steps by round figures). */

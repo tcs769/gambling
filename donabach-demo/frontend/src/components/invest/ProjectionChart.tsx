@@ -16,7 +16,8 @@ const TOP = 30;
 const BOTTOM = 210;
 const LEFT = 60;
 const RIGHT_PAD = 20;
-const TAG_LANE = 18;
+const TAG_LANE = 20;
+const MIN_TICK_GAP = 64; // a decade tick this close to the first or last age is left out, so the age labels never crowd
 const CHAR_WIDTH = 6.6;
 
 /** 1, 2, 5, 10... times a power of ten, the first at or above `raw` (so the y axis steps by round figures). */
@@ -52,19 +53,30 @@ export function ProjectionChart({ overview, horizon }: { overview: Overview; hor
   const lines = overview.markers.filter((m) => m.end_age === null);
   const ageTicks = points
     .map((p) => p.age)
-    .filter((age) => age % 10 === 0 && x(age) - x(first) > 20 && x(last) - x(age) > 20)
+    .filter((age) => age % 10 === 0 && x(age) - x(first) > MIN_TICK_GAP && x(last) - x(age) > MIN_TICK_GAP)
     .concat([first, last])
     .sort((a, b) => a - b);
 
-  // Tags sit at the top of the chart; one that would run into the one before it drops to a second lane.
+  // Tags sit at the top of the chart, each on a lane of its own where it would run into another tag, and a tag that would be crossed by
+  // the line of a later goal sits on the left of its own line instead (the college band's tag, with retirement three years after it starts).
+  const tagWidth = (text: string) => text.length * CHAR_WIDTH;
+  const lineXs = overview.markers.map((m) => ({ key: m.key, at: x(m.start_age) }));
   const tags = [...overview.markers]
-    .map((m) => ({ m, at: m.end_age !== null ? x(m.start_age) + 6 : x(m.start_age) + 8, text: tagText(m) }))
-    .sort((a, b) => a.at - b.at);
+    .map((m) => {
+      const text = tagText(m);
+      const right = m.end_age !== null ? x(m.start_age) + 6 : x(m.start_age) + 8;
+      const crossed = lineXs.some((l) => l.key !== m.key && l.at > right - 2 && l.at < right + tagWidth(text) + 4);
+      const fitsLeft = x(m.start_age) - 8 - tagWidth(text) > left;
+      return crossed && fitsLeft
+        ? { m, text, from: x(m.start_age) - 8 - tagWidth(text), anchor: "start" as const }
+        : { m, text, from: right, anchor: "start" as const };
+    })
+    .sort((a, b) => a.from - b.from);
   const laneEnds: number[] = [];
   const placed = tags.map((tag) => {
-    let lane = laneEnds.findIndex((end) => tag.at > end + 8);
+    let lane = laneEnds.findIndex((end) => tag.from > end + 10);
     if (lane < 0) lane = laneEnds.length;
-    laneEnds[lane] = tag.at + tag.text.length * CHAR_WIDTH;
+    laneEnds[lane] = tag.from + tagWidth(tag.text);
     return { ...tag, lane };
   });
 
@@ -150,7 +162,7 @@ export function ProjectionChart({ overview, horizon }: { overview: Overview; hor
               ))}
             </g>
             {placed.map((tag) => (
-              <text key={tag.m.key} className={styles.tag} x={tag.at} y={48 + tag.lane * TAG_LANE}>
+              <text key={tag.m.key} className={styles.tag} x={tag.from} y={48 + tag.lane * TAG_LANE}>
                 {tag.text}
               </text>
             ))}

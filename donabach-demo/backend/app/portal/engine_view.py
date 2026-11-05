@@ -531,7 +531,10 @@ def build_plan(c: Computed, previous: Plan | None = None, change_label: str | No
     if c.transition_tax > 0:
         moves.insert(0, Move(key="transition", title="Sell your fund shares to start direct indexing (one-time tax)", amount=round(c.transition_tax), timing="This year", status="needs_ok"))
     if policy.tax_loss_harvesting:
-        moves.append(Move(key="harvest", title="Harvest losses" + (" stock by stock" if policy.direct_indexing else ""), amount=round(harvest) if harvest > 0.5 else None, timing="Ongoing", status="ongoing"))
+        if policy.direct_indexing:
+            moves.append(Move(key="harvest", title="Selling losing positions as they appear", amount=round(harvest) if harvest > 0.5 else None, timing="Ongoing", status="ongoing"))
+        else:  # fund-level harvesting: the plan sells a fund at a loss only in a down year, to offset gains
+            moves.append(Move(key="harvest", title="Selling funds at a loss in down years to offset gains", amount=None, timing="When needed", status="ongoing"))
     if conv > 0:
         moves.append(
             Move(

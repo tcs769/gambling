@@ -101,3 +101,15 @@
     grid-row: 2;
   }
 }
+
+/* a move that waits for the customer's OK still says when it happens, beside its Approve button */
+.whenWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+}
+
+.whenText {
+  color: var(--ink-soft);
+}

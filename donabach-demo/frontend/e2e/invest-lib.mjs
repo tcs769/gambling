@@ -42,7 +42,7 @@ export function moveText(m) {
     case "lots":
       return "Selling the highest-cost shares first";
     case "harvest":
-      return `Selling losing positions as they appear${has ? `, ${dollarsWhole(amt)} harvested so far` : ""}`;
+      return `${m.title}${has ? `, ${dollarsWhole(amt)} harvested so far` : ""}`;
     case "conversion":
     case "conversion_next":
       return `Convert ${dollarsWhole(amt)} from your 401(k) / IRA to your Roth${d}`;

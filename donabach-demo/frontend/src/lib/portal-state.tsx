@@ -98,8 +98,23 @@ function reducer(state: PortalState, action: Action): PortalState {
       return state.confirmed.includes(action.key) ? state : { ...state, confirmed: [...state.confirmed, action.key] };
     case "answers":
       return { ...state, answers: action.answers };
-    case "plan":
-      return { ...state, plan: action.plan, planInputs: action.inputs };
+    case "plan": {
+      // A move the new plan leaves as it was (same amount and status) keeps the customer's approval of it.
+      const before = state.plan;
+      const kept: Record<string, boolean> = {};
+      if (before) {
+        const said = state.approved[before.plan_id] ?? {};
+        for (const move of action.plan.portfolio.overview.moves) {
+          const old = before.portfolio.overview.moves.find((m) => m.key === move.key);
+          if (old && said[move.key] && old.amount === move.amount && old.status === move.status) kept[move.key] = true;
+        }
+      }
+      const approved =
+        Object.keys(kept).length > 0
+          ? { ...state.approved, [action.plan.plan_id]: { ...state.approved[action.plan.plan_id], ...kept } }
+          : state.approved;
+      return { ...state, plan: action.plan, planInputs: action.inputs, approved };
+    }
     case "approve":
       return {
         ...state,

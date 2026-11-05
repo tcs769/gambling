@@ -33,7 +33,7 @@ function MoveText({ move }: { move: Move }) {
     case "lots":
       return <>Selling the highest-cost shares first</>;
     case "harvest":
-      return <>Selling losing positions as they appear{hasAmount && <>, {money(amount)} harvested so far</>}</>;
+      return <>{move.title}{hasAmount && <>, {money(amount)} harvested so far</>}</>;
     case "conversion":
     case "conversion_next":
       return (
@@ -220,17 +220,20 @@ export function Overview({ plan }: { plan: Plan }) {
                 </span>
                 <span className={styles.when}>
                   {move.status === "needs_ok" && !ok ? (
-                    <button
-                      type="button"
-                      className={styles.mini}
-                      aria-label={`Approve ${move.title}, ${move.timing}`}
-                      onClick={() => {
-                        actions.approve(plan.plan_id, move.key, true);
-                        setAnnounce(`${move.title}, ${move.timing}: scheduled`);
-                      }}
-                    >
-                      Approve
-                    </button>
+                    <span className={styles.whenWrap}>
+                      <span className={styles.whenText}>{move.timing}</span>
+                      <button
+                        type="button"
+                        className={styles.mini}
+                        aria-label={`Approve ${move.title}, ${move.timing}`}
+                        onClick={() => {
+                          actions.approve(plan.plan_id, move.key, true);
+                          setAnnounce(`${move.title}, ${move.timing}: scheduled`);
+                        }}
+                      >
+                        Approve
+                      </button>
+                    </span>
                   ) : (
                     move.timing
                   )}

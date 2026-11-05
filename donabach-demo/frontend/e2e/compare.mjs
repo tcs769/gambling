@@ -72,11 +72,14 @@ export async function runCompare({ browser, base, check }) {
       "Projected at 80",
       "Mix",
       "Accounts",
-      "Harvesting losses",
       "Roth conversion this year",
       "Yearly fee",
     ])
       check(txt.includes(l), `${side}: row "${l}"`);
+    check(
+      txt.includes("Harvesting losses") === (c.advisor.harvesting !== c.waramoug.harvesting),
+      `${side}: the Harvesting losses row is there only when the two sides differ`,
+    );
     check((await t(`mix-${side}`)) === card.mix_text, `${side}: mix text "${card.mix_text}"`);
     const stackH = await el.getByTestId("mix-bar").evaluate((e) => Math.round(e.getBoundingClientRect().height));
     check(stackH === 14, `${side}: the stacked bar is 14px`);

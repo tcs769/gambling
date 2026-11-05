@@ -15,7 +15,17 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-function CompareCard({ card, side, horizon }: { card: Card; side: "advisor" | "waramoug"; horizon: number }) {
+function CompareCard({
+  card,
+  side,
+  horizon,
+  showHarvesting,
+}: {
+  card: Card;
+  side: "advisor" | "waramoug";
+  horizon: number;
+  showHarvesting: boolean;
+}) {
   const harvested = card.harvested_so_far !== null && card.harvested_so_far !== undefined ? card.harvested_so_far : 0;
   return (
     <article
@@ -48,10 +58,12 @@ function CompareCard({ card, side, horizon }: { card: Card; side: "advisor" | "w
             </span>
           ))}
         </Row>
-        <Row label="Harvesting losses">
-          {card.harvesting}
-          {harvested > 0.5 && <span className="num">: {dollarsWhole(harvested)} so far</span>}
-        </Row>
+        {showHarvesting && (
+          <Row label="Harvesting losses">
+            {card.harvesting}
+            {harvested > 0.5 && <span className="num">: {dollarsWhole(harvested)} so far</span>}
+          </Row>
+        )}
         <Row label="Roth conversion this year">
           <span className="num">{card.roth_conversion > 0.5 ? dollarsWhole(card.roth_conversion) : "None"}</span>
         </Row>
@@ -68,6 +80,10 @@ function CompareCard({ card, side, horizon }: { card: Card; side: "advisor" | "w
 export function CompareView({ plan }: { plan: Plan }) {
   const { comparison, portfolio } = plan;
   const horizon = portfolio.summary.horizon_age;
+  // a row where the two sides say the same thing tells the customer nothing: harvesting is shown only when it differs
+  const showHarvesting =
+    comparison.advisor.harvesting !== comparison.waramoug.harvesting ||
+    Math.round(comparison.advisor.harvested_so_far ?? 0) !== Math.round(comparison.waramoug.harvested_so_far ?? 0);
   return (
     <div data-plan-id={plan.plan_id}>
       <section className={styles.gap} aria-label="With Waramoug" data-testid="compare-strip">
@@ -81,8 +97,8 @@ export function CompareView({ plan }: { plan: Plan }) {
         </b>
       </section>
       <div className={styles.duo}>
-        <CompareCard card={comparison.advisor} side="advisor" horizon={horizon} />
-        <CompareCard card={comparison.waramoug} side="waramoug" horizon={horizon} />
+        <CompareCard card={comparison.advisor} side="advisor" horizon={horizon} showHarvesting={showHarvesting} />
+        <CompareCard card={comparison.waramoug} side="waramoug" horizon={horizon} showHarvesting={showHarvesting} />
       </div>
     </div>
   );

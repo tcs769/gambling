@@ -443,6 +443,21 @@ def _location(matrix: dict[str, dict[str, float]], accounts_total: dict[str, flo
     return Location(rows=rows, total=total)
 
 
+def _location_move_title(alloc: Allocation, policy: S.Policy) -> str:
+    """The asset-location move, worded from what the household actually holds (a household without bonds is not told to place bonds)."""
+    if not policy.donabach_location:
+        return "Hold the same mix in every account"
+    bonds = sum(alloc.account(a)["bonds"] for a in ("pretax", "roth", "brokerage")) > 0.5
+    credit = sum(alloc.account(a)["private_credit"] for a in ("pretax", "roth", "brokerage")) > 0.5
+    if bonds and credit:
+        return "Place bonds and private credit in the 401(k)/IRA and stocks in the Roth and brokerage accounts"
+    if credit:
+        return "Put private credit in the 401(k)/IRA, where its income isn't taxed each year."
+    if bonds:
+        return "Put bonds in the 401(k)/IRA, where their interest isn't taxed each year."
+    return "Hold stocks in the Roth and brokerage accounts"
+
+
 def build_plan(c: Computed, previous: Plan | None = None, change_label: str | None = None) -> Plan:
     h = c.sold_household or c.household  # the household the plan runs on: after the sale that starts direct indexing, when it has one
     policy = c.strategy.policy()
@@ -510,8 +525,7 @@ def build_plan(c: Computed, previous: Plan | None = None, change_label: str | No
     next_conv = float(log["conv"][1]) if len(log["conv"]) > 1 else 0.0
     moves: list[Move] = [
         Move(key="invest", title="Invest your savings in the target mix", amount=float(round(total_savings)), timing="This year", status="done"),
-        Move(key="location", title="Place bonds and private credit in the 401(k)/IRA and stocks in the Roth and brokerage accounts"
-             if policy.donabach_location else "Hold the same mix in every account", timing="This year", status="done"),
+        Move(key="location", title=_location_move_title(alloc, policy), timing="This year", status="done"),
         Move(key="lots", title="Sell the highest-cost lots first", timing="Ongoing", status="ongoing"),
     ]
     if c.transition_tax > 0:
